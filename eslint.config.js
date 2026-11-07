@@ -35,5 +35,10 @@ export default defineConfig([
       ],
     },
   },
+  {
+    // Test và tiện ích test không tham gia HMR.
+    files: ['src/test/**/*.{ts,tsx}', '**/*.test.{ts,tsx}'],
+    rules: { 'react-refresh/only-export-components': 'off' },
+  },
   prettier,
 ])
