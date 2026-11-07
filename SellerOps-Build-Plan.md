@@ -264,8 +264,8 @@ Client gọi `supabase.rpc('confirm_order', ...)`, map mã lỗi (`INSUFFICIENT_
 - [x] [MUST] DashboardLayout: Sidebar, Header, theme sáng/tối
 - [x] [MUST] Tạo Supabase project, chạy schema + RLS, generate types
 - [x] [MUST] Auth: đăng nhập/đăng xuất, `ProtectedRoute`
-- [ ] [MUST] GitHub Actions CI (lint, typecheck, test, build)
-- [ ] [SHOULD] Deploy Vercel sớm để có preview URL ngay từ ngày 1
+- [x] [MUST] GitHub Actions CI (lint, typecheck, test, build)
+- [x] [SHOULD] Deploy Vercel sớm để có preview URL ngay từ ngày 1
 
 ### Ngày 2 – Dashboard (4–5h)
 
