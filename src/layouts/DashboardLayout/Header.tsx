@@ -1,5 +1,6 @@
 import { Burger, Group, Text, ThemeIcon } from '@mantine/core'
 import { IconBuildingStore } from '@tabler/icons-react'
+import { UserMenu } from '@/features/auth'
 import { useUiStore } from '@/shared/stores/useUiStore'
 import { ColorSchemeToggle } from './ColorSchemeToggle'
 
@@ -37,6 +38,7 @@ export function Header() {
       </Group>
       <Group gap="sm" wrap="nowrap">
         <ColorSchemeToggle />
+        <UserMenu />
       </Group>
     </Group>
   )

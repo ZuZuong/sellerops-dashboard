@@ -1,5 +1,6 @@
 import type { ComponentType } from 'react'
 import { createBrowserRouter } from 'react-router'
+import { GuestRoute, ProtectedRoute } from '@/features/auth'
 import { DashboardLayout } from '@/layouts/DashboardLayout'
 import { PageLoader } from '@/shared/components/PageLoader'
 import { ROUTES } from '@/shared/constants/routes'
@@ -12,17 +13,28 @@ const page = (load: () => Promise<{ default: ComponentType }>) => async () => ({
 
 export const router = createBrowserRouter([
   {
-    path: ROUTES.dashboard,
-    Component: DashboardLayout,
+    Component: ProtectedRoute,
     ErrorBoundary: RouteErrorBoundary,
     HydrateFallback: PageLoader,
     children: [
-      { index: true, lazy: page(() => import('@/pages/DashboardPage')) },
-      { path: ROUTES.products, lazy: page(() => import('@/pages/ProductsPage')) },
-      { path: ROUTES.orders, lazy: page(() => import('@/pages/OrdersPage')) },
-      { path: ROUTES.inventory, lazy: page(() => import('@/pages/InventoryPage')) },
-      { path: ROUTES.analytics, lazy: page(() => import('@/pages/AnalyticsPage')) },
+      {
+        path: ROUTES.dashboard,
+        Component: DashboardLayout,
+        children: [
+          { index: true, lazy: page(() => import('@/pages/DashboardPage')) },
+          { path: ROUTES.products, lazy: page(() => import('@/pages/ProductsPage')) },
+          { path: ROUTES.orders, lazy: page(() => import('@/pages/OrdersPage')) },
+          { path: ROUTES.inventory, lazy: page(() => import('@/pages/InventoryPage')) },
+          { path: ROUTES.analytics, lazy: page(() => import('@/pages/AnalyticsPage')) },
+        ],
+      },
     ],
+  },
+  {
+    Component: GuestRoute,
+    ErrorBoundary: RouteErrorBoundary,
+    HydrateFallback: PageLoader,
+    children: [{ path: ROUTES.login, lazy: page(() => import('@/pages/LoginPage')) }],
   },
   {
     path: '*',
