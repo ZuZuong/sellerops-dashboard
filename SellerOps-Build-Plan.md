@@ -263,7 +263,7 @@ Client gọi `supabase.rpc('confirm_order', ...)`, map mã lỗi (`INSUFFICIENT_
 - [x] [MUST] Provider: Mantine, QueryClient, Router, Notifications
 - [x] [MUST] DashboardLayout: Sidebar, Header, theme sáng/tối
 - [x] [MUST] Tạo Supabase project, chạy schema + RLS, generate types
-- [ ] [MUST] Auth: đăng nhập/đăng xuất, `ProtectedRoute`
+- [x] [MUST] Auth: đăng nhập/đăng xuất, `ProtectedRoute`
 - [ ] [MUST] GitHub Actions CI (lint, typecheck, test, build)
 - [ ] [SHOULD] Deploy Vercel sớm để có preview URL ngay từ ngày 1
 
