@@ -257,12 +257,12 @@ Client gọi `supabase.rpc('confirm_order', ...)`, map mã lỗi (`INSUFFICIENT_
 
 ### Ngày 1 – Foundation & kiến trúc (4–5h)
 
-- [ ] [MUST] Khởi tạo Vite + React 19 + TS strict (`"strict": true`, `noUncheckedIndexedAccess`)
-- [ ] [MUST] ESLint + Prettier + Husky + lint-staged + commitlint
-- [ ] [MUST] Path alias `@/`, cấu trúc thư mục mục 4
-- [ ] [MUST] Provider: Mantine, QueryClient, Router, Notifications
-- [ ] [MUST] DashboardLayout: Sidebar, Header, theme sáng/tối
-- [ ] [MUST] Tạo Supabase project, chạy schema + RLS, generate types
+- [x] [MUST] Khởi tạo Vite + React 19 + TS strict (`"strict": true`, `noUncheckedIndexedAccess`)
+- [x] [MUST] ESLint + Prettier + Husky + lint-staged + commitlint
+- [x] [MUST] Path alias `@/`, cấu trúc thư mục mục 4
+- [x] [MUST] Provider: Mantine, QueryClient, Router, Notifications
+- [x] [MUST] DashboardLayout: Sidebar, Header, theme sáng/tối
+- [x] [MUST] Tạo Supabase project, chạy schema + RLS, generate types
 - [ ] [MUST] Auth: đăng nhập/đăng xuất, `ProtectedRoute`
 - [ ] [MUST] GitHub Actions CI (lint, typecheck, test, build)
 - [ ] [SHOULD] Deploy Vercel sớm để có preview URL ngay từ ngày 1
