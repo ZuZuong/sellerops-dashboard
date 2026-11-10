@@ -1,7 +1,7 @@
 # SellerOps – Kế hoạch build chuẩn doanh nghiệp
 
 > E-commerce Management Dashboard · Portfolio project ứng tuyển công ty lớn
-> Thời gian: 7 ngày (28–35 giờ) · Nguyên tắc: **ít tính năng, chất lượng production**
+> Thời gian: 6 ngày (28–35 giờ) · Nguyên tắc: **ít tính năng, chất lượng production**
 
 ---
 
@@ -251,7 +251,7 @@ Client gọi `supabase.rpc('confirm_order', ...)`, map mã lỗi (`INSUFFICIENT_
 
 ---
 
-## 7. Lộ trình 7 ngày (checklist)
+## 7. Lộ trình 6 ngày (checklist)
 
 > Phân loại: **[MUST]** bắt buộc · **[SHOULD]** nên có · **[STRETCH]** nếu còn thời gian. Nếu trễ tiến độ, cắt STRETCH trước.
 
@@ -267,7 +267,9 @@ Client gọi `supabase.rpc('confirm_order', ...)`, map mã lỗi (`INSUFFICIENT_
 - [x] [MUST] GitHub Actions CI (lint, typecheck, test, build)
 - [x] [SHOULD] Deploy Vercel sớm để có preview URL ngay từ ngày 1
 
-### Ngày 2 – Dashboard (4–5h)
+### Ngày 2 – Dashboard & Product Management (8–10h)
+
+**Dashboard**
 
 - [x] [MUST] KPI Cards: doanh thu, số đơn, đơn chờ xử lý, sản phẩm sắp hết
 - [x] [MUST] Revenue Chart (7/30 ngày)
@@ -275,16 +277,16 @@ Client gọi `supabase.rpc('confirm_order', ...)`, map mã lỗi (`INSUFFICIENT_
 - [x] [MUST] Skeleton, empty, error state cho từng widget (độc lập, một widget lỗi không làm hỏng cả trang)
 - [x] [SHOULD] Tính doanh thu bằng SQL view / RPC thay vì kéo toàn bộ đơn về client
 
-### Ngày 3 – Product Management (4–5h)
+**Product Management**
 
-- [ ] [MUST] Product List với server-side pagination, search (debounce), filter, sort
-- [ ] [MUST] CRUD sản phẩm: form RHF + Zod, modal hoặc drawer
-- [ ] [MUST] **Filter/sort/page lưu trên URL** (hook `useUrlState`)
-- [ ] [MUST] Confirmation dialog khi xóa/vô hiệu hóa
-- [ ] [SHOULD] Optimistic update khi sửa nhanh giá/tồn kho
-- [ ] [MUST] Unit test cho schema Zod và hook filter
+- [x] [MUST] Product List với server-side pagination, search (debounce), filter, sort
+- [x] [MUST] CRUD sản phẩm: form RHF + Zod, modal hoặc drawer
+- [x] [MUST] **Filter/sort/page lưu trên URL** (hook `useUrlState`)
+- [x] [MUST] Confirmation dialog khi xóa/vô hiệu hóa
+- [x] [SHOULD] Optimistic update khi sửa nhanh giá/tồn kho
+- [x] [MUST] Unit test cho schema Zod và hook filter
 
-### Ngày 4 – Order Management (4–5h)
+### Ngày 3 – Order Management (4–5h)
 
 - [ ] [MUST] Order Table + filter theo trạng thái (URL-based) + search theo mã/khách
 - [ ] [MUST] Tạo đơn: chọn sản phẩm, số lượng, tính tổng, validate
@@ -293,7 +295,7 @@ Client gọi `supabase.rpc('confirm_order', ...)`, map mã lỗi (`INSUFFICIENT_
 - [ ] [MUST] Tích hợp RPC `confirm_order` / `cancel_order`, xử lý lỗi thiếu hàng
 - [ ] [MUST] Unit test state machine + test component luồng xác nhận (mock RPC)
 
-### Ngày 5 – Inventory & Analytics (4–5h)
+### Ngày 4 – Inventory & Analytics (4–5h)
 
 - [ ] [MUST] Inventory page: tồn kho, badge cảnh báo sắp hết, điều chỉnh kho thủ công (ghi `inventory_movements`)
 - [ ] [MUST] Lịch sử biến động kho theo sản phẩm
@@ -301,7 +303,7 @@ Client gọi `supabase.rpc('confirm_order', ...)`, map mã lỗi (`INSUFFICIENT_
 - [ ] [MUST] Export CSV (xử lý đúng UTF-8 BOM cho tiếng Việt khi mở bằng Excel)
 - [ ] [STRETCH] Biểu đồ theo danh mục, so sánh kỳ trước
 
-### Ngày 6 – Polish, kiểm thử, tối ưu (4–5h)
+### Ngày 5 – Polish, kiểm thử, tối ưu (4–5h)
 
 - [ ] [MUST] Responsive toàn bộ trang, bảng cuộn ngang trên mobile
 - [ ] [MUST] Error Boundary toàn cục + theo route, trang 404, xử lý mất mạng
@@ -311,7 +313,7 @@ Client gọi `supabase.rpc('confirm_order', ...)`, map mã lỗi (`INSUFFICIENT_
 - [ ] [MUST] A11y: label, focus, contrast; chạy Lighthouse (mục tiêu ≥ 90 Performance/Accessibility/Best Practices)
 - [ ] [SHOULD] Refactor component trùng lặp, rà soát bundle bằng `vite-bundle-visualizer`
 
-### Ngày 7 – Deploy & Portfolio (4–5h)
+### Ngày 6 – Deploy & Portfolio (4–5h)
 
 - [ ] [MUST] Deploy production Vercel, cấu hình env, tài khoản demo (read-only hoặc dữ liệu reset được)
 - [ ] [MUST] README chuẩn (mục 10)
@@ -419,7 +421,7 @@ Mỗi ADR gồm: Bối cảnh · Quyết định · Lý do · Đánh đổi.
 
 **Không làm (ghi vào README mục "Hướng phát triển"):** thanh toán thật, đa kho, phân quyền nhiều vai trò, realtime, tích hợp sàn TMĐT, i18n đa ngôn ngữ.
 
-**Quy tắc cắt scope:** cuối ngày 4 nếu chưa xong Order Management với RPC và test, dừng thêm tính năng ở Ngày 5 và dành thời gian hoàn thiện. Một luồng đơn hàng đúng nghiệp vụ có giá trị hơn năm trang giao diện.
+**Quy tắc cắt scope:** cuối ngày 3 nếu chưa xong Order Management với RPC và test, dừng thêm tính năng ở Ngày 4 và dành thời gian hoàn thiện. Một luồng đơn hàng đúng nghiệp vụ có giá trị hơn năm trang giao diện.
 
 ---
 
