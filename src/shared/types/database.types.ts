@@ -140,6 +140,7 @@ export type Database = {
           created_at: string
           id: string
           is_active: boolean
+          is_low_stock: boolean | null
           low_stock_threshold: number
           name: string
           price: number
@@ -152,6 +153,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_active?: boolean
+          is_low_stock?: never
           low_stock_threshold?: number
           name: string
           price: number
@@ -164,6 +166,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_active?: boolean
+          is_low_stock?: never
           low_stock_threshold?: number
           name?: string
           price?: number
@@ -188,6 +191,7 @@ export type Database = {
         Args: { p_days: number; p_tz: string }
         Returns: string
       }
+      delete_product: { Args: { p_product_id: string }; Returns: undefined }
       deliver_order: { Args: { p_order_id: string }; Returns: undefined }
       get_dashboard_kpis: {
         Args: { p_days: number; p_tz?: string }
@@ -200,6 +204,7 @@ export type Database = {
           revenue: number
         }[]
       }
+      get_product_categories: { Args: never; Returns: string[] }
       get_revenue_series: {
         Args: { p_days: number; p_tz?: string }
         Returns: {
