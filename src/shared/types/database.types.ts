@@ -153,7 +153,10 @@ export type Database = {
         Row: {
           category: string | null
           created_at: string
+          description: string | null
+          hero_image_path: string | null
           id: string
+          image_paths: string[]
           is_active: boolean
           is_low_stock: boolean | null
           low_stock_threshold: number
@@ -166,7 +169,10 @@ export type Database = {
         Insert: {
           category?: string | null
           created_at?: string
+          description?: string | null
+          hero_image_path?: string | null
           id?: string
+          image_paths?: string[]
           is_active?: boolean
           is_low_stock?: boolean | null
           low_stock_threshold?: number
@@ -179,7 +185,10 @@ export type Database = {
         Update: {
           category?: string | null
           created_at?: string
+          description?: string | null
+          hero_image_path?: string | null
           id?: string
+          image_paths?: string[]
           is_active?: boolean
           is_low_stock?: boolean | null
           low_stock_threshold?: number
@@ -236,6 +245,10 @@ export type Database = {
           revenue: number
           sku: string
         }[]
+      }
+      paths_owned_by: {
+        Args: { p_owner: string; p_paths: string[] }
+        Returns: boolean
       }
       lock_own_order: {
         Args: { p_order_id: string }
