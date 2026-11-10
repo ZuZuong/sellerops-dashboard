@@ -11,6 +11,9 @@ export type Product = Pick<
   | 'low_stock_threshold'
   | 'is_low_stock'
   | 'is_active'
+  | 'description'
+  | 'hero_image_path'
+  | 'image_paths'
   | 'created_at'
 >
 

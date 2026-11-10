@@ -45,6 +45,9 @@ const makeProduct = (overrides: Partial<Product> = {}): Product => ({
   low_stock_threshold: 5,
   is_low_stock: false,
   is_active: true,
+  description: null,
+  hero_image_path: null,
+  image_paths: [],
   created_at: '2026-11-01T03:00:00Z',
   ...overrides,
 })
@@ -152,7 +155,7 @@ describe('ProductsView', () => {
     expect(api.deleteProduct).not.toHaveBeenCalled()
 
     await userEvent.click(within(dialog).getByRole('button', { name: 'Xóa vĩnh viễn' }))
-    await waitFor(() => expect(api.deleteProduct).toHaveBeenCalledWith('p1'))
+    await waitFor(() => expect(api.deleteProduct).toHaveBeenCalledWith(product, expect.anything()))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
@@ -266,8 +269,11 @@ describe('ProductForm', () => {
       price: 250_000,
       stock: 0,
       low_stock_threshold: 5,
+      description: null,
       is_active: true,
     })
+    // Không có ảnh → media rỗng
+    expect(api.createProduct.mock.calls[0]?.[1]).toEqual({ hero: null, gallery: [] })
     await waitFor(() => expect(onDone).toHaveBeenCalled())
   })
 
@@ -303,8 +309,9 @@ describe('ProductForm', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Lưu thay đổi' }))
     await waitFor(() =>
       expect(api.updateProduct).toHaveBeenCalledWith(
-        'p1',
+        product,
         expect.objectContaining({ category: 'Áo thun', is_active: false }),
+        { hero: null, gallery: [] },
       ),
     )
   })

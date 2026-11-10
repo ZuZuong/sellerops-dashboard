@@ -32,3 +32,15 @@ class ResizeObserverMock {
 window.ResizeObserver = ResizeObserverMock
 
 window.HTMLElement.prototype.scrollIntoView = () => {}
+
+// jsdom chưa có object URL (dùng để xem trước ảnh trước khi tải lên).
+let objectUrlId = 0
+URL.createObjectURL = () => `blob:mock/${++objectUrlId}`
+URL.revokeObjectURL = () => {}
+
+// jsdom chưa có document.fonts (Textarea autosize của Mantine lắng nghe sự kiện tải font).
+if (!('fonts' in document)) {
+  Object.defineProperty(document, 'fonts', {
+    value: { addEventListener() {}, removeEventListener() {}, ready: Promise.resolve() },
+  })
+}

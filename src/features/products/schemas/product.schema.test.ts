@@ -7,6 +7,7 @@ const valid = {
   price: 150_000,
   stock: 10,
   low_stock_threshold: 5,
+  description: '  Cotton 100%  ',
   is_active: true,
 }
 
@@ -22,8 +23,14 @@ const errorsOf = (input: Record<string, unknown>) => {
 describe('productSchema', () => {
   it('chuẩn hóa tên và không chứa SKU (DB tự sinh)', () => {
     const parsed = productSchema.parse({ ...valid, sku: 'TU-NHAP' })
-    expect(parsed).toEqual({ ...valid, name: 'Áo thun basic' })
+    expect(parsed).toEqual({ ...valid, name: 'Áo thun basic', description: 'Cotton 100%' })
     expect(parsed).not.toHaveProperty('sku')
+  })
+
+  it('mô tả: bỏ trống → null, giới hạn độ dài', () => {
+    expect(productSchema.parse({ ...valid, description: '   ' }).description).toBeNull()
+    expect(productSchema.parse({ ...valid, description: undefined }).description).toBeNull()
+    expect(errorsOf({ description: 'a'.repeat(5001) }).description).toBe('Mô tả tối đa 5000 ký tự')
   })
 
   it('bắt buộc tên (chỉ khoảng trắng cũng tính là trống)', () => {

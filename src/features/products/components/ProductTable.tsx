@@ -1,5 +1,6 @@
 import {
   ActionIcon,
+  Avatar,
   Badge,
   Center,
   Group,
@@ -15,12 +16,14 @@ import {
   IconArrowsSort,
   IconDots,
   IconEdit,
+  IconPhoto,
   IconPlayerPause,
   IconPlayerPlay,
   IconTrash,
 } from '@tabler/icons-react'
 import type { ReactNode } from 'react'
 import { formatCurrency, formatDate } from '@/shared/lib/formatters'
+import { getProductImageUrl } from '../api/productImages.api'
 import { priceSchema, stockSchema } from '../schemas/product.schema'
 import type { ProductSortField, SortOrder } from '../schemas/productFilters.schema'
 import type { Product } from '../types'
@@ -146,9 +149,20 @@ function ProductRow({
         </Text>
       </Table.Td>
       <Table.Td>
-        <Text size="sm" fw={500} lineClamp={2} maw={280}>
-          {product.name}
-        </Text>
+        <Group gap="sm" wrap="nowrap">
+          <Avatar
+            src={product.hero_image_path ? getProductImageUrl(product.hero_image_path) : null}
+            alt=""
+            radius="sm"
+            size={40}
+            color="gray"
+          >
+            <IconPhoto size={18} stroke={1.5} aria-hidden />
+          </Avatar>
+          <Text size="sm" fw={500} lineClamp={2} maw={260}>
+            {product.name}
+          </Text>
+        </Group>
       </Table.Td>
       <Table.Td>
         <Text size="sm" c={product.category ? undefined : 'dimmed'}>

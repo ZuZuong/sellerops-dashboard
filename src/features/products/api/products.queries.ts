@@ -8,13 +8,15 @@ import {
 } from '@tanstack/react-query'
 import { dashboardKeys } from '@/features/dashboard'
 import { formatCurrency, formatNumber } from '@/shared/lib/formatters'
+import type { ProductMedia } from '../lib/productImages'
 import { getProductErrorMessage } from '../lib/productErrors'
-import type { ProductFormValues } from '../schemas/product.schema'
+import type { ImportedProduct, ProductFormValues } from '../schemas/product.schema'
 import type { ProductFilters } from '../schemas/productFilters.schema'
 import type { Product, ProductPage } from '../types'
 import {
   adjustProductStock,
   createProduct,
+  createProducts,
   deleteProduct,
   fetchProducts,
   setProductActive,
@@ -55,7 +57,8 @@ function notifyError(title: string, error: unknown) {
 export function useCreateProduct() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: createProduct,
+    mutationFn: ({ values, media }: { values: ProductFormValues; media: ProductMedia }) =>
+      createProduct(values, media),
     onSuccess: (product) => {
       notifications.show({
         color: 'green',
@@ -71,8 +74,15 @@ export function useCreateProduct() {
 export function useUpdateProduct() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, values }: { id: string; values: ProductFormValues }) =>
-      updateProduct(id, values),
+    mutationFn: ({
+      product,
+      values,
+      media,
+    }: {
+      product: Product
+      values: ProductFormValues
+      media: ProductMedia
+    }) => updateProduct(product, values, media),
     onSuccess: (product) => {
       notifications.show({ color: 'green', title: 'Đã lưu thay đổi', message: product.name })
       return invalidateAfterProductChange(queryClient)
@@ -101,12 +111,29 @@ export function useSetProductActive() {
 export function useDeleteProduct() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (product: Product) => deleteProduct(product.id),
+    mutationFn: deleteProduct,
     onSuccess: (_data, product) => {
       notifications.show({ color: 'green', title: 'Đã xóa sản phẩm', message: product.name })
       return invalidateAfterProductChange(queryClient)
     },
     onError: (error) => notifyError('Không xóa được sản phẩm', error),
+  })
+}
+
+export function useImportProducts() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ products, publish }: { products: ImportedProduct[]; publish: boolean }) =>
+      createProducts(products, publish),
+    onSuccess: (count, { publish }) => {
+      notifications.show({
+        color: 'green',
+        title: publish ? 'Đã nhập và đăng sản phẩm' : 'Đã nhập sản phẩm (chưa đăng)',
+        message: `${formatNumber(count)} sản phẩm từ file Excel`,
+      })
+      return invalidateAfterProductChange(queryClient)
+    },
+    onError: (error) => notifyError('Nhập sản phẩm thất bại', error),
   })
 }
 

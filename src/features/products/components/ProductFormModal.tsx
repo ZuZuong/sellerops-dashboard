@@ -9,21 +9,27 @@ import {
   SimpleGrid,
   Stack,
   Text,
+  Textarea,
   TextInput,
   Tooltip,
 } from '@mantine/core'
 import { useMediaQuery } from '@mantine/hooks'
+import type { ClipboardEvent } from 'react'
 import { Controller, useForm, useWatch, type Control } from 'react-hook-form'
 import { useCreateProduct, useUpdateProduct } from '../api/products.queries'
 import { isProductCategory, PRODUCT_CATEGORIES } from '../constants'
+import { useProductMedia } from '../hooks/useProductMedia'
+import { getClipboardImageFiles } from '../lib/productImages'
 import { previewSku } from '../lib/sku'
 import {
   EMPTY_PRODUCT_FORM,
+  MAX_DESCRIPTION,
   productSchema,
   type ProductFormInput,
   type ProductFormValues,
 } from '../schemas/product.schema'
 import type { Product } from '../types'
+import { ProductImagesField } from './ProductImagesField'
 
 interface ProductFormModalProps {
   opened: boolean
@@ -39,7 +45,7 @@ export function ProductFormModal({ opened, onClose, product }: ProductFormModalP
       opened={opened}
       onClose={onClose}
       title={product ? 'Sửa sản phẩm' : 'Thêm sản phẩm'}
-      size="lg"
+      size="xl"
       fullScreen={isMobile}
       centered
     >
@@ -57,6 +63,7 @@ function toFormInput(product: Product): Partial<ProductFormInput> {
     price: product.price,
     stock: product.stock,
     low_stock_threshold: product.low_stock_threshold,
+    description: product.description ?? '',
     is_active: product.is_active,
   }
 }
@@ -71,6 +78,7 @@ export function ProductForm({ product, onDone }: ProductFormProps) {
   const createProduct = useCreateProduct()
   const updateProduct = useUpdateProduct()
   const isSubmitting = createProduct.isPending || updateProduct.isPending
+  const mediaState = useProductMedia(product)
 
   const {
     register,
@@ -82,21 +90,36 @@ export function ProductForm({ product, onDone }: ProductFormProps) {
     defaultValues: product ? toFormInput(product) : EMPTY_PRODUCT_FORM,
   })
   const name = useWatch({ control, name: 'name' })
+  const description = useWatch({ control, name: 'description' })
 
   /** Tạo mới: `publish` quyết định đăng bán ngay hay chỉ lưu. Sửa: giữ nguyên trạng thái. */
   const submit = (publish: boolean) =>
     handleSubmit((values) => {
+      const media = mediaState.media
       if (product) {
-        updateProduct.mutate({ id: product.id, values }, { onSuccess: onDone })
+        updateProduct.mutate({ product, values, media }, { onSuccess: onDone })
       } else {
-        createProduct.mutate({ ...values, is_active: publish }, { onSuccess: onDone })
+        createProduct.mutate(
+          { values: { ...values, is_active: publish }, media },
+          { onSuccess: onDone },
+        )
       }
     })
+
+  // Ctrl+V ảnh ở bất kỳ đâu trong form (kể cả khi đang ở ô nhập tên) → thêm vào ô ảnh.
+  // Dán chữ không bị ảnh hưởng vì clipboard khi đó không có file.
+  const handlePaste = (event: ClipboardEvent<HTMLFormElement>) => {
+    const files = getClipboardImageFiles(event.clipboardData)
+    if (files.length === 0) return
+    event.preventDefault()
+    mediaState.addPasted(files)
+  }
 
   return (
     <form
       // Enter trong form = hành động chính (Lưu thay đổi / Đăng sản phẩm).
       onSubmit={submit(true)}
+      onPaste={handlePaste}
       noValidate
       aria-label={isEdit ? 'Sửa sản phẩm' : 'Thêm sản phẩm'}
     >
@@ -133,7 +156,8 @@ export function ProductForm({ product, onDone }: ProductFormProps) {
           <SkuField sku={product?.sku} name={name ?? ''} />
         </SimpleGrid>
 
-        <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
+        {/* Mô tả phụ đặt DƯỚI ô nhập để 3 ô luôn thẳng hàng dù ô nào có / không có mô tả. */}
+        <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md" style={{ alignItems: 'start' }}>
           <IntegerField
             control={control}
             name="price"
@@ -160,6 +184,20 @@ export function ProductForm({ product, onDone }: ProductFormProps) {
             error={errors.low_stock_threshold?.message}
           />
         </SimpleGrid>
+
+        <Textarea
+          label="Mô tả sản phẩm"
+          placeholder="Chất liệu, kích cỡ, hướng dẫn bảo quản…"
+          autosize
+          minRows={4}
+          maxRows={12}
+          description={`${(description ?? '').length}/${MAX_DESCRIPTION} ký tự`}
+          inputWrapperOrder={['label', 'input', 'description', 'error']}
+          error={errors.description?.message}
+          {...register('description')}
+        />
+
+        <ProductImagesField state={mediaState} />
 
         <Group justify="flex-end" gap="sm" mt="sm" wrap="wrap">
           <Button variant="default" onClick={onDone} disabled={isSubmitting}>
@@ -236,6 +274,8 @@ function IntegerField({ control, name, ...props }: IntegerFieldProps) {
       render={({ field }) => (
         <NumberInput
           {...props}
+          // Nhãn → ô nhập → mô tả → lỗi: ô nhập của 3 cột luôn cùng một hàng ngang.
+          inputWrapperOrder={['label', 'input', 'description', 'error']}
           value={field.value ?? ''}
           onChange={(value) => field.onChange(typeof value === 'number' ? value : undefined)}
           onBlur={field.onBlur}

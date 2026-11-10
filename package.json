@@ -21,6 +21,7 @@
   "dependencies": {
     "@hookform/resolvers": "^7.0.3",
     "@mantine/core": "^9.7.5",
+    "@mantine/dropzone": "^9.7.5",
     "@mantine/hooks": "^9.7.5",
     "@mantine/notifications": "^9.7.5",
     "@supabase/supabase-js": "^2.119.0",
@@ -31,6 +32,7 @@
     "react-hook-form": "^7.91.0",
     "react-router": "^8.5.1",
     "recharts": "^3.10.1",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "zod": "^4.6.7",
     "zustand": "^5.0.16"
   },
