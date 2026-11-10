@@ -12,3 +12,18 @@ export function getErrorMessage(error: unknown): string {
   }
   return FALLBACK_ERROR_MESSAGE
 }
+
+/** Mã lỗi Postgres/PostgREST đã chuẩn hóa, dùng để feature map sang thông báo nghiệp vụ. */
+export interface DbErrorInfo {
+  /** SQLSTATE (vd. '23505') hoặc mã PostgREST (vd. 'PGRST103'). */
+  code: string | null
+  /** Message gốc; với RPC tự định nghĩa đây là mã nghiệp vụ (vd. 'INSUFFICIENT_STOCK'). */
+  message: string | null
+}
+
+export function getDbErrorInfo(error: unknown): DbErrorInfo {
+  if (typeof error !== 'object' || error === null) return { code: null, message: null }
+  const code = 'code' in error && typeof error.code === 'string' ? error.code : null
+  const message = 'message' in error && typeof error.message === 'string' ? error.message : null
+  return { code, message }
+}

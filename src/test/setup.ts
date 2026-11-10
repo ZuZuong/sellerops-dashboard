@@ -1,6 +1,9 @@
 import '@testing-library/jest-dom/vitest'
-import { cleanup } from '@testing-library/react'
+import { cleanup, configure } from '@testing-library/react'
 import { afterEach, vi } from 'vitest'
+
+// Mặc định findBy/waitFor chờ 1s — không đủ cho test tương tác (modal, menu) khi CI/máy đang tải nặng.
+configure({ asyncUtilTimeout: 3000 })
 
 afterEach(() => {
   cleanup()
