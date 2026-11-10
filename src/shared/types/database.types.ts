@@ -246,13 +246,13 @@ export type Database = {
           sku: string
         }[]
       }
-      paths_owned_by: {
-        Args: { p_owner: string; p_paths: string[] }
-        Returns: boolean
-      }
       lock_own_order: {
         Args: { p_order_id: string }
         Returns: Database["public"]["Enums"]["order_status"]
+      }
+      paths_owned_by: {
+        Args: { p_owner: string; p_paths: string[] }
+        Returns: boolean
       }
       ship_order: { Args: { p_order_id: string }; Returns: undefined }
       sku_name_part: { Args: { p_name: string }; Returns: string }
