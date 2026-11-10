@@ -134,6 +134,21 @@ export type Database = {
         }
         Relationships: []
       }
+      product_sku_counters: {
+        Row: {
+          last_value: number
+          user_id: string
+        }
+        Insert: {
+          last_value?: number
+          user_id: string
+        }
+        Update: {
+          last_value?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           category: string | null
@@ -153,11 +168,11 @@ export type Database = {
           created_at?: string
           id?: string
           is_active?: boolean
-          is_low_stock?: never
+          is_low_stock?: boolean | null
           low_stock_threshold?: number
           name: string
           price: number
-          sku: string
+          sku?: string
           stock?: number
           user_id?: string
         }
@@ -166,7 +181,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_active?: boolean
-          is_low_stock?: never
+          is_low_stock?: boolean | null
           low_stock_threshold?: number
           name?: string
           price?: number
@@ -204,7 +219,6 @@ export type Database = {
           revenue: number
         }[]
       }
-      get_product_categories: { Args: never; Returns: string[] }
       get_revenue_series: {
         Args: { p_days: number; p_tz?: string }
         Returns: {
@@ -228,6 +242,7 @@ export type Database = {
         Returns: Database["public"]["Enums"]["order_status"]
       }
       ship_order: { Args: { p_order_id: string }; Returns: undefined }
+      sku_name_part: { Args: { p_name: string }; Returns: string }
     }
     Enums: {
       order_status:
