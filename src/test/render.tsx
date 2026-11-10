@@ -25,7 +25,8 @@ export function renderWithProviders(
   const queryClient = createTestQueryClient()
   const Wrapper = ({ children }: { children: ReactNode }) => {
     const content = (
-      <MantineProvider theme={theme}>
+      // env="test": tắt transition/animation của Mantine để dropdown, modal hiện ngay trong test.
+      <MantineProvider theme={theme} env="test">
         <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
       </MantineProvider>
     )

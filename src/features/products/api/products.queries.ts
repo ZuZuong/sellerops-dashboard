@@ -16,7 +16,6 @@ import {
   adjustProductStock,
   createProduct,
   deleteProduct,
-  fetchProductCategories,
   fetchProducts,
   setProductActive,
   updateProduct,
@@ -27,7 +26,6 @@ export const productKeys = {
   all: ['products'] as const,
   lists: () => [...productKeys.all, 'list'] as const,
   list: (filters: ProductFilters) => [...productKeys.lists(), filters] as const,
-  categories: () => [...productKeys.all, 'categories'] as const,
 }
 
 export function useProducts(filters: ProductFilters) {
@@ -39,16 +37,8 @@ export function useProducts(filters: ProductFilters) {
   })
 }
 
-export function useProductCategories() {
-  return useQuery({
-    queryKey: productKeys.categories(),
-    queryFn: fetchProductCategories,
-    staleTime: 5 * 60_000,
-  })
-}
-
 /**
- * Sau khi sản phẩm thay đổi: làm mới mọi danh sách + danh mục, và dashboard
+ * Sau khi sản phẩm thay đổi: làm mới mọi danh sách sản phẩm và dashboard
  * (KPI "sắp hết hàng", top sản phẩm phụ thuộc dữ liệu sản phẩm).
  */
 function invalidateAfterProductChange(queryClient: QueryClient) {
@@ -69,8 +59,8 @@ export function useCreateProduct() {
     onSuccess: (product) => {
       notifications.show({
         color: 'green',
-        title: 'Đã thêm sản phẩm',
-        message: `${product.name} (${product.sku})`,
+        title: product.is_active ? 'Đã đăng sản phẩm' : 'Đã thêm sản phẩm (chưa đăng)',
+        message: `${product.name} · SKU ${product.sku}`,
       })
       return invalidateAfterProductChange(queryClient)
     },
@@ -99,7 +89,7 @@ export function useSetProductActive() {
     onSuccess: (_data, { product, isActive }) => {
       notifications.show({
         color: 'green',
-        title: isActive ? 'Đã mở bán lại' : 'Đã ngừng bán',
+        title: isActive ? 'Đã đăng bán' : 'Đã ngừng bán',
         message: product.name,
       })
       return invalidateAfterProductChange(queryClient)

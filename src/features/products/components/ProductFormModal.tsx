@@ -1,19 +1,22 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
-  Autocomplete,
   Button,
+  Code,
   Group,
   Modal,
   NumberInput,
+  Select,
   SimpleGrid,
   Stack,
-  Switch,
+  Text,
   TextInput,
+  Tooltip,
 } from '@mantine/core'
 import { useMediaQuery } from '@mantine/hooks'
-import { Controller, useForm, type Control } from 'react-hook-form'
-import { useCreateProduct, useProductCategories, useUpdateProduct } from '../api/products.queries'
-import { isDuplicateSkuError } from '../lib/productErrors'
+import { Controller, useForm, useWatch, type Control } from 'react-hook-form'
+import { useCreateProduct, useUpdateProduct } from '../api/products.queries'
+import { isProductCategory, PRODUCT_CATEGORIES } from '../constants'
+import { previewSku } from '../lib/sku'
 import {
   EMPTY_PRODUCT_FORM,
   productSchema,
@@ -46,11 +49,11 @@ export function ProductFormModal({ opened, onClose, product }: ProductFormModalP
   )
 }
 
-function toFormInput(product: Product): ProductFormInput {
+function toFormInput(product: Product): Partial<ProductFormInput> {
   return {
-    sku: product.sku,
     name: product.name,
-    category: product.category ?? '',
+    // Danh mục cũ (nhập tay trước đây) không còn trong danh sách → buộc chọn lại.
+    category: isProductCategory(product.category) ? product.category : undefined,
     price: product.price,
     stock: product.stock,
     low_stock_threshold: product.low_stock_threshold,
@@ -65,7 +68,6 @@ interface ProductFormProps {
 
 export function ProductForm({ product, onDone }: ProductFormProps) {
   const isEdit = Boolean(product)
-  const categories = useProductCategories()
   const createProduct = useCreateProduct()
   const updateProduct = useUpdateProduct()
   const isSubmitting = createProduct.isPending || updateProduct.isPending
@@ -74,76 +76,69 @@ export function ProductForm({ product, onDone }: ProductFormProps) {
     register,
     control,
     handleSubmit,
-    setError,
     formState: { errors },
   } = useForm<ProductFormInput, unknown, ProductFormValues>({
     resolver: zodResolver(productSchema),
     defaultValues: product ? toFormInput(product) : EMPTY_PRODUCT_FORM,
   })
+  const name = useWatch({ control, name: 'name' })
 
-  const onSubmit = (values: ProductFormValues) => {
-    const options = {
-      onSuccess: onDone,
-      onError: (error: unknown) => {
-        if (isDuplicateSkuError(error)) {
-          setError('sku', { message: 'SKU đã tồn tại' }, { shouldFocus: true })
-        }
-      },
-    }
-    if (product) updateProduct.mutate({ id: product.id, values }, options)
-    else createProduct.mutate(values, options)
-  }
+  /** Tạo mới: `publish` quyết định đăng bán ngay hay chỉ lưu. Sửa: giữ nguyên trạng thái. */
+  const submit = (publish: boolean) =>
+    handleSubmit((values) => {
+      if (product) {
+        updateProduct.mutate({ id: product.id, values }, { onSuccess: onDone })
+      } else {
+        createProduct.mutate({ ...values, is_active: publish }, { onSuccess: onDone })
+      }
+    })
 
   return (
     <form
-      onSubmit={handleSubmit(onSubmit)}
+      // Enter trong form = hành động chính (Lưu thay đổi / Đăng sản phẩm).
+      onSubmit={submit(true)}
       noValidate
       aria-label={isEdit ? 'Sửa sản phẩm' : 'Thêm sản phẩm'}
     >
       <Stack gap="md">
-        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-          <TextInput
-            label="SKU"
-            placeholder="VD: AT-001"
-            description="Chữ không dấu, số, - _ . (tự chuyển in hoa)"
-            withAsterisk
-            autoComplete="off"
-            data-autofocus
-            error={errors.sku?.message}
-            {...register('sku')}
-          />
-          <Controller
-            control={control}
-            name="category"
-            render={({ field }) => (
-              <Autocomplete
-                label="Danh mục"
-                placeholder="VD: Áo thun"
-                description="Chọn có sẵn hoặc nhập danh mục mới"
-                data={categories.data ?? []}
-                value={field.value}
-                onChange={field.onChange}
-                onBlur={field.onBlur}
-                ref={field.ref}
-                error={errors.category?.message}
-              />
-            )}
-          />
-        </SimpleGrid>
-
         <TextInput
           label="Tên sản phẩm"
           placeholder="VD: Áo thun cotton basic"
           withAsterisk
+          data-autofocus
           error={errors.name?.message}
           {...register('name')}
         />
+
+        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+          <Controller
+            control={control}
+            name="category"
+            render={({ field }) => (
+              <Select
+                label="Danh mục"
+                placeholder="Chọn danh mục"
+                data={PRODUCT_CATEGORIES}
+                value={field.value ?? null}
+                onChange={(value) => field.onChange(value ?? undefined)}
+                onBlur={field.onBlur}
+                ref={field.ref}
+                searchable
+                nothingFoundMessage="Không có danh mục phù hợp"
+                withAsterisk
+                error={errors.category?.message}
+              />
+            )}
+          />
+          <SkuField sku={product?.sku} name={name ?? ''} />
+        </SimpleGrid>
 
         <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
           <IntegerField
             control={control}
             name="price"
             label="Giá bán"
+            placeholder="VD: 150.000"
             suffix=" ₫"
             error={errors.price?.message}
             withAsterisk
@@ -152,7 +147,8 @@ export function ProductForm({ product, onDone }: ProductFormProps) {
             control={control}
             name="stock"
             label={isEdit ? 'Tồn kho hiện tại' : 'Tồn kho ban đầu'}
-            description={isEdit ? 'Dùng "sửa nhanh" để điều chỉnh' : undefined}
+            placeholder="0"
+            description={isEdit ? 'Dùng "sửa nhanh" để điều chỉnh' : 'Bỏ trống = 0'}
             disabled={isEdit}
             error={errors.stock?.message}
           />
@@ -165,31 +161,54 @@ export function ProductForm({ product, onDone }: ProductFormProps) {
           />
         </SimpleGrid>
 
-        <Controller
-          control={control}
-          name="is_active"
-          render={({ field }) => (
-            <Switch
-              label="Đang bán"
-              description="Sản phẩm ngừng bán không thể thêm vào đơn hàng mới"
-              checked={field.value}
-              onChange={(event) => field.onChange(event.currentTarget.checked)}
-              onBlur={field.onBlur}
-              ref={field.ref}
-            />
-          )}
-        />
-
-        <Group justify="flex-end" gap="sm" mt="sm">
+        <Group justify="flex-end" gap="sm" mt="sm" wrap="wrap">
           <Button variant="default" onClick={onDone} disabled={isSubmitting}>
             Hủy
           </Button>
-          <Button type="submit" loading={isSubmitting}>
-            {isEdit ? 'Lưu thay đổi' : 'Thêm sản phẩm'}
-          </Button>
+          {isEdit ? (
+            <Button type="submit" loading={isSubmitting}>
+              Lưu thay đổi
+            </Button>
+          ) : (
+            <>
+              <Tooltip
+                label="Lưu sản phẩm nhưng chưa đăng bán"
+                events={{ hover: true, focus: true, touch: true }}
+              >
+                <Button
+                  variant="light"
+                  onClick={submit(false)}
+                  disabled={isSubmitting}
+                  aria-description="Lưu sản phẩm nhưng chưa đăng bán"
+                >
+                  Thêm sản phẩm
+                </Button>
+              </Tooltip>
+              <Button type="submit" loading={isSubmitting}>
+                Đăng sản phẩm
+              </Button>
+            </>
+          )}
         </Group>
       </Stack>
     </form>
+  )
+}
+
+/** SKU chỉ đọc: tạo mới thì xem trước mẫu, sửa thì hiện SKU thật (cố định). */
+function SkuField({ sku, name }: { sku?: string; name: string }) {
+  return (
+    <Stack gap={4}>
+      <Text size="sm" fw={500} component="span" id="sku-label">
+        SKU
+      </Text>
+      <Code aria-labelledby="sku-label" fz="sm" py={7} px="sm" style={{ overflowWrap: 'anywhere' }}>
+        {sku ?? previewSku(name)}
+      </Code>
+      <Text size="xs" c="dimmed">
+        {sku ? 'SKU cố định sau khi tạo' : 'Tự động tạo khi lưu (### là số thứ tự)'}
+      </Text>
+    </Stack>
   )
 }
 
@@ -197,6 +216,7 @@ interface IntegerFieldProps {
   control: Control<ProductFormInput, unknown, ProductFormValues>
   name: 'price' | 'stock' | 'low_stock_threshold'
   label: string
+  placeholder?: string
   description?: string
   suffix?: string
   error?: string
@@ -204,7 +224,10 @@ interface IntegerFieldProps {
   withAsterisk?: boolean
 }
 
-/** NumberInput số nguyên không âm; ô trống → undefined để Zod báo "Vui lòng nhập ...". */
+/**
+ * NumberInput số nguyên không âm. Ô trống giữ là trống (không tự điền 0) và không cho số 0 đứng đầu;
+ * ô trống → undefined để Zod báo "Vui lòng nhập ..." hoặc áp giá trị mặc định.
+ */
 function IntegerField({ control, name, ...props }: IntegerFieldProps) {
   return (
     <Controller
@@ -220,6 +243,7 @@ function IntegerField({ control, name, ...props }: IntegerFieldProps) {
           min={0}
           allowNegative={false}
           allowDecimal={false}
+          allowLeadingZeros={false}
           thousandSeparator="."
           decimalSeparator=","
         />

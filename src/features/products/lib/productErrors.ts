@@ -11,13 +11,9 @@ const RPC_ERROR_MESSAGES: Readonly<Record<string, string>> = {
 
 /** SQLSTATE của Postgres. */
 const SQLSTATE_MESSAGES: Readonly<Record<string, string>> = {
-  '23505': 'SKU đã tồn tại. Vui lòng dùng mã khác.',
+  '23505': 'Mã SKU bị trùng. Vui lòng thử lại.',
   '23503': RPC_ERROR_MESSAGES.PRODUCT_IN_ORDERS ?? '',
   '23514': 'Dữ liệu không hợp lệ: giá, tồn kho và ngưỡng cảnh báo phải lớn hơn hoặc bằng 0.',
-}
-
-export function isDuplicateSkuError(error: unknown): boolean {
-  return getDbErrorInfo(error).code === '23505'
 }
 
 /** Chuyển lỗi từ API sản phẩm thành thông báo tiếng Việt. */

@@ -44,12 +44,7 @@ export async function fetchProducts(filters: ProductFilters): Promise<ProductPag
   return { items: data, total: count ?? data.length }
 }
 
-export async function fetchProductCategories(): Promise<string[]> {
-  const { data, error } = await supabase.rpc('get_product_categories')
-  if (error) throw error
-  return data
-}
-
+/** Tạo sản phẩm; SKU do trigger DB tự sinh (DN-TENSANPHAM-STT) và trả về trong kết quả. */
 export async function createProduct(values: ProductFormValues): Promise<Product> {
   const { data, error } = await supabase
     .from('products')
@@ -62,11 +57,11 @@ export async function createProduct(values: ProductFormValues): Promise<Product>
 
 /** Cập nhật thông tin sản phẩm. Tồn kho không sửa ở đây — chỉ đi qua `adjust_stock` để có lịch sử. */
 export async function updateProduct(id: string, values: ProductFormValues): Promise<Product> {
-  // Liệt kê tường minh đúng các cột được GRANT UPDATE (xem migration init_schema).
-  const { sku, name, category, price, low_stock_threshold, is_active } = values
+  // Liệt kê tường minh đúng các cột được GRANT UPDATE; SKU cố định sau khi tạo.
+  const { name, category, price, low_stock_threshold, is_active } = values
   const { data, error } = await supabase
     .from('products')
-    .update({ sku, name, category, price, low_stock_threshold, is_active })
+    .update({ name, category, price, low_stock_threshold, is_active })
     .eq('id', id)
     .select(PRODUCT_COLUMNS)
     .single()

@@ -1,21 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import {
-  EMPTY_PRODUCT_FORM,
-  MAX_PRICE,
-  productSchema,
-  type ProductFormInput,
-} from './product.schema'
+import { MAX_PRICE, productSchema } from './product.schema'
 
-const valid: ProductFormInput = {
-  ...EMPTY_PRODUCT_FORM,
-  sku: 'at-001',
+const valid = {
   name: '  Áo thun basic  ',
-  category: '  Áo  ',
+  category: 'Áo thun',
   price: 150_000,
   stock: 10,
+  low_stock_threshold: 5,
+  is_active: true,
 }
 
-const errorsOf = (input: Partial<Record<keyof ProductFormInput, unknown>>) => {
+const errorsOf = (input: Record<string, unknown>) => {
   const result = productSchema.safeParse({ ...valid, ...input })
   if (result.success) return {}
   // Giữ lỗi đầu tiên của mỗi trường — giống cách form hiển thị (criteriaMode: firstError).
@@ -25,30 +20,25 @@ const errorsOf = (input: Partial<Record<keyof ProductFormInput, unknown>>) => {
 }
 
 describe('productSchema', () => {
-  it('chuẩn hóa: trim, SKU in hoa, danh mục rỗng → null', () => {
-    expect(productSchema.parse(valid)).toEqual({
-      sku: 'AT-001',
-      name: 'Áo thun basic',
-      category: 'Áo',
-      price: 150_000,
-      stock: 10,
-      low_stock_threshold: 5,
-      is_active: true,
-    })
-    expect(productSchema.parse({ ...valid, category: '   ' }).category).toBeNull()
+  it('chuẩn hóa tên và không chứa SKU (DB tự sinh)', () => {
+    const parsed = productSchema.parse({ ...valid, sku: 'TU-NHAP' })
+    expect(parsed).toEqual({ ...valid, name: 'Áo thun basic' })
+    expect(parsed).not.toHaveProperty('sku')
   })
 
-  it('bắt buộc SKU và tên (chỉ khoảng trắng cũng tính là trống)', () => {
-    expect(errorsOf({ sku: '   ', name: '' })).toEqual({
-      sku: 'Vui lòng nhập SKU',
-      name: 'Vui lòng nhập tên sản phẩm',
-    })
+  it('bắt buộc tên (chỉ khoảng trắng cũng tính là trống)', () => {
+    expect(errorsOf({ name: '   ' })).toEqual({ name: 'Vui lòng nhập tên sản phẩm' })
   })
 
-  it('SKU chỉ gồm ký tự cho phép', () => {
-    expect(errorsOf({ sku: 'ÁO 01' }).sku).toMatch(/SKU chỉ gồm/)
-    expect(errorsOf({ sku: 'A'.repeat(51) }).sku).toBe('SKU tối đa 50 ký tự')
-    expect(errorsOf({ sku: 'a.b_c-1' })).toEqual({})
+  it('danh mục phải chọn từ danh sách thời trang', () => {
+    expect(errorsOf({ category: undefined }).category).toBe('Vui lòng chọn danh mục')
+    expect(errorsOf({ category: 'Điện thoại' }).category).toBe('Vui lòng chọn danh mục')
+    expect(errorsOf({ category: 'Đầm' })).toEqual({})
+  })
+
+  it('giá bắt buộc; bỏ trống tồn kho ban đầu = 0', () => {
+    expect(errorsOf({ price: undefined }).price).toBe('Vui lòng nhập giá bán')
+    expect(productSchema.parse({ ...valid, stock: undefined }).stock).toBe(0)
   })
 
   it('giá, tồn kho, ngưỡng: số nguyên không âm', () => {
@@ -60,9 +50,5 @@ describe('productSchema', () => {
       'Ngưỡng cảnh báo không được âm',
     )
     expect(errorsOf({ price: 0, stock: 0, low_stock_threshold: 0 })).toEqual({})
-  })
-
-  it('ô số bỏ trống báo "Vui lòng nhập"', () => {
-    expect(errorsOf({ price: undefined }).price).toBe('Vui lòng nhập giá bán')
   })
 })

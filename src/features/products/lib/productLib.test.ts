@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { FALLBACK_ERROR_MESSAGE } from '@/shared/lib/errors'
-import { getProductErrorMessage, isDuplicateSkuError } from './productErrors'
+import { getProductErrorMessage } from './productErrors'
 import { toSearchTerm } from './search'
 
 describe('toSearchTerm', () => {
@@ -31,8 +31,7 @@ describe('getProductErrorMessage', () => {
 
   it('map SQLSTATE', () => {
     const duplicate = { code: '23505', message: 'duplicate key value violates unique constraint' }
-    expect(getProductErrorMessage(duplicate)).toBe('SKU đã tồn tại. Vui lòng dùng mã khác.')
-    expect(isDuplicateSkuError(duplicate)).toBe(true)
+    expect(getProductErrorMessage(duplicate)).toBe('Mã SKU bị trùng. Vui lòng thử lại.')
     expect(getProductErrorMessage({ code: '23503', message: 'fk' })).toMatch(/Ngừng bán/)
   })
 
@@ -40,6 +39,5 @@ describe('getProductErrorMessage', () => {
     expect(getProductErrorMessage({ code: '42P01', message: 'relation does not exist' })).toBe(
       FALLBACK_ERROR_MESSAGE,
     )
-    expect(isDuplicateSkuError(new Error('x'))).toBe(false)
   })
 })

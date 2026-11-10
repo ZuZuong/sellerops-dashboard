@@ -2,7 +2,7 @@ import { Button, CloseButton, Group, Select, TextInput } from '@mantine/core'
 import { useDebouncedValue } from '@mantine/hooks'
 import { IconFilterOff, IconSearch } from '@tabler/icons-react'
 import { useEffect, useEffectEvent, useState } from 'react'
-import { useProductCategories } from '../api/products.queries'
+import { PRODUCT_CATEGORIES } from '../constants'
 import type { useProductFilters } from '../hooks/useProductFilters'
 
 const SEARCH_DEBOUNCE_MS = 300
@@ -10,7 +10,7 @@ const SEARCH_DEBOUNCE_MS = 300
 const STATUS_OPTIONS = [
   { value: 'all', label: 'Tất cả trạng thái' },
   { value: 'active', label: 'Đang bán' },
-  { value: 'inactive', label: 'Ngừng bán' },
+  { value: 'inactive', label: 'Chưa đăng / ngừng bán' },
 ]
 
 const STOCK_OPTIONS = [
@@ -30,8 +30,6 @@ export function ProductFilters({
   resetFilters,
   hasActiveFilters,
 }: ProductFiltersProps) {
-  const categories = useProductCategories()
-
   // Ô tìm kiếm giữ state cục bộ để gõ mượt; chỉ ghi lên URL sau 300ms ngừng gõ.
   const [search, setSearch] = useState(filters.q)
   const [debouncedSearch] = useDebouncedValue(search, SEARCH_DEBOUNCE_MS)
@@ -52,8 +50,6 @@ export function ProductFilters({
     commitSearch(debouncedSearch.trim())
   }, [debouncedSearch])
 
-  const categoryOptions = (categories.data ?? []).map((c) => ({ value: c, label: c }))
-
   return (
     <Group gap="sm" align="flex-end" wrap="wrap" mb="md">
       <TextInput
@@ -71,14 +67,13 @@ export function ProductFilters({
       />
       <Select
         aria-label="Danh mục"
-        placeholder={categories.isError ? 'Không tải được danh mục' : 'Tất cả danh mục'}
-        data={categoryOptions}
+        placeholder="Tất cả danh mục"
+        data={PRODUCT_CATEGORIES}
         value={filters.category || null}
         onChange={(value) => setFilters({ category: value ?? '' })}
         clearable
         searchable
         nothingFoundMessage="Không có danh mục phù hợp"
-        disabled={categories.isError}
         w={{ base: '100%', xs: 180 }}
       />
       <Select

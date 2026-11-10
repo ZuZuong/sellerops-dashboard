@@ -54,7 +54,7 @@ export function ProductsView() {
   }, [filters.page, products.data, products.isPlaceholderData, setPage, totalPages])
 
   const handleToggleActive = (product: Product) => {
-    // Ngừng bán là thao tác ảnh hưởng bán hàng → xác nhận; mở bán lại thì làm luôn.
+    // Ngừng bán là thao tác ảnh hưởng bán hàng → xác nhận; đăng bán thì làm luôn.
     if (product.is_active) setConfirm({ type: 'deactivate', product })
     else setActive.mutate({ product, isActive: true })
   }

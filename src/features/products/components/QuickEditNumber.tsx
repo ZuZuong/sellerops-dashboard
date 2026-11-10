@@ -84,6 +84,7 @@ export function QuickEditNumber({
               error={error}
               min={0}
               allowNegative={false}
+              allowLeadingZeros={false}
               allowDecimal={false}
               thousandSeparator="."
               decimalSeparator=","

@@ -180,7 +180,7 @@ function ProductRow({
       </Table.Td>
       <Table.Td>
         <Badge color={product.is_active ? 'green' : 'gray'} variant="light" radius="sm">
-          {product.is_active ? 'Đang bán' : 'Ngừng bán'}
+          {product.is_active ? 'Đang bán' : 'Chưa đăng'}
         </Badge>
       </Table.Td>
       <Table.Td style={{ whiteSpace: 'nowrap' }}>
@@ -206,7 +206,7 @@ function ProductRow({
                 }
                 onClick={() => onToggleActive(product)}
               >
-                {product.is_active ? 'Ngừng bán' : 'Mở bán lại'}
+                {product.is_active ? 'Ngừng bán' : 'Đăng bán'}
               </Menu.Item>
               <Menu.Divider />
               <Menu.Item
