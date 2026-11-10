@@ -269,11 +269,11 @@ Client gọi `supabase.rpc('confirm_order', ...)`, map mã lỗi (`INSUFFICIENT_
 
 ### Ngày 2 – Dashboard (4–5h)
 
-- [ ] [MUST] KPI Cards: doanh thu, số đơn, đơn chờ xử lý, sản phẩm sắp hết
-- [ ] [MUST] Revenue Chart (7/30 ngày)
-- [ ] [MUST] Recent Orders, Top Selling Products
-- [ ] [MUST] Skeleton, empty, error state cho từng widget (độc lập, một widget lỗi không làm hỏng cả trang)
-- [ ] [SHOULD] Tính doanh thu bằng SQL view / RPC thay vì kéo toàn bộ đơn về client
+- [x] [MUST] KPI Cards: doanh thu, số đơn, đơn chờ xử lý, sản phẩm sắp hết
+- [x] [MUST] Revenue Chart (7/30 ngày)
+- [x] [MUST] Recent Orders, Top Selling Products
+- [x] [MUST] Skeleton, empty, error state cho từng widget (độc lập, một widget lỗi không làm hỏng cả trang)
+- [x] [SHOULD] Tính doanh thu bằng SQL view / RPC thay vì kéo toàn bộ đơn về client
 
 ### Ngày 3 – Product Management (4–5h)
 
