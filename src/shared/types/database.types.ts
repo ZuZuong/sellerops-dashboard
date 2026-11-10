@@ -184,7 +184,40 @@ export type Database = {
       }
       cancel_order: { Args: { p_order_id: string }; Returns: undefined }
       confirm_order: { Args: { p_order_id: string }; Returns: undefined }
+      dashboard_range_start: {
+        Args: { p_days: number; p_tz: string }
+        Returns: string
+      }
       deliver_order: { Args: { p_order_id: string }; Returns: undefined }
+      get_dashboard_kpis: {
+        Args: { p_days: number; p_tz?: string }
+        Returns: {
+          low_stock_count: number
+          order_count: number
+          pending_count: number
+          prev_order_count: number
+          prev_revenue: number
+          revenue: number
+        }[]
+      }
+      get_revenue_series: {
+        Args: { p_days: number; p_tz?: string }
+        Returns: {
+          day: string
+          order_count: number
+          revenue: number
+        }[]
+      }
+      get_top_products: {
+        Args: { p_days: number; p_limit?: number; p_tz?: string }
+        Returns: {
+          name: string
+          product_id: string
+          quantity_sold: number
+          revenue: number
+          sku: string
+        }[]
+      }
       lock_own_order: {
         Args: { p_order_id: string }
         Returns: Database["public"]["Enums"]["order_status"]
