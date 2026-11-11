@@ -19,6 +19,7 @@ import type { Product } from '../types'
 import { CreateProductButton } from './CreateProductButton'
 import { ProductFilters } from './ProductFilters'
 import { ProductFormModal } from './ProductFormModal'
+import { ProductInsightDrawer } from './ProductInsightDrawer'
 import { ProductTable, ProductTableShell } from './ProductTable'
 
 type PendingConfirm = { type: 'delete' | 'deactivate'; product: Product } | null
@@ -36,6 +37,7 @@ export function ProductsView() {
   const products = useProducts(filters)
 
   const [editing, setEditing] = useState<Product | null>(null)
+  const [inspecting, setInspecting] = useState<Product | null>(null)
   const [confirm, setConfirm] = useState<PendingConfirm>(null)
 
   const setActive = useSetProductActive()
@@ -122,6 +124,7 @@ export function ProductsView() {
         order={filters.order}
         onSort={toggleSort}
         onEdit={setEditing}
+        onInsight={setInspecting}
         onToggleActive={handleToggleActive}
         onDelete={(product) => setConfirm({ type: 'delete', product })}
         onQuickPrice={(product, price) => quickPrice.mutate({ product, price })}
@@ -179,6 +182,8 @@ export function ProductsView() {
         product={editing}
         onClose={() => setEditing(null)}
       />
+
+      <ProductInsightDrawer product={inspecting} onClose={() => setInspecting(null)} />
 
       <ConfirmDialog
         opened={confirm !== null}

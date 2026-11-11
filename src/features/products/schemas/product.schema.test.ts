@@ -4,6 +4,8 @@ import { MAX_PRICE, productSchema } from './product.schema'
 const valid = {
   name: '  Áo thun basic  ',
   category: 'Áo thun',
+  unit: 'Cái',
+  cost_price: 90_000,
   price: 150_000,
   stock: 10,
   low_stock_threshold: 5,
@@ -57,5 +59,13 @@ describe('productSchema', () => {
       'Ngưỡng cảnh báo không được âm',
     )
     expect(errorsOf({ price: 0, stock: 0, low_stock_threshold: 0 })).toEqual({})
+  })
+
+  it('đơn vị tính chọn từ danh sách; giá vốn bắt buộc, số nguyên không âm', () => {
+    expect(errorsOf({ unit: 'Thùng' }).unit).toBe('Vui lòng chọn đơn vị tính')
+    expect(errorsOf({ cost_price: undefined }).cost_price).toBe('Vui lòng nhập giá vốn')
+    expect(errorsOf({ cost_price: -1 }).cost_price).toBe('Giá vốn không được âm')
+    // Giá bán thấp hơn giá vốn vẫn hợp lệ (xả hàng) — form chỉ cảnh báo.
+    expect(errorsOf({ cost_price: 200_000, price: 150_000 })).toEqual({})
   })
 })
