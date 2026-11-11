@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { calcChange, getTrend } from './metrics'
+import { calcChange, calcMargin, getTrend } from './metrics'
 
 describe('calcChange', () => {
   it('tính tỉ lệ tăng / giảm so với kỳ trước', () => {
@@ -26,5 +26,13 @@ describe('getTrend', () => {
     expect(getTrend(-0.1)).toBe('down')
     expect(getTrend(0)).toBe('flat')
     expect(getTrend(null)).toBeNull()
+  })
+})
+
+describe('calcMargin', () => {
+  it('lợi nhuận / doanh thu; không có doanh thu → null', () => {
+    expect(calcMargin(30, 100)).toBe(0.3)
+    expect(calcMargin(-10, 100)).toBe(-0.1)
+    expect(calcMargin(0, 0)).toBeNull()
   })
 })

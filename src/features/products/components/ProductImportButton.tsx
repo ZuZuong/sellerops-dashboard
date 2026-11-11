@@ -13,21 +13,27 @@ import {
 import { ProductImportModal } from './ProductImportModal'
 
 interface ImportState {
-  fileName: string
+  file: File
+  sheetName: string | null
   result: ImportResult
 }
 
-async function analyzeFile(file: File): Promise<ImportResult> {
+async function analyzeFile(file: File): Promise<ImportState> {
   if (file.size > MAX_SPREADSHEET_SIZE) {
     const mb = formatNumber(MAX_SPREADSHEET_SIZE / 1024 / 1024)
-    return { ok: false, errors: [`File lớn hơn ${mb} MB.`] }
+    return { file, sheetName: null, result: { ok: false, errors: [`File lớn hơn ${mb} MB.`] } }
   }
   try {
-    return parseProductImport(await readSpreadsheet(file))
+    const { sheetName, rows } = await readSpreadsheet(file)
+    return { file, sheetName, result: parseProductImport(rows) }
   } catch {
     return {
-      ok: false,
-      errors: ['Không đọc được file. Hãy dùng file Excel (.xlsx, .xls) hoặc CSV hợp lệ.'],
+      file,
+      sheetName: null,
+      result: {
+        ok: false,
+        errors: ['Không đọc được file. Hãy dùng file Excel (.xlsx, .xls) hoặc CSV hợp lệ.'],
+      },
     }
   }
 }
@@ -41,7 +47,7 @@ export function ProductImportButton() {
     if (!file) return
     setReading(true)
     try {
-      setState({ fileName: file.name, result: await analyzeFile(file) })
+      setState(await analyzeFile(file))
     } finally {
       setReading(false)
     }
@@ -80,7 +86,8 @@ export function ProductImportButton() {
       </FileButton>
       <ProductImportModal
         opened={state !== null}
-        fileName={state?.fileName ?? ''}
+        file={state?.file ?? null}
+        sheetName={state?.sheetName ?? null}
         result={state?.result ?? null}
         onClose={() => setState(null)}
         onDownloadTemplate={handleDownloadTemplate}

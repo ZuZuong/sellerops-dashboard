@@ -1,5 +1,16 @@
-import { ActionIcon, Avatar, Badge, Group, Menu, Table, Text, VisuallyHidden } from '@mantine/core'
 import {
+  ActionIcon,
+  Avatar,
+  Badge,
+  Group,
+  Menu,
+  Stack,
+  Table,
+  Text,
+  VisuallyHidden,
+} from '@mantine/core'
+import {
+  IconChartDots,
   IconDots,
   IconEdit,
   IconPhoto,
@@ -9,7 +20,8 @@ import {
 } from '@tabler/icons-react'
 import type { ReactNode } from 'react'
 import { SortableTh } from '@/shared/components/SortableTh'
-import { formatCurrency, formatDate } from '@/shared/lib/formatters'
+import { formatCurrency, formatDate, formatPercent } from '@/shared/lib/formatters'
+import { calcMargin } from '@/shared/lib/metrics'
 import { getProductImageUrl } from '../api/productImages.api'
 import { priceSchema, stockSchema } from '../schemas/product.schema'
 import type { ProductSortField, SortOrder } from '../schemas/productFilters.schema'
@@ -19,6 +31,7 @@ import { QuickEditNumber } from './QuickEditNumber'
 
 export interface ProductTableActions {
   onEdit: (product: Product) => void
+  onInsight: (product: Product) => void
   onToggleActive: (product: Product) => void
   onDelete: (product: Product) => void
   onQuickPrice: (product: Product, price: number) => void
@@ -89,6 +102,7 @@ export function ProductTableShell({ sort, order, onSort, children }: ProductTabl
 function ProductRow({
   product,
   onEdit,
+  onInsight,
   onToggleActive,
   onDelete,
   onQuickPrice,
@@ -123,18 +137,21 @@ function ProductRow({
         </Text>
       </Table.Td>
       <Table.Td ta="right">
-        <QuickEditNumber
-          value={product.price}
-          label={`Sửa nhanh giá của ${product.name}`}
-          schema={priceSchema}
-          suffix=" ₫"
-          display={
-            <Text size="sm" style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-              {formatCurrency(product.price)}
-            </Text>
-          }
-          onSave={(price) => onQuickPrice(product, price)}
-        />
+        <Stack gap={0} align="flex-end">
+          <QuickEditNumber
+            value={product.price}
+            label={`Sửa nhanh giá của ${product.name}`}
+            schema={priceSchema}
+            suffix=" ₫"
+            display={
+              <Text size="sm" style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                {formatCurrency(product.price)}
+              </Text>
+            }
+            onSave={(price) => onQuickPrice(product, price)}
+          />
+          <CostLine product={product} />
+        </Stack>
       </Table.Td>
       <Table.Td>
         <QuickEditNumber
@@ -164,6 +181,12 @@ function ProductRow({
               </ActionIcon>
             </Menu.Target>
             <Menu.Dropdown>
+              <Menu.Item
+                leftSection={<IconChartDots size={16} />}
+                onClick={() => onInsight(product)}
+              >
+                Hiệu quả sản phẩm
+              </Menu.Item>
               <Menu.Item leftSection={<IconEdit size={16} />} onClick={() => onEdit(product)}>
                 Sửa
               </Menu.Item>
@@ -188,5 +211,17 @@ function ProductRow({
         </Group>
       </Table.Td>
     </Table.Tr>
+  )
+}
+
+/** Giá vốn + biên lãi gộp dưới giá bán (đỏ khi bán dưới giá vốn). */
+function CostLine({ product }: { product: Product }) {
+  const margin = calcMargin(product.price - product.cost_price, product.price)
+  const loss = product.price < product.cost_price
+  return (
+    <Text size="xs" c={loss ? 'red' : 'dimmed'} style={{ whiteSpace: 'nowrap' }}>
+      Vốn {formatCurrency(product.cost_price)}
+      {margin !== null && ` · lãi ${formatPercent(margin)}`}
+    </Text>
   )
 }

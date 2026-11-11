@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-export const INVENTORY_SORT_FIELDS = ['stock', 'name', 'price'] as const
+export const INVENTORY_SORT_FIELDS = ['stock', 'name', 'cost_price'] as const
 export const INVENTORY_PAGE_SIZES = [10, 20, 50] as const
 
 export type InventorySortField = (typeof INVENTORY_SORT_FIELDS)[number]

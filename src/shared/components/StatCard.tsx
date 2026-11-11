@@ -1,13 +1,32 @@
-import { Group, Paper, SimpleGrid, Skeleton, Stack, Text, ThemeIcon } from '@mantine/core'
+import {
+  Group,
+  Paper,
+  SimpleGrid,
+  Skeleton,
+  Stack,
+  Text,
+  ThemeIcon,
+  type SimpleGridProps,
+} from '@mantine/core'
 import { IconArrowDownRight, IconArrowUpRight, IconMinus } from '@tabler/icons-react'
 import type { ReactNode } from 'react'
 import { formatPercentChange } from '@/shared/lib/formatters'
 import { getTrend, type Trend } from '@/shared/lib/metrics'
 
-/** Lưới thẻ số liệu: 1 cột (mobile) → 2 cột → 4 cột (desktop). */
-export function StatGrid({ children, ...rest }: { children: ReactNode; 'aria-busy'?: boolean }) {
+type GridCols = NonNullable<SimpleGridProps['cols']>
+
+/** Lưới thẻ số liệu: mặc định 1 cột (mobile) → 2 cột → 4 cột (desktop). */
+export function StatGrid({
+  children,
+  cols = { base: 1, xs: 2, lg: 4 },
+  ...rest
+}: {
+  children: ReactNode
+  cols?: GridCols
+  'aria-busy'?: boolean
+}) {
   return (
-    <SimpleGrid cols={{ base: 1, xs: 2, lg: 4 }} spacing="md" {...rest}>
+    <SimpleGrid cols={cols} spacing="md" {...rest}>
       {children}
     </SimpleGrid>
   )

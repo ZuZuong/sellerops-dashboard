@@ -14,9 +14,9 @@ import { useState } from 'react'
 import { Link } from 'react-router'
 import { EmptyState } from '@/shared/components/EmptyState'
 import { ErrorState } from '@/shared/components/ErrorState'
-import { orderDetailPath } from '@/shared/constants/routes'
+import { orderDetailPath, purchaseDetailPath } from '@/shared/constants/routes'
 import { getErrorMessage } from '@/shared/lib/errors'
-import { formatDateTime, formatNumber } from '@/shared/lib/formatters'
+import { formatCurrency, formatDateTime, formatNumber } from '@/shared/lib/formatters'
 import { useStockMovements } from '../api/inventory.queries'
 import { getMovementReasonLabel } from '../lib/inventoryLib'
 import type { InventoryItem, StockMovement } from '../types'
@@ -151,10 +151,27 @@ function MovementRow({ movement }: { movement: StockMovement }) {
                 {movement.order.code}
               </Anchor>
             )}
+            {movement.receipt && (
+              <Anchor
+                component={Link}
+                to={purchaseDetailPath(movement.receipt.id)}
+                size="sm"
+                ff="monospace"
+              >
+                {movement.receipt.code}
+              </Anchor>
+            )}
           </Group>
-          {movement.note && (
+          {(movement.note || movement.unit_cost !== null) && (
             <Text size="xs" c="dimmed">
-              {movement.note}
+              {[
+                movement.note,
+                movement.unit_cost !== null
+                  ? `Đơn giá ${formatCurrency(movement.unit_cost)}`
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
             </Text>
           )}
         </Stack>

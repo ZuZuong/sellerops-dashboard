@@ -1,0 +1,23 @@
+/* In chứng từ (phiếu nhập kho): chỉ in nội dung trang, ẩn khung ứng dụng. */
+@media print {
+  .mantine-AppShell-header,
+  .mantine-AppShell-navbar,
+  [data-print-hidden] {
+    display: none !important;
+  }
+
+  .mantine-AppShell-main {
+    padding: 0 !important;
+    min-height: 0 !important;
+  }
+
+  .print-sheet {
+    border: none !important;
+    padding: 0 !important;
+  }
+
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+}

@@ -17,7 +17,15 @@ import { useMediaQuery } from '@mantine/hooks'
 import type { ClipboardEvent } from 'react'
 import { Controller, useForm, useWatch, type Control } from 'react-hook-form'
 import { useCreateProduct, useUpdateProduct } from '../api/products.queries'
-import { isProductCategory, PRODUCT_CATEGORIES } from '../constants'
+import { formatCurrency, formatPercent } from '@/shared/lib/formatters'
+import { calcMargin } from '@/shared/lib/metrics'
+import {
+  DEFAULT_PRODUCT_UNIT,
+  isProductCategory,
+  isProductUnit,
+  PRODUCT_CATEGORIES,
+  PRODUCT_UNITS,
+} from '../constants'
 import { useProductMedia } from '../hooks/useProductMedia'
 import { getClipboardImageFiles } from '../lib/productImages'
 import { previewSku } from '../lib/sku'
@@ -60,6 +68,9 @@ function toFormInput(product: Product): Partial<ProductFormInput> {
     name: product.name,
     // Danh mục cũ (nhập tay trước đây) không còn trong danh sách → buộc chọn lại.
     category: isProductCategory(product.category) ? product.category : undefined,
+    unit: isProductUnit(product.unit) ? product.unit : DEFAULT_PRODUCT_UNIT,
+    // Giá vốn bình quân có thể lẻ (vd. 93.333,33) → làm tròn để sửa trên ô số nguyên VND.
+    cost_price: Math.round(product.cost_price),
     price: product.price,
     stock: product.stock,
     low_stock_threshold: product.low_stock_threshold,
@@ -90,6 +101,8 @@ export function ProductForm({ product, onDone }: ProductFormProps) {
     defaultValues: product ? toFormInput(product) : EMPTY_PRODUCT_FORM,
   })
   const name = useWatch({ control, name: 'name' })
+  const price = useWatch({ control, name: 'price' })
+  const costPrice = useWatch({ control, name: 'cost_price' })
   const description = useWatch({ control, name: 'description' })
 
   /** Tạo mới: `publish` quyết định đăng bán ngay hay chỉ lưu. Sửa: giữ nguyên trạng thái. */
@@ -133,7 +146,7 @@ export function ProductForm({ product, onDone }: ProductFormProps) {
           {...register('name')}
         />
 
-        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+        <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md" style={{ alignItems: 'start' }}>
           <Controller
             control={control}
             name="category"
@@ -153,11 +166,40 @@ export function ProductForm({ product, onDone }: ProductFormProps) {
               />
             )}
           />
+          <Controller
+            control={control}
+            name="unit"
+            render={({ field }) => (
+              <Select
+                label="Đơn vị tính"
+                data={PRODUCT_UNITS}
+                value={field.value ?? null}
+                onChange={(value) => field.onChange(value ?? undefined)}
+                onBlur={field.onBlur}
+                ref={field.ref}
+                allowDeselect={false}
+                withAsterisk
+                error={errors.unit?.message}
+              />
+            )}
+          />
           <SkuField sku={product?.sku} name={name ?? ''} />
         </SimpleGrid>
 
-        {/* Mô tả phụ đặt DƯỚI ô nhập để 3 ô luôn thẳng hàng dù ô nào có / không có mô tả. */}
+        {/* Mô tả phụ đặt DƯỚI ô nhập để các ô luôn thẳng hàng dù ô nào có / không có mô tả. */}
         <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md" style={{ alignItems: 'start' }}>
+          <IntegerField
+            control={control}
+            name="cost_price"
+            label="Giá vốn"
+            placeholder="VD: 90.000"
+            suffix=" ₫"
+            description={
+              isEdit ? 'Giá vốn bình quân · tự cập nhật khi nhập kho' : 'Giá nhập của 1 đơn vị'
+            }
+            error={errors.cost_price?.message}
+            withAsterisk
+          />
           <IntegerField
             control={control}
             name="price"
@@ -167,12 +209,16 @@ export function ProductForm({ product, onDone }: ProductFormProps) {
             error={errors.price?.message}
             withAsterisk
           />
+          <MarginPreview price={price} costPrice={costPrice} />
+        </SimpleGrid>
+
+        <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md" style={{ alignItems: 'start' }}>
           <IntegerField
             control={control}
             name="stock"
             label={isEdit ? 'Tồn kho hiện tại' : 'Tồn kho ban đầu'}
             placeholder="0"
-            description={isEdit ? 'Dùng "sửa nhanh" để điều chỉnh' : 'Bỏ trống = 0'}
+            description={isEdit ? 'Điều chỉnh ở trang Kho hàng / Nhập hàng' : 'Bỏ trống = 0'}
             disabled={isEdit}
             error={errors.stock?.message}
           />
@@ -233,6 +279,36 @@ export function ProductForm({ product, onDone }: ProductFormProps) {
   )
 }
 
+/** Lãi gộp dự kiến trên 1 đơn vị = giá bán − giá vốn (cảnh báo khi bán lỗ). */
+function MarginPreview({ price, costPrice }: { price?: number; costPrice?: number }) {
+  const ready = typeof price === 'number' && typeof costPrice === 'number'
+  const profit = ready ? price - costPrice : null
+  const margin = profit === null || !ready ? null : calcMargin(profit, price)
+  return (
+    <Stack gap={4}>
+      <Text size="sm" fw={500} component="span" id="margin-label">
+        Lãi gộp / sản phẩm
+      </Text>
+      <Text
+        aria-labelledby="margin-label"
+        size="sm"
+        py={7}
+        fw={600}
+        c={profit !== null && profit < 0 ? 'red' : undefined}
+        style={{ fontVariantNumeric: 'tabular-nums' }}
+        data-testid="margin-preview"
+      >
+        {profit === null
+          ? '—'
+          : `${formatCurrency(profit)}${margin === null ? '' : ` · ${formatPercent(margin)}`}`}
+      </Text>
+      <Text size="xs" c={profit !== null && profit < 0 ? 'red' : 'dimmed'}>
+        {profit !== null && profit < 0 ? 'Giá bán thấp hơn giá vốn' : 'Giá bán − giá vốn'}
+      </Text>
+    </Stack>
+  )
+}
+
 /** SKU chỉ đọc: tạo mới thì xem trước mẫu, sửa thì hiện SKU thật (cố định). */
 function SkuField({ sku, name }: { sku?: string; name: string }) {
   return (
@@ -252,7 +328,7 @@ function SkuField({ sku, name }: { sku?: string; name: string }) {
 
 interface IntegerFieldProps {
   control: Control<ProductFormInput, unknown, ProductFormValues>
-  name: 'price' | 'stock' | 'low_stock_threshold'
+  name: 'price' | 'cost_price' | 'stock' | 'low_stock_threshold'
   label: string
   placeholder?: string
   description?: string

@@ -20,7 +20,8 @@ import { previewSku } from '../lib/sku'
 
 interface ProductImportModalProps {
   opened: boolean
-  fileName: string
+  file: File | null
+  sheetName: string | null
   result: ImportResult | null
   onClose: () => void
   onDownloadTemplate: () => void
@@ -33,7 +34,8 @@ interface ProductImportModalProps {
  */
 export function ProductImportModal({
   opened,
-  fileName,
+  file,
+  sheetName,
   result,
   onClose,
   onDownloadTemplate,
@@ -41,9 +43,14 @@ export function ProductImportModal({
   const isMobile = useMediaQuery('(max-width: 36em)')
   const importProducts = useImportProducts()
 
+  const fileName = file?.name ?? ''
+
   const handleImport = (publish: boolean) => {
-    if (!result?.ok) return
-    importProducts.mutate({ products: result.products, publish }, { onSuccess: onClose })
+    if (!result?.ok || !file) return
+    importProducts.mutate(
+      { file, sheetName, rowCount: result.products.length, products: result.products, publish },
+      { onSuccess: onClose },
+    )
   }
 
   const busy = importProducts.isPending
@@ -112,20 +119,40 @@ export function ProductImportModal({
             <Text span fw={500}>
               {fileName}
             </Text>
-            . SKU được tạo tự động khi lưu.
+            . SKU được tạo tự động; file gốc được lưu lại trong Lịch sử import.
           </Text>
+          {result.warnings.length > 0 && (
+            <Alert
+              color="orange"
+              variant="light"
+              icon={<IconAlertTriangle size={18} aria-hidden />}
+              title={`${formatNumber(result.warnings.length)} dòng cần xem lại`}
+            >
+              <ScrollArea.Autosize mah={120} type="auto">
+                <List size="sm" spacing={2}>
+                  {result.warnings.map((warning) => (
+                    <List.Item key={warning}>{warning}</List.Item>
+                  ))}
+                </List>
+              </ScrollArea.Autosize>
+            </Alert>
+          )}
           <ScrollArea.Autosize mah={420} type="auto">
-            <Table striped verticalSpacing="xs" miw={720} stickyHeader>
+            <Table striped verticalSpacing="xs" miw={860} stickyHeader>
               <Table.Thead>
                 <Table.Tr>
                   <Table.Th scope="col">Dòng</Table.Th>
                   <Table.Th scope="col">Tên sản phẩm</Table.Th>
                   <Table.Th scope="col">Danh mục</Table.Th>
+                  <Table.Th scope="col">ĐVT</Table.Th>
+                  <Table.Th scope="col" ta="right">
+                    Giá vốn
+                  </Table.Th>
                   <Table.Th scope="col" ta="right">
                     Giá bán
                   </Table.Th>
                   <Table.Th scope="col" ta="right">
-                    Tồn kho
+                    Tồn đầu kỳ
                   </Table.Th>
                   <Table.Th scope="col">SKU dự kiến</Table.Th>
                 </Table.Tr>
@@ -149,7 +176,15 @@ export function ProductImportModal({
                         {product.category}
                       </Badge>
                     </Table.Td>
+                    <Table.Td>{product.unit}</Table.Td>
                     <Table.Td ta="right" style={{ whiteSpace: 'nowrap' }}>
+                      {formatCurrency(product.cost_price)}
+                    </Table.Td>
+                    <Table.Td
+                      ta="right"
+                      style={{ whiteSpace: 'nowrap' }}
+                      c={product.price < product.cost_price ? 'red' : undefined}
+                    >
                       {formatCurrency(product.price)}
                     </Table.Td>
                     <Table.Td ta="right">{formatNumber(product.stock)}</Table.Td>

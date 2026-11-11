@@ -9,7 +9,7 @@ import type { OrderableProduct, OrderDetail, OrderPage } from '../types'
 const ORDER_COLUMNS = 'id, code, customer_name, customer_phone, status, total, created_at'
 
 const ORDER_DETAIL_COLUMNS = `${ORDER_COLUMNS},
-  items:order_items(id, product_id, quantity, unit_price, product:products(id, name, sku, stock, is_active)),
+  items:order_items(id, product_id, quantity, unit_price, unit_cost, product:products(id, name, sku, stock, is_active)),
   events:order_status_events(id, status, created_at)`
 
 /** PostgREST trả lỗi này khi offset vượt quá tổng số dòng (vd. trang cũ sau khi lọc). */

@@ -17,8 +17,10 @@ import { EmptyState } from '@/shared/components/EmptyState'
 import { ErrorState } from '@/shared/components/ErrorState'
 import { ROUTES } from '@/shared/constants/routes'
 import { getErrorMessage } from '@/shared/lib/errors'
-import { formatCurrency, formatDateTime } from '@/shared/lib/formatters'
+import { formatCurrency, formatDateTime, formatPercent } from '@/shared/lib/formatters'
+import { calcMargin } from '@/shared/lib/metrics'
 import { useOrderDetail } from '../api/orders.queries'
+import { orderCogs } from '../domain/orderProfit'
 import { useOrderTransitionFlow } from '../hooks/useOrderTransitionFlow'
 import type { OrderDetail } from '../types'
 import { OrderItemsTable } from './OrderItemsTable'
@@ -120,6 +122,7 @@ function OrderDetailLoaded({ order }: { order: OrderDetail }) {
                     {formatCurrency(order.total)}
                   </Text>
                 </InfoRow>
+                <OrderProfitRows order={order} />
               </Stack>
             </Section>
             <Section title="Trạng thái">
@@ -131,6 +134,34 @@ function OrderDetailLoaded({ order }: { order: OrderDetail }) {
 
       <OrderTransitionDialog flow={flow} />
     </Stack>
+  )
+}
+
+/**
+ * Giá vốn & lợi nhuận gộp của đơn — chỉ có khi đơn đã xác nhận (giá vốn bình quân được chốt
+ * vào từng dòng lúc xác nhận, không đổi khi sau này nhập lô giá khác).
+ */
+function OrderProfitRows({ order }: { order: OrderDetail }) {
+  const cogs = orderCogs(order.items)
+  if (cogs === null || order.status === 'cancelled') {
+    return (
+      <Text size="xs" c="dimmed">
+        Lợi nhuận gộp được tính khi đơn được xác nhận (chốt giá vốn).
+      </Text>
+    )
+  }
+  const profit = order.total - cogs
+  const margin = calcMargin(profit, order.total)
+  return (
+    <>
+      <InfoRow label="Giá vốn hàng bán">{formatCurrency(cogs)}</InfoRow>
+      <InfoRow label="Lợi nhuận gộp">
+        <Text fw={600} size="sm" c={profit < 0 ? 'red' : 'teal.8'}>
+          {formatCurrency(profit)}
+          {margin !== null && ` · ${formatPercent(margin)}`}
+        </Text>
+      </InfoRow>
+    </>
   )
 }
 

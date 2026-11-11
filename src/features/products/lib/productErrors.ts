@@ -10,13 +10,19 @@ const RPC_ERROR_MESSAGES: Readonly<Record<string, string>> = {
   // Lỗi phía client (xem productImages.api.ts)
   IMAGE_UPLOAD_FAILED: 'Không tải được ảnh lên. Vui lòng kiểm tra mạng và thử lại.',
   NOT_AUTHENTICATED: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
+  // Nhập từ Excel (xem productImports.api.ts và RPC import_products)
+  FILE_UPLOAD_FAILED: 'Không lưu được file Excel lên hệ thống. Vui lòng kiểm tra mạng và thử lại.',
+  IMPORT_EMPTY: 'File không có sản phẩm nào để nhập.',
+  TOO_MANY_ROWS: 'File có quá nhiều dòng cho một lần nhập.',
+  INVALID_FILE: 'Thông tin file không hợp lệ. Vui lòng chọn lại file.',
 }
 
 /** SQLSTATE của Postgres. */
 const SQLSTATE_MESSAGES: Readonly<Record<string, string>> = {
   '23505': 'Mã SKU bị trùng. Vui lòng thử lại.',
   '23503': RPC_ERROR_MESSAGES.PRODUCT_IN_ORDERS ?? '',
-  '23514': 'Dữ liệu không hợp lệ (giá / tồn kho âm, mô tả quá dài hoặc quá nhiều ảnh).',
+  '23514':
+    'Dữ liệu không hợp lệ (giá / giá vốn / tồn kho âm, đơn vị tính trống, mô tả quá dài hoặc quá nhiều ảnh).',
 }
 
 /** Chuyển lỗi từ API sản phẩm thành thông báo tiếng Việt. */

@@ -40,6 +40,8 @@ const makeProduct = (overrides: Partial<Product> = {}): Product => ({
   sku: 'AT-001',
   name: 'Áo thun basic',
   category: 'Áo thun',
+  unit: 'Cái',
+  cost_price: 90_000,
   price: 150_000,
   stock: 20,
   low_stock_threshold: 5,
@@ -231,6 +233,7 @@ describe('ProductForm', () => {
     await userEvent.type(screen.getByRole('textbox', { name: /Tên sản phẩm/ }), 'Áo polo')
     await userEvent.click(screen.getByRole('combobox', { name: /Danh mục/ }))
     await userEvent.click(await screen.findByRole('option', { name: 'Áo polo' }))
+    await userEvent.type(screen.getByRole('textbox', { name: /Giá vốn/ }), '160000')
     await userEvent.type(screen.getByRole('textbox', { name: /Giá bán/ }), '250000')
   }
 
@@ -244,8 +247,20 @@ describe('ProductForm', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Đăng sản phẩm' }))
     expect(await screen.findByText('Vui lòng nhập tên sản phẩm')).toBeInTheDocument()
     expect(screen.getByText('Vui lòng chọn danh mục')).toBeInTheDocument()
+    expect(screen.getByText('Vui lòng nhập giá vốn')).toBeInTheDocument()
     expect(screen.getByText('Vui lòng nhập giá bán')).toBeInTheDocument()
     expect(api.createProduct).not.toHaveBeenCalled()
+  })
+
+  it('xem trước lãi gộp / sản phẩm; cảnh báo khi giá bán thấp hơn giá vốn', async () => {
+    renderWithProviders(<ProductForm onDone={vi.fn()} />)
+    await userEvent.type(screen.getByRole('textbox', { name: /Giá vốn/ }), '100000')
+    await userEvent.type(screen.getByRole('textbox', { name: /Giá bán/ }), '150000')
+    expect(screen.getByTestId('margin-preview')).toHaveTextContent(/50\.000\s₫ · 33,3%/)
+
+    await userEvent.clear(screen.getByRole('textbox', { name: /Giá bán/ }))
+    await userEvent.type(screen.getByRole('textbox', { name: /Giá bán/ }), '80000')
+    expect(screen.getByText('Giá bán thấp hơn giá vốn')).toBeInTheDocument()
   })
 
   it('xem trước SKU theo tên sản phẩm', async () => {
@@ -266,6 +281,8 @@ describe('ProductForm', () => {
     expect(api.createProduct.mock.calls[0]?.[0]).toEqual({
       name: 'Áo polo',
       category: 'Áo polo',
+      unit: 'Cái',
+      cost_price: 160_000,
       price: 250_000,
       stock: 0,
       low_stock_threshold: 5,

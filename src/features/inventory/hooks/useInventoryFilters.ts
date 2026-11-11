@@ -23,8 +23,8 @@ export function useInventoryFilters() {
 
   const toggleSort = useCallback(
     (field: InventorySortField) => {
-      // Cột mới: tồn kho thấp nhất / tên A→Z / giá cao nhất trước.
-      const firstOrder = field === 'price' ? 'desc' : 'asc'
+      // Cột mới: tồn kho thấp nhất / tên A→Z / giá vốn cao nhất trước.
+      const firstOrder = field === 'cost_price' ? 'desc' : 'asc'
       const order = filters.sort === field ? (filters.order === 'asc' ? 'desc' : 'asc') : firstOrder
       setState({ sort: field, order, page: 1 })
     },

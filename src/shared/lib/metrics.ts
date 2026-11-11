@@ -16,3 +16,12 @@ export function getTrend(change: number | null): Trend | null {
   if (change < 0) return 'down'
   return 'flat'
 }
+
+/**
+ * Biên lợi nhuận gộp = lợi nhuận gộp / doanh thu (0.3 = 30%).
+ * `null` khi chưa có doanh thu — không hiển thị con số vô nghĩa.
+ */
+export function calcMargin(profit: number, revenue: number): number | null {
+  if (!Number.isFinite(profit) || !Number.isFinite(revenue) || revenue <= 0) return null
+  return profit / revenue
+}

@@ -2,13 +2,13 @@ import { getDbErrorInfo } from '@/shared/lib/errors'
 import { supabase } from '@/shared/lib/supabase'
 import { mediaPaths, type ProductMedia } from '../lib/productImages'
 import { toSearchTerm } from '@/shared/lib/search'
-import type { ImportedProduct, ProductFormValues } from '../schemas/product.schema'
+import type { ProductFormValues } from '../schemas/product.schema'
 import type { ProductFilters } from '../schemas/productFilters.schema'
-import type { Product, ProductPage } from '../types'
+import type { Product, ProductInsight, ProductPage } from '../types'
 import { removeProductImages, uploadProductMedia } from './productImages.api'
 
 const PRODUCT_COLUMNS =
-  'id, sku, name, category, price, stock, low_stock_threshold, is_low_stock, is_active, description, hero_image_path, image_paths, created_at'
+  'id, sku, name, category, unit, price, cost_price, stock, low_stock_threshold, is_low_stock, is_active, description, hero_image_path, image_paths, created_at'
 
 /** PostgREST trả lỗi này khi offset vượt quá tổng số dòng (vd. trang cũ sau khi xóa / lọc). */
 const RANGE_NOT_SATISFIABLE = 'PGRST103'
@@ -78,10 +78,21 @@ export async function updateProduct(
 ): Promise<Product> {
   const { uploaded, ...paths } = await uploadProductMedia(media)
   // Liệt kê tường minh đúng các cột được GRANT UPDATE; SKU cố định sau khi tạo.
-  const { name, category, price, low_stock_threshold, is_active, description } = values
+  const { name, category, unit, price, cost_price, low_stock_threshold, is_active, description } =
+    values
   const { data, error } = await supabase
     .from('products')
-    .update({ name, category, price, low_stock_threshold, is_active, description, ...paths })
+    .update({
+      name,
+      category,
+      unit,
+      price,
+      cost_price,
+      low_stock_threshold,
+      is_active,
+      description,
+      ...paths,
+    })
     .eq('id', product.id)
     .select(PRODUCT_COLUMNS)
     .single()
@@ -100,31 +111,6 @@ export function productImagePaths(product: Pick<Product, 'hero_image_path' | 'im
   return [product.hero_image_path, ...product.image_paths].filter(
     (path): path is string => path !== null,
   )
-}
-
-/**
- * Nhập nhiều sản phẩm trong MỘT câu insert → một transaction: lỗi một dòng thì không dòng nào
- * được lưu. Mỗi dòng vẫn được trigger cấp SKU riêng.
- */
-export async function createProducts(
-  products: readonly ImportedProduct[],
-  isActive: boolean,
-): Promise<number> {
-  // Chọn tường minh các cột được phép ghi (dữ liệu nhập có thể kèm field phụ như số dòng).
-  const rows = products.map(
-    ({ name, category, price, stock, low_stock_threshold, description }) => ({
-      name,
-      category,
-      price,
-      stock,
-      low_stock_threshold,
-      description,
-      is_active: isActive,
-    }),
-  )
-  const { data, error } = await supabase.from('products').insert(rows).select('id')
-  if (error) throw error
-  return data.length
 }
 
 export async function updateProductPrice(id: string, price: number): Promise<void> {
@@ -153,4 +139,11 @@ export async function deleteProduct(product: Product): Promise<void> {
   const { error } = await supabase.rpc('delete_product', { p_product_id: product.id })
   if (error) throw error
   await removeProductImages(productImagePaths(product))
+}
+
+/** Hiệu quả sản phẩm (toàn thời gian): bán ra, giá vốn, lợi nhuận gộp, nhập hàng. */
+export async function fetchProductInsight(id: string): Promise<ProductInsight> {
+  const { data, error } = await supabase.rpc('get_product_insight', { p_product_id: id }).single()
+  if (error) throw error
+  return data
 }

@@ -20,6 +20,7 @@ import {
   formatNumber,
   formatPercent,
 } from '@/shared/lib/formatters'
+import { calcMargin } from '@/shared/lib/metrics'
 import { useRevenueByCategory } from '../api/analytics.queries'
 import { foldCategories, type CategorySlice } from '../lib/analytics'
 import type { ReportRange } from '../types'
@@ -118,6 +119,11 @@ function CategoryRevenueContent({ range }: { range: ReportRange }) {
   )
 }
 
+function marginLabel(slice: CategorySlice): string {
+  const margin = calcMargin(slice.gross_profit, slice.revenue)
+  return margin === null ? '' : ` (${formatPercent(margin)})`
+}
+
 function CategoryTooltip({ active, payload }: TooltipContentProps) {
   const slice = payload?.[0]?.payload as CategorySlice | undefined
   if (!active || !slice) return null
@@ -133,7 +139,14 @@ function CategoryTooltip({ active, payload }: TooltipContentProps) {
         </Text>
       </Group>
       <Group gap="xs" justify="space-between">
-        <Text size="sm">Tỉ trọng</Text>
+        <Text size="sm">Lợi nhuận gộp</Text>
+        <Text size="sm" fw={600}>
+          {formatCurrency(slice.gross_profit)}
+          {marginLabel(slice)}
+        </Text>
+      </Group>
+      <Group gap="xs" justify="space-between">
+        <Text size="sm">Tỉ trọng doanh thu</Text>
         <Text size="sm" fw={600}>
           {formatPercent(slice.share)}
         </Text>
@@ -158,6 +171,7 @@ function CategoryTable({ slices }: { slices: CategorySlice[] }) {
           <Table.Tr>
             <Table.Th scope="col">Danh mục</Table.Th>
             <Table.Th scope="col">Doanh thu</Table.Th>
+            <Table.Th scope="col">Lợi nhuận gộp</Table.Th>
             <Table.Th scope="col">Số lượng bán</Table.Th>
           </Table.Tr>
         </Table.Thead>
@@ -166,6 +180,10 @@ function CategoryTable({ slices }: { slices: CategorySlice[] }) {
             <Table.Tr key={slice.label}>
               <Table.Td>{slice.label}</Table.Td>
               <Table.Td>{formatCurrency(slice.revenue)}</Table.Td>
+              <Table.Td>
+                {formatCurrency(slice.gross_profit)}
+                {marginLabel(slice)}
+              </Table.Td>
               <Table.Td>{formatNumber(slice.quantity)}</Table.Td>
             </Table.Tr>
           ))}

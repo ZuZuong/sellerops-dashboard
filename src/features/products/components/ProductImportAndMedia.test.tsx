@@ -2,25 +2,30 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithProviders } from '@/test/render'
-import { createProduct, createProducts } from '../api/products.api'
+import { importProductsFromFile } from '../api/productImports.api'
+import { createProduct } from '../api/products.api'
 import { parseProductImport } from '../lib/importProducts'
 import { ProductForm } from './ProductFormModal'
 import { ProductImportModal } from './ProductImportModal'
 
 vi.mock('../api/products.api', () => ({
   createProduct: vi.fn(),
-  createProducts: vi.fn(),
   updateProduct: vi.fn(),
 }))
 
-const createProductMock = vi.mocked(createProduct)
-const createProductsMock = vi.mocked(createProducts)
+vi.mock('../api/productImports.api', () => ({
+  importProductsFromFile: vi.fn(),
+}))
 
-const HEADER = ['Tên sản phẩm', 'Danh mục', 'Giá bán', 'Tồn kho']
+const createProductMock = vi.mocked(createProduct)
+const importMock = vi.mocked(importProductsFromFile)
+
+const HEADER = ['Tên sản phẩm', 'Danh mục', 'Đơn vị tính', 'Giá vốn', 'Giá bán', 'Tồn đầu kỳ']
+const FILE = new File(['x'], 'san-pham.xlsx')
 
 beforeEach(() => {
   createProductMock.mockReset()
-  createProductsMock.mockReset()
+  importMock.mockReset()
 })
 
 describe('ProductImportModal', () => {
@@ -29,7 +34,8 @@ describe('ProductImportModal', () => {
     renderWithProviders(
       <ProductImportModal
         opened
-        fileName="san-pham.xlsx"
+        file={FILE}
+        sheetName="Sản phẩm"
         result={parseProductImport(rows)}
         onClose={onClose}
         onDownloadTemplate={vi.fn()}
@@ -39,7 +45,11 @@ describe('ProductImportModal', () => {
   }
 
   it('file hợp lệ: hiện danh sách xem trước với SKU dự kiến', async () => {
-    renderModal([HEADER, ['Áo thun basic', 'Áo thun', 150000, 10], ['Đầm maxi', 'Đầm', 450000]])
+    renderModal([
+      HEADER,
+      ['Áo thun basic', 'Áo thun', 'Cái', 90000, 150000, 10],
+      ['Đầm maxi', 'Đầm', 'Chiếc', 250000, 450000],
+    ])
 
     const dialog = await screen.findByRole('dialog', { name: 'Xem trước sản phẩm nhập từ Excel' })
     expect(within(dialog).getByText(/2 sản phẩm/)).toBeInTheDocument()
@@ -47,29 +57,55 @@ describe('ProductImportModal', () => {
     expect(rows).toHaveLength(3) // tiêu đề + 2 sản phẩm
     expect(rows[1]).toHaveTextContent('Áo thun basic')
     expect(rows[1]).toHaveTextContent('DN-AOTHUNBASIC-###')
+    expect(rows[1]).toHaveTextContent(/90\.000\s₫/)
     expect(rows[2]).toHaveTextContent('Đầm maxi')
   })
 
   it.each([
     ['Đăng tất cả', true],
     ['Lưu chưa đăng', false],
-  ])('"%s" nhập toàn bộ với is_active = %s rồi đóng popup', async (label, publish) => {
-    createProductsMock.mockResolvedValue(1)
-    const { onClose } = renderModal([HEADER, ['Áo polo', 'Áo polo', 200000]])
+  ])(
+    '"%s": lưu file gốc + nhập toàn bộ với publish = %s rồi đóng popup',
+    async (label, publish) => {
+      importMock.mockResolvedValue({ importId: 'imp-1', count: 1 })
+      const { onClose } = renderModal([HEADER, ['Áo polo', 'Áo polo', 'Cái', 120000, 200000]])
 
-    await userEvent.click(await screen.findByRole('button', { name: label }))
+      await userEvent.click(await screen.findByRole('button', { name: label }))
 
-    await waitFor(() => expect(createProductsMock).toHaveBeenCalledTimes(1))
-    const [products, isActive] = createProductsMock.mock.calls[0] ?? []
-    expect(isActive).toBe(publish)
-    expect(products).toEqual([
-      expect.objectContaining({ name: 'Áo polo', category: 'Áo polo', price: 200000, stock: 0 }),
-    ])
-    await waitFor(() => expect(onClose).toHaveBeenCalled())
+      await waitFor(() => expect(importMock).toHaveBeenCalledTimes(1))
+      expect(importMock).toHaveBeenCalledWith({
+        file: FILE,
+        sheetName: 'Sản phẩm',
+        rowCount: 1,
+        publish,
+        products: [
+          expect.objectContaining({
+            name: 'Áo polo',
+            category: 'Áo polo',
+            unit: 'Cái',
+            cost_price: 120000,
+            price: 200000,
+            stock: 0,
+          }),
+        ],
+      })
+      await waitFor(() => expect(onClose).toHaveBeenCalled())
+    },
+  )
+
+  it('giá bán thấp hơn giá vốn: hiện cảnh báo nhưng vẫn cho nhập', async () => {
+    renderModal([HEADER, ['Áo xả kho', 'Áo thun', 'Cái', 120000, 99000]])
+    const dialog = await screen.findByRole('dialog', { name: 'Xem trước sản phẩm nhập từ Excel' })
+    expect(within(dialog).getByText('1 dòng cần xem lại')).toBeInTheDocument()
+    expect(within(dialog).getByRole('button', { name: 'Đăng tất cả' })).toBeEnabled()
   })
 
   it('file thiếu dữ liệu: liệt kê lỗi, không có nút nhập', async () => {
-    renderModal([HEADER, ['Áo polo', null, null], ['Ốp lưng', 'Điện thoại', 50000]])
+    renderModal([
+      HEADER,
+      ['Áo polo', null, 'Cái', 100000, null],
+      ['Ốp lưng', 'Điện thoại', 'Cái', 20000, 50000],
+    ])
 
     const dialog = await screen.findByRole('dialog', { name: 'File Excel chưa đủ dữ liệu' })
     const errors = within(dialog).getByRole('list', { name: 'Danh sách lỗi' })
@@ -82,6 +118,7 @@ describe('ProductImportModal', () => {
   it('file thiếu cột bắt buộc', async () => {
     renderModal([['Tên sản phẩm'], ['Áo']])
     expect(await screen.findByText('Thiếu cột "Danh mục".')).toBeInTheDocument()
+    expect(screen.getByText('Thiếu cột "Giá vốn".')).toBeInTheDocument()
     expect(screen.getByText('Thiếu cột "Giá bán".')).toBeInTheDocument()
   })
 })
@@ -93,6 +130,7 @@ describe('ProductForm – mô tả & ảnh', () => {
     await userEvent.type(screen.getByRole('textbox', { name: /Tên sản phẩm/ }), 'Áo khoác gió')
     await userEvent.click(screen.getByRole('combobox', { name: /Danh mục/ }))
     await userEvent.click(await screen.findByRole('option', { name: 'Áo khoác' }))
+    await userEvent.type(screen.getByRole('textbox', { name: /Giá vốn/ }), '250000')
     await userEvent.type(screen.getByRole('textbox', { name: /Giá bán/ }), '390000')
   }
 

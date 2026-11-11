@@ -1,14 +1,23 @@
-import { Anchor, Paper } from '@mantine/core'
-import { IconAlertTriangle, IconCash, IconClockHour4, IconShoppingCart } from '@tabler/icons-react'
+import { Anchor, Paper, Stack, Text } from '@mantine/core'
+import {
+  IconAlertTriangle,
+  IconCash,
+  IconClockHour4,
+  IconShoppingCart,
+  IconTrendingUp,
+} from '@tabler/icons-react'
 import { Link } from 'react-router'
 import { ErrorBoundary } from '@/shared/components/ErrorBoundary'
 import { ErrorState } from '@/shared/components/ErrorState'
 import { ChangeIndicator, StatCard, StatCardSkeleton, StatGrid } from '@/shared/components/StatCard'
 import { ROUTES } from '@/shared/constants/routes'
 import { getErrorMessage } from '@/shared/lib/errors'
-import { formatCurrency, formatNumber } from '@/shared/lib/formatters'
-import { calcChange } from '@/shared/lib/metrics'
+import { formatCurrency, formatNumber, formatPercent } from '@/shared/lib/formatters'
+import { calcChange, calcMargin } from '@/shared/lib/metrics'
 import { useDashboardKpis } from '../api/dashboard.queries'
+
+/** 5 thẻ: 1 cột (mobile) → 2 → 3 → 5 cột (màn rộng) để số tiền dài không bị chật. */
+const KPI_COLS = { base: 1, xs: 2, md: 3, xl: 5 }
 
 interface KpiCardsProps {
   days: number
@@ -34,8 +43,8 @@ function KpiCardsContent({ days }: KpiCardsProps) {
 
   if (isPending) {
     return (
-      <StatGrid aria-busy>
-        {Array.from({ length: 4 }, (_, i) => (
+      <StatGrid aria-busy cols={KPI_COLS}>
+        {Array.from({ length: 5 }, (_, i) => (
           <StatCardSkeleton key={i} testId="kpi-skeleton" />
         ))}
       </StatGrid>
@@ -57,9 +66,10 @@ function KpiCardsContent({ days }: KpiCardsProps) {
 
   const periodLabel = `${days} ngày qua`
   const previousLabel = `so với ${days} ngày trước`
+  const margin = calcMargin(data.gross_profit, data.revenue)
 
   return (
-    <StatGrid aria-busy={isPlaceholderData}>
+    <StatGrid aria-busy={isPlaceholderData} cols={KPI_COLS}>
       <StatCard
         label={`Doanh thu · ${periodLabel}`}
         value={formatCurrency(data.revenue)}
@@ -70,6 +80,25 @@ function KpiCardsContent({ days }: KpiCardsProps) {
             change={calcChange(data.revenue, data.prev_revenue)}
             suffix={previousLabel}
           />
+        }
+      />
+      <StatCard
+        label={`Lợi nhuận gộp · ${periodLabel}`}
+        value={formatCurrency(data.gross_profit)}
+        icon={<IconTrendingUp size={20} stroke={1.5} />}
+        color={data.gross_profit < 0 ? 'red' : 'teal'}
+        footer={
+          <Stack gap={2}>
+            <ChangeIndicator
+              change={calcChange(data.gross_profit, data.prev_gross_profit)}
+              suffix={previousLabel}
+            />
+            <Text size="xs" c="dimmed">
+              {margin === null
+                ? 'Biên lợi nhuận: chưa có doanh thu'
+                : `Biên lợi nhuận gộp ${formatPercent(margin)}`}
+            </Text>
+          </Stack>
         }
       />
       <StatCard

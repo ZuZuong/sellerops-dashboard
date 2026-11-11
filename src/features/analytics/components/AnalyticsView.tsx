@@ -5,6 +5,7 @@ import { AnalyticsRangeControl } from './AnalyticsRangeControl'
 import { CategoryRevenueChart } from './CategoryRevenueChart'
 import { RevenueByDay } from './RevenueByDay'
 import { SalesSummaryCards } from './SalesSummaryCards'
+import { StockLedgerTable } from './StockLedgerTable'
 import { TopProductsTable } from './TopProductsTable'
 
 /**
@@ -31,6 +32,7 @@ export function AnalyticsView() {
           <TopProductsTable range={report} />
         </Grid.Col>
       </Grid>
+      <StockLedgerTable range={report} />
     </Stack>
   )
 }

@@ -10,24 +10,35 @@ import { dashboardKeys } from '@/features/dashboard'
 import { formatCurrency, formatNumber } from '@/shared/lib/formatters'
 import type { ProductMedia } from '../lib/productImages'
 import { getProductErrorMessage } from '../lib/productErrors'
-import type { ImportedProduct, ProductFormValues } from '../schemas/product.schema'
+import type { ProductFormValues } from '../schemas/product.schema'
 import type { ProductFilters } from '../schemas/productFilters.schema'
 import type { Product, ProductPage } from '../types'
 import {
   adjustProductStock,
   createProduct,
-  createProducts,
   deleteProduct,
+  fetchProductInsight,
   fetchProducts,
   setProductActive,
   updateProduct,
   updateProductPrice,
 } from './products.api'
+import {
+  fetchImportedProducts,
+  fetchProductImports,
+  importProductsFromFile,
+  type ImportFromFileInput,
+} from './productImports.api'
 
 export const productKeys = {
   all: ['products'] as const,
   lists: () => [...productKeys.all, 'list'] as const,
   list: (filters: ProductFilters) => [...productKeys.lists(), filters] as const,
+  insight: (id: string) => [...productKeys.all, 'insight', id] as const,
+  imports: () => [...productKeys.all, 'imports'] as const,
+  importPage: (page: number, pageSize: number) =>
+    [...productKeys.imports(), 'page', page, pageSize] as const,
+  importedProducts: (importId: string) => [...productKeys.imports(), 'products', importId] as const,
 }
 
 export function useProducts(filters: ProductFilters) {
@@ -123,18 +134,36 @@ export function useDeleteProduct() {
 export function useImportProducts() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ products, publish }: { products: ImportedProduct[]; publish: boolean }) =>
-      createProducts(products, publish),
-    onSuccess: (count, { publish }) => {
+    mutationFn: (input: ImportFromFileInput) => importProductsFromFile(input),
+    onSuccess: ({ count }, { publish, file }) => {
       notifications.show({
         color: 'green',
         title: publish ? 'Đã nhập và đăng sản phẩm' : 'Đã nhập sản phẩm (chưa đăng)',
-        message: `${formatNumber(count)} sản phẩm từ file Excel`,
+        message: `${formatNumber(count)} sản phẩm từ "${file.name}" · xem lại trong Lịch sử import`,
       })
       return invalidateAfterProductChange(queryClient)
     },
     onError: (error) => notifyError('Nhập sản phẩm thất bại', error),
   })
+}
+
+export function useProductImports(page: number, pageSize: number) {
+  return useQuery({
+    queryKey: productKeys.importPage(page, pageSize),
+    queryFn: () => fetchProductImports(page, pageSize),
+    placeholderData: keepPreviousData,
+  })
+}
+
+export function useImportedProducts(importId: string) {
+  return useQuery({
+    queryKey: productKeys.importedProducts(importId),
+    queryFn: () => fetchImportedProducts(importId),
+  })
+}
+
+export function useProductInsight(id: string) {
+  return useQuery({ queryKey: productKeys.insight(id), queryFn: () => fetchProductInsight(id) })
 }
 
 // -----------------------------------------------------------------------------

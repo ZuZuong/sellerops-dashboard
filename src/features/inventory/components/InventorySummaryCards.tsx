@@ -69,13 +69,14 @@ export function InventorySummaryCards({ onSelectLevel }: InventorySummaryCardsPr
         footer={filterLink('out', 'Lọc sản phẩm hết hàng')}
       />
       <StatCard
-        label="Giá trị tồn kho"
+        label="Giá trị tồn kho (giá vốn)"
         value={formatCurrency(data.stock_value)}
         icon={<IconCash size={20} stroke={1.5} />}
         color="teal"
         footer={
           <Text size="xs" c="dimmed">
-            {formatNumber(data.total_units)} sản phẩm trong kho · theo giá bán
+            {formatNumber(data.total_units)} sản phẩm · theo giá bán{' '}
+            {formatCurrency(data.retail_value)}
           </Text>
         }
       />
