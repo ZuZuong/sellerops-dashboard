@@ -4,6 +4,7 @@ import {
   formatCurrency,
   formatDate,
   formatDateTime,
+  formatFileSize,
   formatNumber,
   formatPercent,
   formatPercentChange,
@@ -50,5 +51,13 @@ describe('formatPercent', () => {
   it('tỉ trọng không có dấu', () => {
     expect(formatPercent(0.755).replace(/\s/g, ' ')).toBe('75,5%')
     expect(formatPercent(0)).toBe('0%')
+  })
+})
+
+describe('formatFileSize', () => {
+  it('B / KB / MB', () => {
+    expect(formatFileSize(512)).toBe('512 B')
+    expect(formatFileSize(1536)).toBe('1,5 KB')
+    expect(formatFileSize(2_621_440)).toBe('2,5 MB')
   })
 })

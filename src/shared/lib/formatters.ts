@@ -97,3 +97,16 @@ export function formatDateTime(value: string | Date): string {
   const date = toDate(value)
   return `${dateFormatter.format(date)} ${timeFormatter.format(date)}`
 }
+
+/** 1536 → "1,5 KB"; 2_621_440 → "2,5 MB". */
+export function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${numberFormatter.format(bytes)} B`
+  const units = ['KB', 'MB', 'GB']
+  let value = bytes / 1024
+  let unit = 0
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024
+    unit++
+  }
+  return `${new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 1 }).format(value)} ${units[unit]}`
+}
