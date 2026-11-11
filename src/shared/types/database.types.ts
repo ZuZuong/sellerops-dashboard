@@ -283,6 +283,32 @@ export type Database = {
           revenue: number
         }[]
       }
+      get_inventory_summary: {
+        Args: never
+        Returns: {
+          low_stock_count: number
+          out_of_stock_count: number
+          product_count: number
+          stock_value: number
+          total_units: number
+        }[]
+      }
+      get_revenue_by_category: {
+        Args: { p_from: string; p_to: string; p_tz?: string }
+        Returns: {
+          category: string
+          quantity: number
+          revenue: number
+        }[]
+      }
+      get_revenue_by_day: {
+        Args: { p_from: string; p_to: string; p_tz?: string }
+        Returns: {
+          day: string
+          order_count: number
+          revenue: number
+        }[]
+      }
       get_revenue_series: {
         Args: { p_days: number; p_tz?: string }
         Returns: {
@@ -291,8 +317,31 @@ export type Database = {
           revenue: number
         }[]
       }
+      get_sales_summary: {
+        Args: { p_from: string; p_to: string; p_tz?: string }
+        Returns: {
+          cancelled_count: number
+          items_sold: number
+          order_count: number
+          prev_cancelled_count: number
+          prev_items_sold: number
+          prev_order_count: number
+          prev_revenue: number
+          revenue: number
+        }[]
+      }
       get_top_products: {
         Args: { p_days: number; p_limit?: number; p_tz?: string }
+        Returns: {
+          name: string
+          product_id: string
+          quantity_sold: number
+          revenue: number
+          sku: string
+        }[]
+      }
+      get_top_products_by_range: {
+        Args: { p_from: string; p_limit?: number; p_to: string; p_tz?: string }
         Returns: {
           name: string
           product_id: string
@@ -309,6 +358,14 @@ export type Database = {
       paths_owned_by: {
         Args: { p_owner: string; p_paths: string[] }
         Returns: boolean
+      }
+      report_bounds: {
+        Args: { p_from: string; p_tz: string; p_to: string }
+        Returns: {
+          prev_start: string
+          range_end: string
+          range_start: string
+        }[]
       }
       ship_order: { Args: { p_order_id: string }; Returns: undefined }
       sku_name_part: { Args: { p_name: string }; Returns: string }

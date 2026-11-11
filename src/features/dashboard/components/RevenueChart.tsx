@@ -87,13 +87,25 @@ function RevenueChartContent({ days }: RevenueChartProps) {
         </Text>{' '}
         từ {formatNumber(summary.orderCount)} đơn đã xác nhận
       </Text>
-      <RevenueAreaChart data={data} />
-      <RevenueTable data={data} />
+      <RevenueTrend data={data} />
     </Stack>
   )
 }
 
-function RevenueAreaChart({ data }: { data: RevenuePoint[] }) {
+/** Điểm dữ liệu tối thiểu để vẽ: ngày + doanh thu + số đơn (dashboard và trang Phân tích dùng chung). */
+type TrendPoint = Pick<RevenuePoint, 'day' | 'revenue' | 'order_count'>
+
+/** Biểu đồ vùng doanh thu theo ngày kèm bảng ẩn cho trình đọc màn hình. */
+export function RevenueTrend({ data }: { data: readonly TrendPoint[] }) {
+  return (
+    <>
+      <RevenueAreaChart data={data} />
+      <RevenueTable data={data} />
+    </>
+  )
+}
+
+function RevenueAreaChart({ data }: { data: readonly TrendPoint[] }) {
   const gradientId = useId()
   const first = data[0]
   const last = data.at(-1)
@@ -105,7 +117,7 @@ function RevenueAreaChart({ data }: { data: RevenuePoint[] }) {
   return (
     <Box h={CHART_HEIGHT} role="img" aria-label={label}>
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+        <AreaChart data={[...data]} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
           <defs>
             <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor={SERIES_COLOR} stopOpacity={0.25} />
@@ -152,7 +164,7 @@ function RevenueAreaChart({ data }: { data: RevenuePoint[] }) {
 }
 
 function RevenueTooltip({ active, payload }: TooltipContentProps) {
-  const point = payload?.[0]?.payload as RevenuePoint | undefined
+  const point = payload?.[0]?.payload as TrendPoint | undefined
   if (!active || !point) return null
   return (
     <Paper withBorder shadow="sm" p="xs" radius="sm">
@@ -176,7 +188,7 @@ function RevenueTooltip({ active, payload }: TooltipContentProps) {
 }
 
 /** Bảng dữ liệu ẩn cho trình đọc màn hình — biểu đồ SVG không đọc được từng điểm. */
-function RevenueTable({ data }: { data: RevenuePoint[] }) {
+function RevenueTable({ data }: { data: readonly TrendPoint[] }) {
   return (
     <VisuallyHidden>
       <Table>
