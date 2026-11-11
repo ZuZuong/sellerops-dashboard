@@ -28,12 +28,19 @@ describe('getDbErrorInfo', () => {
     expect(getDbErrorInfo({ code: '23505', message: 'duplicate key', details: null })).toEqual({
       code: '23505',
       message: 'duplicate key',
+      details: null,
     })
   })
 
+  it('đọc details do RPC raise kèm theo', () => {
+    expect(getDbErrorInfo({ code: 'P0001', message: 'INSUFFICIENT_STOCK', details: 'p1' })).toEqual(
+      { code: 'P0001', message: 'INSUFFICIENT_STOCK', details: 'p1' },
+    )
+  })
+
   it('trả null với giá trị không phải object lỗi', () => {
-    expect(getDbErrorInfo('boom')).toEqual({ code: null, message: null })
-    expect(getDbErrorInfo(null)).toEqual({ code: null, message: null })
-    expect(getDbErrorInfo({ code: 42 })).toEqual({ code: null, message: null })
+    expect(getDbErrorInfo('boom')).toEqual({ code: null, message: null, details: null })
+    expect(getDbErrorInfo(null)).toEqual({ code: null, message: null, details: null })
+    expect(getDbErrorInfo({ code: 42 })).toEqual({ code: null, message: null, details: null })
   })
 })

@@ -1,7 +1,7 @@
 import { getDbErrorInfo } from '@/shared/lib/errors'
 import { supabase } from '@/shared/lib/supabase'
 import { mediaPaths, type ProductMedia } from '../lib/productImages'
-import { toSearchTerm } from '../lib/search'
+import { toSearchTerm } from '@/shared/lib/search'
 import type { ImportedProduct, ProductFormValues } from '../schemas/product.schema'
 import type { ProductFilters } from '../schemas/productFilters.schema'
 import type { Product, ProductPage } from '../types'

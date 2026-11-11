@@ -1,11 +1,8 @@
 import { Button, CloseButton, Group, Select, TextInput } from '@mantine/core'
-import { useDebouncedValue } from '@mantine/hooks'
 import { IconFilterOff, IconSearch } from '@tabler/icons-react'
-import { useEffect, useEffectEvent, useState } from 'react'
+import { useSearchInput } from '@/shared/hooks/useSearchInput'
 import { PRODUCT_CATEGORIES } from '../constants'
 import type { useProductFilters } from '../hooks/useProductFilters'
-
-const SEARCH_DEBOUNCE_MS = 300
 
 const STATUS_OPTIONS = [
   { value: 'all', label: 'Tất cả trạng thái' },
@@ -30,25 +27,7 @@ export function ProductFilters({
   resetFilters,
   hasActiveFilters,
 }: ProductFiltersProps) {
-  // Ô tìm kiếm giữ state cục bộ để gõ mượt; chỉ ghi lên URL sau 300ms ngừng gõ.
-  const [search, setSearch] = useState(filters.q)
-  const [debouncedSearch] = useDebouncedValue(search, SEARCH_DEBOUNCE_MS)
-
-  // URL đổi từ bên ngoài (Back/Forward, nút "Xóa bộ lọc") → đồng bộ lại ô nhập.
-  // Bỏ qua khi thay đổi do chính ô này ghi lên, để không ghi đè ký tự người dùng vừa gõ thêm.
-  const [syncedQ, setSyncedQ] = useState(filters.q)
-  if (filters.q !== syncedQ) {
-    setSyncedQ(filters.q)
-    if (filters.q !== debouncedSearch.trim()) setSearch(filters.q)
-  }
-
-  // Chỉ phản ứng khi giá trị debounce đổi; đọc filters mới nhất mà không biến nó thành dependency.
-  const commitSearch = useEffectEvent((value: string) => {
-    if (value !== filters.q) setFilters({ q: value }, { replace: true })
-  })
-  useEffect(() => {
-    commitSearch(debouncedSearch.trim())
-  }, [debouncedSearch])
+  const [search, setSearch] = useSearchInput(filters.q, (q) => setFilters({ q }, { replace: true }))
 
   return (
     <Group gap="sm" align="flex-end" wrap="wrap" mb="md">

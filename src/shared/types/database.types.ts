@@ -62,6 +62,21 @@ export type Database = {
           },
         ]
       }
+      order_code_counters: {
+        Row: {
+          last_value: number
+          user_id: string
+        }
+        Insert: {
+          last_value?: number
+          user_id: string
+        }
+        Update: {
+          last_value?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       order_items: {
         Row: {
           id: string
@@ -97,6 +112,38 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      order_status_events: {
+        Row: {
+          created_at: string
+          id: string
+          order_id: string
+          status: Database["public"]["Enums"]["order_status"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          order_id: string
+          status: Database["public"]["Enums"]["order_status"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          order_id?: string
+          status?: Database["public"]["Enums"]["order_status"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_status_events_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
             referencedColumns: ["id"]
           },
         ]
@@ -211,6 +258,14 @@ export type Database = {
       }
       cancel_order: { Args: { p_order_id: string }; Returns: undefined }
       confirm_order: { Args: { p_order_id: string }; Returns: undefined }
+      create_order: {
+        Args: {
+          p_customer_name: string
+          p_customer_phone: string
+          p_items: Json
+        }
+        Returns: string
+      }
       dashboard_range_start: {
         Args: { p_days: number; p_tz: string }
         Returns: string
@@ -250,6 +305,7 @@ export type Database = {
         Args: { p_order_id: string }
         Returns: Database["public"]["Enums"]["order_status"]
       }
+      next_order_code: { Args: { p_user_id: string }; Returns: string }
       paths_owned_by: {
         Args: { p_owner: string; p_paths: string[] }
         Returns: boolean
