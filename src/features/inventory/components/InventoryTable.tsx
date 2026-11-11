@@ -31,9 +31,9 @@ export function InventoryTableShell({ sort, order, onSort, children }: Inventory
             <Table.Th scope="col" ta="right">
               Ngưỡng cảnh báo
             </Table.Th>
-            <SortableTh field="price" label="Giá bán" align="right" {...sortProps} />
+            <SortableTh field="cost_price" label="Giá vốn" align="right" {...sortProps} />
             <Table.Th scope="col" ta="right">
-              Giá trị tồn
+              Giá trị tồn (giá vốn)
             </Table.Th>
             <Table.Th scope="col">
               <VisuallyHidden>Thao tác</VisuallyHidden>
@@ -88,10 +88,13 @@ export function InventoryTable({ items, onAdjust, onHistory, ...shell }: Invento
             </Text>
           </Table.Td>
           <Table.Td ta="right" style={numeric}>
-            <Text size="sm">{formatCurrency(item.price)}</Text>
+            <Text size="sm">{formatCurrency(item.cost_price)}</Text>
+            <Text size="xs" c="dimmed">
+              Bán {formatCurrency(item.price)}
+            </Text>
           </Table.Td>
           <Table.Td ta="right" style={numeric}>
-            <Text size="sm">{formatCurrency(item.stock * item.price)}</Text>
+            <Text size="sm">{formatCurrency(item.stock * item.cost_price)}</Text>
           </Table.Td>
           <Table.Td>
             <Group justify="flex-end" gap="xs" wrap="nowrap">

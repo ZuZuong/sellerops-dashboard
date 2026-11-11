@@ -12,7 +12,7 @@ export interface OrderPage {
 
 export interface OrderItem extends Pick<
   Tables<'order_items'>,
-  'id' | 'product_id' | 'quantity' | 'unit_price'
+  'id' | 'product_id' | 'quantity' | 'unit_price' | 'unit_cost'
 > {
   /** Sản phẩm hiện tại (tên / SKU / tồn kho có thể đã đổi sau khi đặt; giá chốt nằm ở unit_price). */
   product: Pick<Tables<'products'>, 'id' | 'name' | 'sku' | 'stock' | 'is_active'> | null

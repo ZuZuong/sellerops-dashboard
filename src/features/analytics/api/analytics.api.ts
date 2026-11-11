@@ -4,6 +4,7 @@ import type {
   DailyRevenue,
   ReportRange,
   SalesSummary,
+  StockLedgerRow,
   TopProductRow,
 } from '../types'
 
@@ -40,6 +41,13 @@ export async function fetchTopProductsByRange(
     ...params(range),
     p_limit: limit,
   })
+  if (error) throw error
+  return data
+}
+
+/** Báo cáo xuất nhập tồn theo sản phẩm (số lượng + giá trị theo giá vốn) trong khoảng ngày. */
+export async function fetchStockLedger(range: ReportRange): Promise<StockLedgerRow[]> {
+  const { data, error } = await supabase.rpc('get_stock_ledger', params(range))
   if (error) throw error
   return data
 }

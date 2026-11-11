@@ -42,6 +42,8 @@ const makeItem = (overrides: Partial<InventoryItem> = {}): InventoryItem => ({
   sku: 'DN-AOTHUN-001',
   name: 'Áo thun basic',
   category: 'Áo thun',
+  unit: 'Cái',
+  cost_price: 90_000,
   price: 150_000,
   stock: 3,
   low_stock_threshold: 5,
@@ -55,7 +57,8 @@ const SUMMARY: InventorySummary = {
   low_stock_count: 2,
   out_of_stock_count: 1,
   total_units: 340,
-  stock_value: 51_000_000,
+  stock_value: 30_600_000,
+  retail_value: 51_000_000,
 }
 
 const page = (items: InventoryItem[], total = items.length): InventoryPage => ({ items, total })
@@ -83,9 +86,11 @@ describe('InventoryView', () => {
 
     const row = (await screen.findByText('Áo thun basic')).closest('tr')
     expect(row).toHaveTextContent('Sắp hết')
-    expect(row).toHaveTextContent(/450\.000\s₫/)
+    // Giá trị tồn theo giá vốn: 3 × 90.000
+    expect(row).toHaveTextContent(/270\.000\s₫/)
     expect(screen.getByText('Quần jean').closest('tr')).toHaveTextContent('Hết hàng')
-    expect(await screen.findByText(/51\.000\.000\s₫/)).toBeInTheDocument()
+    expect(await screen.findByText(/30\.600\.000\s₫/)).toBeInTheDocument()
+    expect(screen.getByText(/theo giá bán 51\.000\.000\s₫/)).toBeInTheDocument()
   })
 
   it('mặc định: đang bán, tồn kho thấp nhất trước; lọc qua thẻ tổng quan ghi lên URL', async () => {
@@ -182,7 +187,9 @@ describe('InventoryView', () => {
           reason: 'order_confirmed',
           note: null,
           created_at: '2026-11-10T03:00:00Z',
+          unit_cost: 90_000,
           order: { id: 'o1', code: 'DH-000007' },
+          receipt: null,
         },
         {
           id: 'm1',
@@ -190,7 +197,19 @@ describe('InventoryView', () => {
           reason: 'manual_adjust',
           note: 'Nhập hàng: Lô đầu',
           created_at: '2026-11-01T03:00:00Z',
+          unit_cost: 90_000,
           order: null,
+          receipt: null,
+        },
+        {
+          id: 'm0',
+          delta: 10,
+          reason: 'purchase_receipt',
+          note: null,
+          created_at: '2026-10-20T03:00:00Z',
+          unit_cost: 85_000,
+          order: null,
+          receipt: { id: 'r1', code: 'PN-000001' },
         },
       ],
       total: 2,
@@ -204,7 +223,19 @@ describe('InventoryView', () => {
       '/orders/o1',
     )
     expect(within(drawer).getByText('Xác nhận đơn').closest('tr')).toHaveTextContent('−2')
-    expect(within(drawer).getByText('Nhập hàng: Lô đầu').closest('tr')).toHaveTextContent('+5')
+    expect(
+      within(drawer)
+        .getByText(/Nhập hàng: Lô đầu/)
+        .closest('tr'),
+    ).toHaveTextContent('+5')
+    // Nhập kho theo phiếu: link tới phiếu + đơn giá nhập
+    expect(within(drawer).getByRole('link', { name: 'PN-000001' })).toHaveAttribute(
+      'href',
+      '/purchases/r1',
+    )
+    expect(within(drawer).getByText('Nhập kho theo phiếu').closest('tr')).toHaveTextContent(
+      /Đơn giá 85\.000\s₫/,
+    )
     expect(api.fetchStockMovements).toHaveBeenCalledWith('p1', 1, 10)
   })
 
@@ -221,6 +252,6 @@ describe('InventoryView', () => {
     )
     const [filename, csv] = download.mock.calls[0] ?? []
     expect(filename).toMatch(/^ton-kho-\d{4}-\d{2}-\d{2}\.csv$/)
-    expect(csv).toContain('DN-AOTHUN-001,Áo thun basic')
+    expect(csv).toContain('DN-AOTHUN-001,Áo thun basic,Áo thun,Cái,90000,150000,3')
   })
 })

@@ -5,11 +5,17 @@ import { ErrorState } from '@/shared/components/ErrorState'
 import { WidgetCard } from '@/shared/components/WidgetCard'
 import { getErrorMessage } from '@/shared/lib/errors'
 import { formatCurrency, formatNumber, formatPercent } from '@/shared/lib/formatters'
+import { calcMargin } from '@/shared/lib/metrics'
 import { useTopProductsByRange } from '../api/analytics.queries'
 import type { ReportRange } from '../types'
 
 const LIMIT = 10
 const numeric = { fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' } as const
+
+function marginText(profit: number, revenue: number): string {
+  const margin = calcMargin(profit, revenue)
+  return margin === null ? '' : `Biên ${formatPercent(margin)}`
+}
 
 export function TopProductsTable({ range }: { range: ReportRange }) {
   return (
@@ -57,7 +63,7 @@ function TopProductsContent({ range }: { range: ReportRange }) {
   const totalRevenue = data.reduce((sum, row) => sum + row.revenue, 0)
 
   return (
-    <Table.ScrollContainer minWidth={520}>
+    <Table.ScrollContainer minWidth={640}>
       <Table verticalSpacing="xs" aria-busy={isPlaceholderData}>
         <Table.Thead>
           <Table.Tr>
@@ -70,6 +76,9 @@ function TopProductsContent({ range }: { range: ReportRange }) {
             </Table.Th>
             <Table.Th scope="col" ta="right">
               Doanh thu
+            </Table.Th>
+            <Table.Th scope="col" ta="right">
+              Lợi nhuận gộp
             </Table.Th>
           </Table.Tr>
         </Table.Thead>
@@ -100,6 +109,14 @@ function TopProductsContent({ range }: { range: ReportRange }) {
                   mt={4}
                   aria-label={`Chiếm ${formatPercent(totalRevenue > 0 ? row.revenue / totalRevenue : 0)} doanh thu nhóm top`}
                 />
+              </Table.Td>
+              <Table.Td ta="right" style={numeric}>
+                <Text size="sm" c={row.gross_profit < 0 ? 'red' : undefined}>
+                  {formatCurrency(row.gross_profit)}
+                </Text>
+                <Text size="xs" c="dimmed">
+                  {marginText(row.gross_profit, row.revenue)}
+                </Text>
               </Table.Td>
             </Table.Tr>
           ))}

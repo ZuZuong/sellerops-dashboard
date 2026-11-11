@@ -93,7 +93,10 @@ function RevenueChartContent({ days }: RevenueChartProps) {
 }
 
 /** Điểm dữ liệu tối thiểu để vẽ: ngày + doanh thu + số đơn (dashboard và trang Phân tích dùng chung). */
-type TrendPoint = Pick<RevenuePoint, 'day' | 'revenue' | 'order_count'>
+type TrendPoint = Pick<RevenuePoint, 'day' | 'revenue' | 'order_count'> & {
+  /** Có ở trang Phân tích (doanh thu − giá vốn hàng bán); dashboard không truyền. */
+  gross_profit?: number
+}
 
 /** Biểu đồ vùng doanh thu theo ngày kèm bảng ẩn cho trình đọc màn hình. */
 export function RevenueTrend({ data }: { data: readonly TrendPoint[] }) {
@@ -183,6 +186,14 @@ function RevenueTooltip({ active, payload }: TooltipContentProps) {
           {formatNumber(point.order_count)}
         </Text>
       </Group>
+      {point.gross_profit !== undefined && (
+        <Group gap="xs" justify="space-between">
+          <Text size="sm">Lợi nhuận gộp</Text>
+          <Text size="sm" fw={600}>
+            {formatCurrency(point.gross_profit)}
+          </Text>
+        </Group>
+      )}
     </Paper>
   )
 }

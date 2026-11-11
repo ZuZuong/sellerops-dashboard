@@ -5,6 +5,7 @@ import {
   fetchRevenueByCategory,
   fetchRevenueByDay,
   fetchSalesSummary,
+  fetchStockLedger,
   fetchTopProductsByRange,
 } from './analytics.api'
 
@@ -18,6 +19,7 @@ export const analyticsKeys = {
   revenueByDay: (range: ReportRange) => [...analyticsKeys.all, 'revenue-by-day', range] as const,
   revenueByCategory: (range: ReportRange) =>
     [...analyticsKeys.all, 'revenue-by-category', range] as const,
+  stockLedger: (range: ReportRange) => [...analyticsKeys.all, 'stock-ledger', range] as const,
   topProducts: (range: ReportRange, limit: number) =>
     [...analyticsKeys.all, 'top-products', range, limit] as const,
 }
@@ -53,6 +55,14 @@ export function useTopProductsByRange(range: ReportRange, limit = 10) {
   return useQuery({
     queryKey: analyticsKeys.topProducts(range, limit),
     queryFn: () => fetchTopProductsByRange(range, limit),
+    ...options,
+  })
+}
+
+export function useStockLedger(range: ReportRange) {
+  return useQuery({
+    queryKey: analyticsKeys.stockLedger(range),
+    queryFn: () => fetchStockLedger(range),
     ...options,
   })
 }

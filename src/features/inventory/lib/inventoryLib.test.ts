@@ -87,6 +87,8 @@ describe('inventory lib', () => {
       sku: 'DN-AO-001',
       name: 'Áo thun, đỏ',
       category: 'Áo thun',
+      unit: 'Cái',
+      cost_price: 90_000,
       price: 150_000,
       stock: 2,
       low_stock_threshold: 5,
@@ -95,6 +97,8 @@ describe('inventory lib', () => {
     }
     const lines = inventoryToCsv([item]).split('\r\n')
     expect(lines[0]?.startsWith(CSV_BOM)).toBe(true)
-    expect(lines[1]).toBe('DN-AO-001,"Áo thun, đỏ",Áo thun,150000,2,5,300000,Sắp hết,Đang bán')
+    expect(lines[1]).toBe(
+      'DN-AO-001,"Áo thun, đỏ",Áo thun,Cái,90000,150000,2,5,180000,300000,Sắp hết,Đang bán',
+    )
   })
 })

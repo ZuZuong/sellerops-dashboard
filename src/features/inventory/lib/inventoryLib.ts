@@ -6,6 +6,7 @@ export const MOVEMENT_REASON_LABELS: Readonly<Record<string, string>> = {
   order_confirmed: 'Xác nhận đơn',
   order_cancelled: 'Hủy đơn – hoàn kho',
   manual_adjust: 'Điều chỉnh thủ công',
+  purchase_receipt: 'Nhập kho theo phiếu',
 }
 
 export function getMovementReasonLabel(reason: string): string {

@@ -36,6 +36,7 @@ const makeOrder = (overrides: Partial<OrderDetail> = {}): OrderDetail => ({
       product_id: 'p1',
       quantity: 2,
       unit_price: 150_000,
+      unit_cost: null,
       product: {
         id: 'p1',
         name: 'Áo thun basic',
@@ -49,6 +50,7 @@ const makeOrder = (overrides: Partial<OrderDetail> = {}): OrderDetail => ({
       product_id: 'p2',
       quantity: 1,
       unit_price: 150_000,
+      unit_cost: null,
       product: { id: 'p2', name: 'Quần jean', sku: 'DN-QUANJEAN-002', stock: 5, is_active: true },
     },
   ],
@@ -198,6 +200,28 @@ describe('OrderDetailView', () => {
     await waitFor(() =>
       expect(api.transitionOrder).toHaveBeenCalledWith(ORDER_ID, 'confirmed', 'cancelled'),
     )
+  })
+
+  it('đơn đã xác nhận: hiện giá vốn hàng bán và lợi nhuận gộp theo giá vốn đã chốt', async () => {
+    const order = makeOrder({ status: 'confirmed' })
+    api.fetchOrderDetail.mockResolvedValue({
+      ...order,
+      items: order.items.map((item) => ({ ...item, unit_cost: 90_000 })),
+    })
+    renderDetail()
+
+    // Giá vốn: (2 + 1) × 90.000 = 270.000; lợi nhuận 450.000 − 270.000 = 180.000 (40%)
+    const cogs = await screen.findByText('Giá vốn hàng bán')
+    expect(cogs.parentElement).toHaveTextContent(/270\.000\s₫/)
+    expect(screen.getByText('Lợi nhuận gộp').parentElement).toHaveTextContent(/180\.000\s₫ · 40%/)
+  })
+
+  it('đơn chờ xác nhận chưa có lợi nhuận (chưa chốt giá vốn)', async () => {
+    api.fetchOrderDetail.mockResolvedValue(makeOrder())
+    renderDetail()
+    expect(
+      await screen.findByText('Lợi nhuận gộp được tính khi đơn được xác nhận (chốt giá vốn).'),
+    ).toBeInTheDocument()
   })
 
   it('giao hàng không cần hộp thoại xác nhận', async () => {

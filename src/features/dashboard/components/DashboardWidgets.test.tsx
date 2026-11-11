@@ -30,6 +30,8 @@ const recentMock = vi.mocked(fetchRecentOrders)
 const kpis: DashboardKpis = {
   revenue: 15_000_000,
   prev_revenue: 10_000_000,
+  gross_profit: 6_000_000,
+  prev_gross_profit: 4_000_000,
   order_count: 42,
   prev_order_count: 0,
   pending_count: 3,
@@ -73,16 +75,19 @@ describe('KpiCards', () => {
   it('hiện skeleton khi đang tải', () => {
     kpisMock.mockReturnValue(never())
     renderWithProviders(<KpiCards days={30} />, { route: '/' })
-    expect(screen.getAllByTestId('kpi-skeleton')).toHaveLength(4)
+    expect(screen.getAllByTestId('kpi-skeleton')).toHaveLength(5)
   })
 
-  it('hiện 4 chỉ số và % thay đổi so với kỳ trước', async () => {
+  it('hiện 5 chỉ số (gồm lợi nhuận gộp) và % thay đổi so với kỳ trước', async () => {
     kpisMock.mockResolvedValue(kpis)
     renderWithProviders(<KpiCards days={30} />, { route: '/' })
 
     expect(await screen.findByText('Doanh thu · 30 ngày qua')).toBeInTheDocument()
     expect(normalize(screen.getByText(/15\.000\.000/).textContent)).toBe('15.000.000 ₫')
-    expect(screen.getByText('+50%')).toBeInTheDocument()
+    // Doanh thu 15tr vs 10tr và lợi nhuận gộp 6tr vs 4tr đều +50%.
+    expect(screen.getAllByText('+50%')).toHaveLength(2)
+    expect(screen.getByText('Lợi nhuận gộp · 30 ngày qua')).toBeInTheDocument()
+    expect(screen.getByText('Biên lợi nhuận gộp 40%')).toBeInTheDocument()
     expect(screen.getByText('42')).toBeInTheDocument()
     // Kỳ trước = 0 đơn → không hiện phần trăm vô nghĩa
     expect(screen.getByText('Chưa có dữ liệu kỳ trước')).toBeInTheDocument()

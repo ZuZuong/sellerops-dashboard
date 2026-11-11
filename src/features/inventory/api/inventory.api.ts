@@ -5,7 +5,7 @@ import type { InventoryFilters } from '../schemas/inventoryFilters.schema'
 import type { InventoryItem, InventoryPage, InventorySummary, MovementPage } from '../types'
 
 const INVENTORY_COLUMNS =
-  'id, sku, name, category, price, stock, low_stock_threshold, is_low_stock, is_active'
+  'id, sku, name, category, unit, price, cost_price, stock, low_stock_threshold, is_low_stock, is_active'
 
 /** PostgREST trả lỗi này khi offset vượt quá tổng số dòng. */
 const RANGE_NOT_SATISFIABLE = 'PGRST103'
@@ -73,7 +73,10 @@ export async function fetchStockMovements(
   const from = (page - 1) * pageSize
   const { data, error, count } = await supabase
     .from('inventory_movements')
-    .select('id, delta, reason, note, created_at, order:orders(id, code)', { count: 'exact' })
+    .select(
+      'id, delta, reason, note, created_at, unit_cost, order:orders(id, code), receipt:purchase_receipts(id, code)',
+      { count: 'exact' },
+    )
     .eq('product_id', productId)
     .order('created_at', { ascending: false })
     .order('id', { ascending: true })
