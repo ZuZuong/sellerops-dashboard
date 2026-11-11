@@ -5,6 +5,7 @@ import {
   formatDate,
   formatDateTime,
   formatNumber,
+  formatPercent,
   formatPercentChange,
   formatShortDate,
 } from './formatters'
@@ -42,5 +43,12 @@ describe('formatters', () => {
     expect(formatDateTime('2026-11-05T07:30:00Z')).toBe('05/11/2026 14:30')
     // 20:00 UTC đã sang ngày hôm sau ở UTC+7
     expect(formatDateTime('2026-11-05T20:00:00Z')).toBe('06/11/2026 03:00')
+  })
+})
+
+describe('formatPercent', () => {
+  it('tỉ trọng không có dấu', () => {
+    expect(formatPercent(0.755).replace(/\s/g, ' ')).toBe('75,5%')
+    expect(formatPercent(0)).toBe('0%')
   })
 })

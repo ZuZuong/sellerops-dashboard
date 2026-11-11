@@ -25,6 +25,11 @@ const percentFormatter = new Intl.NumberFormat(LOCALE, {
   signDisplay: 'exceptZero',
 })
 
+const shareFormatter = new Intl.NumberFormat(LOCALE, {
+  style: 'percent',
+  maximumFractionDigits: 1,
+})
+
 const dateFormatter = new Intl.DateTimeFormat(LOCALE, {
   day: '2-digit',
   month: '2-digit',
@@ -57,6 +62,11 @@ export function formatNumber(value: number): string {
 /** Tỉ lệ dạng thập phân: 0.125 → "+12,5%", -0.5 → "-50%", 0 → "0%". */
 export function formatPercentChange(ratio: number): string {
   return percentFormatter.format(ratio)
+}
+
+/** Tỉ trọng dạng thập phân: 0.755 → "75,5%". */
+export function formatPercent(ratio: number): string {
+  return shareFormatter.format(ratio)
 }
 
 /**
