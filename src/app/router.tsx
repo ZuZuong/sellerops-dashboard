@@ -24,6 +24,7 @@ export const router = createBrowserRouter([
           { index: true, lazy: page(() => import('@/pages/DashboardPage')) },
           { path: ROUTES.products, lazy: page(() => import('@/pages/ProductsPage')) },
           { path: ROUTES.orders, lazy: page(() => import('@/pages/OrdersPage')) },
+          { path: ROUTES.orderDetail, lazy: page(() => import('@/pages/OrderDetailPage')) },
           { path: ROUTES.inventory, lazy: page(() => import('@/pages/InventoryPage')) },
           { path: ROUTES.analytics, lazy: page(() => import('@/pages/AnalyticsPage')) },
         ],
