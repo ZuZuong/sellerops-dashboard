@@ -1,10 +1,11 @@
 import { z } from 'zod'
+import type { SortOrder } from '@/shared/types/sort'
 
 export const PRODUCT_SORT_FIELDS = ['created_at', 'name', 'price', 'stock'] as const
 export const PRODUCT_PAGE_SIZES = [10, 20, 50] as const
 
 export type ProductSortField = (typeof PRODUCT_SORT_FIELDS)[number]
-export type SortOrder = 'asc' | 'desc'
+export type { SortOrder }
 
 /**
  * Filter / sort / phân trang của danh sách sản phẩm, lưu trên URL.

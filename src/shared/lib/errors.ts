@@ -19,11 +19,16 @@ export interface DbErrorInfo {
   code: string | null
   /** Message gốc; với RPC tự định nghĩa đây là mã nghiệp vụ (vd. 'INSUFFICIENT_STOCK'). */
   message: string | null
+  /** Chi tiết kèm theo (vd. RPC raise `using detail = product_id`). */
+  details: string | null
 }
 
 export function getDbErrorInfo(error: unknown): DbErrorInfo {
-  if (typeof error !== 'object' || error === null) return { code: null, message: null }
+  if (typeof error !== 'object' || error === null) {
+    return { code: null, message: null, details: null }
+  }
   const code = 'code' in error && typeof error.code === 'string' ? error.code : null
   const message = 'message' in error && typeof error.message === 'string' ? error.message : null
-  return { code, message }
+  const details = 'details' in error && typeof error.details === 'string' ? error.details : null
+  return { code, message, details }
 }

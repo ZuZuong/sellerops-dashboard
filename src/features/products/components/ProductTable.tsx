@@ -1,19 +1,5 @@
+import { ActionIcon, Avatar, Badge, Group, Menu, Table, Text, VisuallyHidden } from '@mantine/core'
 import {
-  ActionIcon,
-  Avatar,
-  Badge,
-  Center,
-  Group,
-  Menu,
-  Table,
-  Text,
-  UnstyledButton,
-  VisuallyHidden,
-} from '@mantine/core'
-import {
-  IconArrowDown,
-  IconArrowUp,
-  IconArrowsSort,
   IconDots,
   IconEdit,
   IconPhoto,
@@ -22,6 +8,7 @@ import {
   IconTrash,
 } from '@tabler/icons-react'
 import type { ReactNode } from 'react'
+import { SortableTh } from '@/shared/components/SortableTh'
 import { formatCurrency, formatDate } from '@/shared/lib/formatters'
 import { getProductImageUrl } from '../api/productImages.api'
 import { priceSchema, stockSchema } from '../schemas/product.schema'
@@ -96,40 +83,6 @@ export function ProductTableShell({ sort, order, onSort, children }: ProductTabl
         <Table.Tbody>{children}</Table.Tbody>
       </Table>
     </Table.ScrollContainer>
-  )
-}
-
-interface SortableThProps {
-  field: ProductSortField
-  label: string
-  align?: 'right'
-  sort: ProductSortField
-  order: SortOrder
-  onSort?: (field: ProductSortField) => void
-}
-
-function SortableTh({ field, label, align, sort, order, onSort }: SortableThProps) {
-  const active = sort === field
-  const Icon = !active ? IconArrowsSort : order === 'asc' ? IconArrowUp : IconArrowDown
-  return (
-    <Table.Th
-      scope="col"
-      aria-sort={active ? (order === 'asc' ? 'ascending' : 'descending') : 'none'}
-      ta={align}
-    >
-      <UnstyledButton
-        onClick={() => onSort?.(field)}
-        disabled={!onSort}
-        fw={600}
-        fz="sm"
-        style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
-      >
-        {label}
-        <Center c={active ? undefined : 'dimmed'} aria-hidden>
-          <Icon size={14} />
-        </Center>
-      </UnstyledButton>
-    </Table.Th>
   )
 }
 
