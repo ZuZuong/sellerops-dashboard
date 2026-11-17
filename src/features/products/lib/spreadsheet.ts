@@ -1,4 +1,4 @@
-import { PRODUCT_CATEGORIES, PRODUCT_UNITS } from '../constants'
+import { PRODUCT_UNITS } from '../constants'
 import { IMPORT_COLUMNS, MAX_IMPORT_ROWS } from './importProducts'
 
 /** Đuôi file chấp nhận khi nhập (SheetJS đọc được cả .xls và .csv). */
@@ -68,7 +68,9 @@ export function buildGuideRows(): (string | number)[][] {
     ],
     ['4. Cột có dấu * là bắt buộc. SKU do hệ thống tự sinh — không cần điền.'],
     ['5. Giá ghi số nguyên VND, có thể viết 150000 hoặc 150.000. Không ghi chữ (vd. "150k").'],
-    ['6. Giá vốn là giá nhập 1 đơn vị (chưa VAT). Tồn đầu kỳ được ghi vào kho theo giá vốn này.'],
+    [
+      '6. Giá vốn là giá nhập 1 đơn vị (chưa VAT). Số lượng được ghi vào kho làm tồn đầu kỳ theo giá vốn này.',
+    ],
     [
       '7. Sau khi nhập, hàng nhập thêm nên đi qua Phiếu nhập kho để giá vốn được tính bình quân tự động.',
     ],
@@ -89,12 +91,20 @@ export function buildGuideRows(): (string | number)[][] {
  *  - "Hướng dẫn": quy tắc và định dạng từng cột.
  *  - "Danh mục", "Đơn vị tính": danh sách giá trị hợp lệ.
  */
-export async function downloadImportTemplate(): Promise<void> {
+export async function downloadImportTemplate(categories: readonly string[]): Promise<void> {
   const XLSX = await import('xlsx')
   const header = IMPORT_COLUMNS.map((c) => (c.required ? `${c.label} *` : c.label))
-  const example = IMPORT_COLUMNS.map((c) => c.example)
+  // Dòng ví dụ dùng danh mục thật của cửa hàng để nhập thử được ngay.
+  const categoryIndex = IMPORT_COLUMNS.findIndex((c) => c.field === 'category')
+  const withCategory = (row: readonly (string | number)[], category: string | undefined) =>
+    row.map((cell, index) => (index === categoryIndex && category ? category : cell))
+  const example = withCategory(
+    IMPORT_COLUMNS.map((c) => c.example),
+    categories[0],
+  )
+  const second = withCategory(SECOND_EXAMPLE, categories[1] ?? categories[0])
 
-  const productSheet = XLSX.utils.aoa_to_sheet([header, example, SECOND_EXAMPLE])
+  const productSheet = XLSX.utils.aoa_to_sheet([header, example, second])
   productSheet['!cols'] = IMPORT_COLUMNS.map((c) => ({ wch: c.width }))
 
   const guideSheet = XLSX.utils.aoa_to_sheet(buildGuideRows())
@@ -102,7 +112,7 @@ export async function downloadImportTemplate(): Promise<void> {
 
   const categorySheet = XLSX.utils.aoa_to_sheet([
     ['Danh mục hợp lệ'],
-    ...PRODUCT_CATEGORIES.map((category) => [category]),
+    ...categories.map((category) => [category]),
   ])
   categorySheet['!cols'] = [{ wch: 24 }]
 

@@ -2,6 +2,8 @@ export const ROUTES = {
   dashboard: '/',
   products: '/products',
   productImports: '/products/imports',
+  productTrash: '/products/trash',
+  productCategories: '/products/categories',
   orders: '/orders',
   orderDetail: '/orders/:orderId',
   purchases: '/purchases',

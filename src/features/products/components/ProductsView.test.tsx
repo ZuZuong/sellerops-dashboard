@@ -1,16 +1,18 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { Notifications } from '@mantine/notifications'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { testCategoryOverview } from '../test/fixtures'
 import { renderWithProviders } from '@/test/render'
 import {
   adjustProductStock,
   createProduct,
-  deleteProduct,
   fetchProducts,
   setProductActive,
   updateProduct,
   updateProductPrice,
 } from '../api/products.api'
+import { trashProducts } from '../api/productTrash.api'
 import type { Product, ProductPage } from '../types'
 import { ProductForm } from './ProductFormModal'
 import { ProductsView } from './ProductsView'
@@ -22,7 +24,14 @@ vi.mock('../api/products.api', () => ({
   updateProductPrice: vi.fn(),
   setProductActive: vi.fn(),
   adjustProductStock: vi.fn(),
-  deleteProduct: vi.fn(),
+}))
+
+vi.mock('../api/productCategories.api', () => ({
+  fetchProductCategories: vi.fn(() => Promise.resolve(testCategoryOverview())),
+}))
+
+vi.mock('../api/productTrash.api', () => ({
+  trashProducts: vi.fn(),
 }))
 
 const api = {
@@ -32,7 +41,7 @@ const api = {
   updateProductPrice: vi.mocked(updateProductPrice),
   setProductActive: vi.mocked(setProductActive),
   adjustProductStock: vi.mocked(adjustProductStock),
-  deleteProduct: vi.mocked(deleteProduct),
+  trashProducts: vi.mocked(trashProducts),
 }
 
 const makeProduct = (overrides: Partial<Product> = {}): Product => ({
@@ -40,6 +49,7 @@ const makeProduct = (overrides: Partial<Product> = {}): Product => ({
   sku: 'AT-001',
   name: 'Áo thun basic',
   category: 'Áo thun',
+  category_missing: false,
   unit: 'Cái',
   cost_price: 90_000,
   price: 150_000,
@@ -144,21 +154,128 @@ describe('ProductsView', () => {
     expect(await screen.findByText('Áo thun basic')).toBeInTheDocument()
   })
 
-  it('xóa cần xác nhận; lỗi PRODUCT_IN_ORDERS hiện thông báo tiếng Việt', async () => {
+  it('xóa cần xác nhận rồi chuyển vào thùng rác', async () => {
     const product = makeProduct()
     api.fetchProducts.mockResolvedValue(page([product]))
-    api.deleteProduct.mockRejectedValue({ code: 'P0001', message: 'PRODUCT_IN_ORDERS' })
-    renderWithProviders(<ProductsView />, { route: '/products' })
+    api.trashProducts.mockResolvedValue({ trashed: 1, deactivated: 0 })
+    renderWithProviders(
+      <>
+        <Notifications />
+        <ProductsView />
+      </>,
+      { route: '/products' },
+    )
 
     await userEvent.click(await screen.findByRole('button', { name: 'Thao tác cho Áo thun basic' }))
     await userEvent.click(await screen.findByRole('menuitem', { name: 'Xóa' }))
 
     const dialog = await screen.findByRole('dialog', { name: 'Xóa sản phẩm?' })
-    expect(api.deleteProduct).not.toHaveBeenCalled()
+    expect(dialog).toHaveTextContent('khôi phục trong 30 ngày')
+    expect(api.trashProducts).not.toHaveBeenCalled()
 
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Xóa vĩnh viễn' }))
-    await waitFor(() => expect(api.deleteProduct).toHaveBeenCalledWith(product, expect.anything()))
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Chuyển vào thùng rác' }))
+    await waitFor(() => expect(api.trashProducts).toHaveBeenCalledWith(['p1']))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(await screen.findByText('Đã xóa "Áo thun basic"')).toBeInTheDocument()
+  })
+
+  it('chọn nhiều sản phẩm rồi xóa một lần; sản phẩm đã có đơn chỉ được ngừng bán', async () => {
+    api.fetchProducts.mockResolvedValue(
+      page([
+        makeProduct(),
+        makeProduct({ id: 'p2', name: 'Quần jean' }),
+        makeProduct({ id: 'p3', name: 'Váy hoa' }),
+      ]),
+    )
+    api.trashProducts.mockResolvedValue({ trashed: 1, deactivated: 1 })
+    renderWithProviders(
+      <>
+        <Notifications />
+        <ProductsView />
+      </>,
+      { route: '/products' },
+    )
+
+    await userEvent.click(await screen.findByRole('checkbox', { name: 'Chọn Áo thun basic' }))
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Chọn Váy hoa' }))
+    const bar = screen.getByRole('region', { name: 'Thao tác với sản phẩm đã chọn' })
+    expect(bar).toHaveTextContent('Đã chọn 2 sản phẩm')
+    expect(
+      screen.getByRole('checkbox', { name: 'Chọn tất cả sản phẩm trên trang' }),
+    ).toBePartiallyChecked()
+
+    await userEvent.click(within(bar).getByRole('button', { name: 'Xóa 2 sản phẩm' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Xóa 2 sản phẩm đã chọn?' })
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Chuyển vào thùng rác' }))
+
+    await waitFor(() => expect(api.trashProducts).toHaveBeenCalledWith(['p1', 'p3']))
+    expect(await screen.findByText(/1 sản phẩm đã có đơn hàng/)).toBeInTheDocument()
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('region', { name: 'Thao tác với sản phẩm đã chọn' }),
+      ).not.toBeInTheDocument(),
+    )
+  })
+
+  it('danh mục đã bị xóa: icon đỏ, không cho đăng bán, bấm icon mở form sửa kèm cảnh báo', async () => {
+    api.fetchProducts.mockResolvedValue(
+      page([makeProduct({ category: 'Áo len', category_missing: true, is_active: false })]),
+    )
+    renderWithProviders(<ProductsView />, { route: '/products' })
+
+    const warning = await screen.findByRole('button', {
+      name: 'Danh mục của Áo thun basic đã bị xóa — cập nhật lại',
+    })
+    await userEvent.click(screen.getByRole('button', { name: 'Thao tác cho Áo thun basic' }))
+    expect(
+      await screen.findByRole('menuitem', { name: 'Đăng bán (cần chọn lại danh mục)' }),
+    ).toBeDisabled()
+    await userEvent.keyboard('{Escape}')
+
+    await userEvent.click(warning)
+    const dialog = await screen.findByRole('dialog', { name: 'Sửa sản phẩm' })
+    expect(dialog).toHaveTextContent('Danh mục của sản phẩm này đã bị xóa')
+    expect(within(dialog).getByRole('combobox', { name: /Danh mục/ })).toHaveValue('')
+  })
+
+  it('lọc "Cần cập nhật danh mục"', async () => {
+    api.fetchProducts.mockResolvedValue(page([makeProduct()]))
+    renderWithProviders(<ProductsView />, { route: '/products' })
+
+    await userEvent.click(await screen.findByRole('combobox', { name: 'Trạng thái bán' }))
+    await userEvent.click(await screen.findByRole('option', { name: 'Cần cập nhật danh mục' }))
+    await waitFor(() =>
+      expect(api.fetchProducts).toHaveBeenLastCalledWith(
+        expect.objectContaining({ status: 'needs_category' }),
+      ),
+    )
+  })
+
+  it('chọn tất cả trên trang', async () => {
+    api.fetchProducts.mockResolvedValue(
+      page([makeProduct(), makeProduct({ id: 'p2', name: 'Quần jean' })]),
+    )
+    renderWithProviders(<ProductsView />, { route: '/products' })
+
+    await userEvent.click(
+      await screen.findByRole('checkbox', { name: 'Chọn tất cả sản phẩm trên trang' }),
+    )
+    expect(screen.getByRole('checkbox', { name: 'Chọn Quần jean' })).toBeChecked()
+    expect(screen.getByText('Đã chọn 2 sản phẩm')).toBeInTheDocument()
+  })
+
+  it('ô Sắp xếp: chọn "Giá vốn thấp → cao" ghi sort lên URL và tải lại', async () => {
+    api.fetchProducts.mockResolvedValue(page([makeProduct()]))
+    renderWithProviders(<ProductsView />, { route: '/products' })
+
+    await userEvent.click(await screen.findByRole('combobox', { name: 'Sắp xếp' }))
+    await userEvent.click(await screen.findByRole('option', { name: 'Giá vốn thấp → cao' }))
+
+    await waitFor(() =>
+      expect(api.fetchProducts).toHaveBeenLastCalledWith(
+        expect.objectContaining({ sort: 'cost_price', order: 'asc', page: 1 }),
+      ),
+    )
   })
 
   it('ngừng bán cần xác nhận; mở bán lại thì không', async () => {

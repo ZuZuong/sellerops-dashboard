@@ -2,14 +2,17 @@ import {
   ActionIcon,
   Avatar,
   Badge,
+  Checkbox,
   Group,
   Menu,
   Stack,
   Table,
   Text,
+  Tooltip,
   VisuallyHidden,
 } from '@mantine/core'
 import {
+  IconAlertCircleFilled,
   IconChartDots,
   IconDots,
   IconEdit,
@@ -43,15 +46,49 @@ interface ProductTableProps extends ProductTableActions {
   sort: ProductSortField
   order: SortOrder
   onSort: (field: ProductSortField) => void
+  /** Sản phẩm đang được chọn (để xóa nhiều). */
+  selectedIds: ReadonlySet<string>
+  onSelect: (product: Product, selected: boolean) => void
+  onSelectAll: (selected: boolean) => void
 }
 
-export const PRODUCT_TABLE_MIN_WIDTH = 860
+export const PRODUCT_TABLE_MIN_WIDTH = 900
+/** Số cột của bảng (kể cả cột chọn) — dùng cho skeleton. */
+export const PRODUCT_TABLE_COLUMNS = 9
 
-export function ProductTable({ products, sort, order, onSort, ...actions }: ProductTableProps) {
+export function ProductTable({
+  products,
+  sort,
+  order,
+  onSort,
+  selectedIds,
+  onSelect,
+  onSelectAll,
+  ...actions
+}: ProductTableProps) {
+  const selectedOnPage = products.filter((p) => selectedIds.has(p.id)).length
   return (
-    <ProductTableShell sort={sort} order={order} onSort={onSort}>
+    <ProductTableShell
+      sort={sort}
+      order={order}
+      onSort={onSort}
+      selectAll={
+        <Checkbox
+          aria-label="Chọn tất cả sản phẩm trên trang"
+          checked={products.length > 0 && selectedOnPage === products.length}
+          indeterminate={selectedOnPage > 0 && selectedOnPage < products.length}
+          onChange={(event) => onSelectAll(event.currentTarget.checked)}
+        />
+      }
+    >
       {products.map((product) => (
-        <ProductRow key={product.id} product={product} {...actions} />
+        <ProductRow
+          key={product.id}
+          product={product}
+          selected={selectedIds.has(product.id)}
+          onSelect={onSelect}
+          {...actions}
+        />
       ))}
     </ProductTableShell>
   )
@@ -61,11 +98,19 @@ interface ProductTableShellProps {
   sort: ProductSortField
   order: SortOrder
   onSort?: (field: ProductSortField) => void
+  /** Ô "chọn tất cả" ở đầu bảng; bỏ trống khi đang tải. */
+  selectAll?: ReactNode
   children: ReactNode
 }
 
 /** Khung bảng + header sắp xếp; dùng chung cho bảng thật và skeleton. */
-export function ProductTableShell({ sort, order, onSort, children }: ProductTableShellProps) {
+export function ProductTableShell({
+  sort,
+  order,
+  onSort,
+  selectAll,
+  children,
+}: ProductTableShellProps) {
   const sortable = (field: ProductSortField, label: string, align?: 'right') => (
     <SortableTh
       field={field}
@@ -81,6 +126,9 @@ export function ProductTableShell({ sort, order, onSort, children }: ProductTabl
       <Table verticalSpacing="sm" highlightOnHover>
         <Table.Thead>
           <Table.Tr>
+            <Table.Th scope="col" w={40}>
+              {selectAll ?? <VisuallyHidden>Chọn</VisuallyHidden>}
+            </Table.Th>
             <Table.Th scope="col">SKU</Table.Th>
             {sortable('name', 'Tên sản phẩm')}
             <Table.Th scope="col">Danh mục</Table.Th>
@@ -101,15 +149,32 @@ export function ProductTableShell({ sort, order, onSort, children }: ProductTabl
 
 function ProductRow({
   product,
+  selected,
+  onSelect,
   onEdit,
   onInsight,
   onToggleActive,
   onDelete,
   onQuickPrice,
   onQuickStock,
-}: { product: Product } & ProductTableActions) {
+}: {
+  product: Product
+  selected: boolean
+  onSelect: (product: Product, selected: boolean) => void
+} & ProductTableActions) {
   return (
-    <Table.Tr style={product.is_active ? undefined : { opacity: 0.7 }}>
+    <Table.Tr
+      style={product.is_active ? undefined : { opacity: 0.7 }}
+      bg={selected ? 'var(--mantine-primary-color-light)' : undefined}
+      aria-selected={selected}
+    >
+      <Table.Td>
+        <Checkbox
+          aria-label={`Chọn ${product.name}`}
+          checked={selected}
+          onChange={(event) => onSelect(product, event.currentTarget.checked)}
+        />
+      </Table.Td>
       <Table.Td>
         <Text size="sm" ff="monospace">
           {product.sku}
@@ -132,9 +197,33 @@ function ProductRow({
         </Group>
       </Table.Td>
       <Table.Td>
-        <Text size="sm" c={product.category ? undefined : 'dimmed'}>
-          {product.category ?? '—'}
-        </Text>
+        {product.category_missing ? (
+          <Group gap={6} wrap="nowrap">
+            <Text size="sm" c="dimmed" td="line-through">
+              {product.category ?? 'Chưa có'}
+            </Text>
+            <Tooltip
+              label="Danh mục của sản phẩm này đã bị xóa — cần cập nhật lại"
+              events={{ hover: true, focus: true, touch: true }}
+              multiline
+              w={220}
+            >
+              <ActionIcon
+                variant="subtle"
+                color="red"
+                size="sm"
+                aria-label={`Danh mục của ${product.name} đã bị xóa — cập nhật lại`}
+                onClick={() => onEdit(product)}
+              >
+                <IconAlertCircleFilled size={18} />
+              </ActionIcon>
+            </Tooltip>
+          </Group>
+        ) : (
+          <Text size="sm" c={product.category ? undefined : 'dimmed'}>
+            {product.category ?? '—'}
+          </Text>
+        )}
       </Table.Td>
       <Table.Td ta="right">
         <Stack gap={0} align="flex-end">
@@ -195,8 +284,14 @@ function ProductRow({
                   product.is_active ? <IconPlayerPause size={16} /> : <IconPlayerPlay size={16} />
                 }
                 onClick={() => onToggleActive(product)}
+                // Danh mục đã bị xóa: phải chọn lại danh mục trước khi đăng bán.
+                disabled={product.category_missing}
               >
-                {product.is_active ? 'Ngừng bán' : 'Đăng bán'}
+                {product.is_active
+                  ? 'Ngừng bán'
+                  : product.category_missing
+                    ? 'Đăng bán (cần chọn lại danh mục)'
+                    : 'Đăng bán'}
               </Menu.Item>
               <Menu.Divider />
               <Menu.Item

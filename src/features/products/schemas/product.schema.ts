@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { DEFAULT_PRODUCT_UNIT, PRODUCT_CATEGORIES, PRODUCT_UNITS } from '../constants'
+import { DEFAULT_PRODUCT_UNIT, PRODUCT_UNITS } from '../constants'
 
 /** Giới hạn theo cột `numeric(12, 0)` trong DB. */
 export const MAX_PRICE = 999_999_999_999
@@ -38,7 +38,12 @@ export const productSchema = z.object({
     .trim()
     .min(1, 'Vui lòng nhập tên sản phẩm')
     .max(200, 'Tên sản phẩm tối đa 200 ký tự'),
-  category: z.enum(PRODUCT_CATEGORIES, { error: 'Vui lòng chọn danh mục' }),
+  // Danh sách hợp lệ do seller quản lý (bảng product_categories); DB kiểm tra lại bằng trigger.
+  category: z
+    .string({ error: 'Vui lòng chọn danh mục' })
+    .trim()
+    .min(1, 'Vui lòng chọn danh mục')
+    .max(50, 'Tên danh mục tối đa 50 ký tự'),
   unit: z.enum(PRODUCT_UNITS, { error: 'Vui lòng chọn đơn vị tính' }),
   /** Giá vốn 1 đơn vị (giá nhập). Khi sửa: giá vốn bình quân hiện tại, phiếu nhập kho tự cập nhật. */
   cost_price: costPriceSchema,

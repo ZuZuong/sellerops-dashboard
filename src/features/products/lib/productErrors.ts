@@ -15,6 +15,11 @@ const RPC_ERROR_MESSAGES: Readonly<Record<string, string>> = {
   IMPORT_EMPTY: 'File không có sản phẩm nào để nhập.',
   TOO_MANY_ROWS: 'File có quá nhiều dòng cho một lần nhập.',
   INVALID_FILE: 'Thông tin file không hợp lệ. Vui lòng chọn lại file.',
+  INVALID_CATEGORY_NAME: 'Tên danh mục phải từ 1 đến 50 ký tự.',
+  CATEGORY_NAME_EXISTS: 'Đã có danh mục cùng tên.',
+  CATEGORY_NOT_FOUND: 'Danh mục không tồn tại hoặc đã bị xóa.',
+  DUPLICATE_PRODUCT_NAME:
+    'File có sản phẩm trùng tên với sản phẩm đã có (có thể vừa được thêm). Vui lòng chọn lại file để kiểm tra.',
 }
 
 /** SQLSTATE của Postgres. */

@@ -1,5 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
+  Alert,
   Button,
   Code,
   Group,
@@ -14,18 +15,17 @@ import {
   Tooltip,
 } from '@mantine/core'
 import { useMediaQuery } from '@mantine/hooks'
+import { IconAlertCircle } from '@tabler/icons-react'
 import type { ClipboardEvent } from 'react'
 import { Controller, useForm, useWatch, type Control } from 'react-hook-form'
-import { useCreateProduct, useUpdateProduct } from '../api/products.queries'
+import {
+  useCreateProduct,
+  useProductCategoryNames,
+  useUpdateProduct,
+} from '../api/products.queries'
 import { formatCurrency, formatPercent } from '@/shared/lib/formatters'
 import { calcMargin } from '@/shared/lib/metrics'
-import {
-  DEFAULT_PRODUCT_UNIT,
-  isProductCategory,
-  isProductUnit,
-  PRODUCT_CATEGORIES,
-  PRODUCT_UNITS,
-} from '../constants'
+import { DEFAULT_PRODUCT_UNIT, isProductUnit, PRODUCT_UNITS } from '../constants'
 import { useProductMedia } from '../hooks/useProductMedia'
 import { getClipboardImageFiles } from '../lib/productImages'
 import { previewSku } from '../lib/sku'
@@ -66,8 +66,8 @@ export function ProductFormModal({ opened, onClose, product }: ProductFormModalP
 function toFormInput(product: Product): Partial<ProductFormInput> {
   return {
     name: product.name,
-    // Danh mục cũ (nhập tay trước đây) không còn trong danh sách → buộc chọn lại.
-    category: isProductCategory(product.category) ? product.category : undefined,
+    // Danh mục đã bị xóa → buộc chọn lại.
+    category: product.category_missing ? undefined : (product.category ?? undefined),
     unit: isProductUnit(product.unit) ? product.unit : DEFAULT_PRODUCT_UNIT,
     // Giá vốn bình quân có thể lẻ (vd. 93.333,33) → làm tròn để sửa trên ô số nguyên VND.
     cost_price: Math.round(product.cost_price),
@@ -90,6 +90,7 @@ export function ProductForm({ product, onDone }: ProductFormProps) {
   const updateProduct = useUpdateProduct()
   const isSubmitting = createProduct.isPending || updateProduct.isPending
   const mediaState = useProductMedia(product)
+  const categories = useProductCategoryNames()
 
   const {
     register,
@@ -146,6 +147,18 @@ export function ProductForm({ product, onDone }: ProductFormProps) {
           {...register('name')}
         />
 
+        {product?.category_missing && (
+          <Alert
+            color="red"
+            variant="light"
+            icon={<IconAlertCircle size={18} aria-hidden />}
+            title="Danh mục của sản phẩm này đã bị xóa"
+          >
+            Danh mục "{product.category}" không còn tồn tại nên sản phẩm đã chuyển về lưu chưa đăng.
+            Chọn danh mục mới rồi lưu, sau đó có thể đăng bán lại.
+          </Alert>
+        )}
+
         <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md" style={{ alignItems: 'start' }}>
           <Controller
             control={control}
@@ -154,13 +167,18 @@ export function ProductForm({ product, onDone }: ProductFormProps) {
               <Select
                 label="Danh mục"
                 placeholder="Chọn danh mục"
-                data={PRODUCT_CATEGORIES}
+                data={categories.data ?? []}
+                disabled={categories.isPending}
                 value={field.value ?? null}
                 onChange={(value) => field.onChange(value ?? undefined)}
                 onBlur={field.onBlur}
                 ref={field.ref}
                 searchable
-                nothingFoundMessage="Không có danh mục phù hợp"
+                nothingFoundMessage={
+                  categories.data?.length === 0
+                    ? 'Chưa có danh mục — thêm ở trang Danh mục'
+                    : 'Không có danh mục phù hợp'
+                }
                 withAsterisk
                 error={errors.category?.message}
               />

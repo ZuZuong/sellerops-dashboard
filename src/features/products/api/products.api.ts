@@ -8,7 +8,7 @@ import type { Product, ProductInsight, ProductPage } from '../types'
 import { removeProductImages, uploadProductMedia } from './productImages.api'
 
 const PRODUCT_COLUMNS =
-  'id, sku, name, category, unit, price, cost_price, stock, low_stock_threshold, is_low_stock, is_active, description, hero_image_path, image_paths, created_at'
+  'id, sku, name, category, category_missing, unit, price, cost_price, stock, low_stock_threshold, is_low_stock, is_active, description, hero_image_path, image_paths, created_at'
 
 /** PostgREST trả lỗi này khi offset vượt quá tổng số dòng (vd. trang cũ sau khi xóa / lọc). */
 const RANGE_NOT_SATISFIABLE = 'PGRST103'
@@ -19,7 +19,10 @@ function buildListQuery(filters: ProductFilters, head = false) {
   const term = toSearchTerm(filters.q)
   if (term) query = query.or(`name.ilike.%${term}%,sku.ilike.%${term}%`)
   if (filters.category) query = query.eq('category', filters.category)
-  if (filters.status !== 'all') query = query.eq('is_active', filters.status === 'active')
+  if (filters.status === 'active' || filters.status === 'inactive') {
+    query = query.eq('is_active', filters.status === 'active')
+  }
+  if (filters.status === 'needs_category') query = query.eq('category_missing', true)
   if (filters.stock === 'low') query = query.eq('is_low_stock', true)
   if (filters.stock === 'out') query = query.eq('stock', 0)
 
@@ -132,13 +135,6 @@ export async function adjustProductStock(id: string, delta: number, note: string
   })
   if (error) throw error
   return data
-}
-
-/** Xóa cứng qua RPC; DB từ chối (PRODUCT_IN_ORDERS) nếu sản phẩm đã có trong đơn. Xóa xong dọn ảnh. */
-export async function deleteProduct(product: Product): Promise<void> {
-  const { error } = await supabase.rpc('delete_product', { p_product_id: product.id })
-  if (error) throw error
-  await removeProductImages(productImagePaths(product))
 }
 
 /** Hiệu quả sản phẩm (toàn thời gian): bán ra, giá vốn, lợi nhuận gộp, nhập hàng. */

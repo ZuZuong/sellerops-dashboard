@@ -98,9 +98,7 @@ export function ProductImportHistory() {
         <Table.Td ta="right">{formatNumber(item.row_count)}</Table.Td>
         <Table.Td ta="right">{formatNumber(item.imported_count)}</Table.Td>
         <Table.Td>
-          <Badge color={item.published ? 'green' : 'gray'} variant="light" radius="sm">
-            {item.published ? 'Đăng bán ngay' : 'Lưu chưa đăng'}
-          </Badge>
+          <PublishBadge published={item.published_count} total={item.imported_count} />
         </Table.Td>
         <Table.Td>
           <Badge color="teal" variant="dot" radius="sm">
@@ -207,6 +205,29 @@ export function ProductImportHistory() {
         {viewing && <ImportedProducts item={viewing} onDownload={() => void download(viewing)} />}
       </Drawer>
     </Paper>
+  )
+}
+
+/** Trạng thái đăng của một lần nhập: đăng hết / lưu hết / đăng một phần. */
+function PublishBadge({ published, total }: { published: number; total: number }) {
+  if (total > 0 && published === total) {
+    return (
+      <Badge color="green" variant="light" radius="sm">
+        Đăng tất cả
+      </Badge>
+    )
+  }
+  if (published === 0) {
+    return (
+      <Badge color="gray" variant="light" radius="sm">
+        Lưu chưa đăng
+      </Badge>
+    )
+  }
+  return (
+    <Badge color="blue" variant="light" radius="sm">
+      Đăng {formatNumber(published)}/{formatNumber(total)}
+    </Badge>
   )
 }
 

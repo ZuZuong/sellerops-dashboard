@@ -6,6 +6,7 @@ export type Product = Pick<
   | 'sku'
   | 'name'
   | 'category'
+  | 'category_missing'
   | 'price'
   | 'cost_price'
   | 'unit'
@@ -34,6 +35,7 @@ export type ProductImport = Pick<
   | 'row_count'
   | 'imported_count'
   | 'published'
+  | 'published_count'
   | 'created_at'
 >
 
@@ -49,3 +51,26 @@ export type ImportedProductRow = Pick<
 
 export type ProductInsight =
   Database['public']['Functions']['get_product_insight']['Returns'][number]
+
+export type TrashedProduct = Pick<
+  Tables<'product_trash'>,
+  | 'id'
+  | 'sku'
+  | 'name'
+  | 'category'
+  | 'unit'
+  | 'price'
+  | 'cost_price'
+  | 'stock'
+  | 'hero_image_path'
+  | 'deleted_at'
+  | 'purge_at'
+>
+
+export interface TrashedProductPage {
+  items: TrashedProduct[]
+  total: number
+}
+
+export type ProductCategoryOverview =
+  Database['public']['Functions']['get_product_category_overview']['Returns'][number]

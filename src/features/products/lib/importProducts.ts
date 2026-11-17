@@ -1,10 +1,5 @@
 import { formatCurrency } from '@/shared/lib/formatters'
-import {
-  PRODUCT_CATEGORIES,
-  PRODUCT_UNITS,
-  type ProductCategory,
-  type ProductUnit,
-} from '../constants'
+import { PRODUCT_UNITS, type ProductUnit } from '../constants'
 import { importProductSchema, type ImportedProduct } from '../schemas/product.schema'
 
 /** Giới hạn số dòng mỗi lần nhập — đủ cho nhu cầu shop, giữ request insert gọn. */
@@ -85,7 +80,7 @@ export const IMPORT_COLUMNS: readonly ColumnSpec[] = [
   },
   {
     field: 'stock',
-    label: 'Tồn đầu kỳ',
+    label: 'Số lượng',
     required: false,
     aliases: ['ton dau ky', 'ton kho', 'so luong', 'stock', 'quantity'],
     format: 'Số nguyên ≥ 0. Bỏ trống = 0',
@@ -141,13 +136,25 @@ export function normalizeHeader(value: unknown): string {
     .trim()
 }
 
-const CATEGORY_BY_KEY = new Map<string, ProductCategory>(
-  PRODUCT_CATEGORIES.map((category) => [normalizeHeader(category), category]),
-)
+/**
+ * Chuẩn hóa tên để so trùng — khớp `public.normalize_product_name` trong DB:
+ * bỏ khoảng trắng thừa, không phân biệt hoa thường.
+ */
+export function normalizeProductName(name: string): string {
+  return name.trim().replace(/\s+/g, ' ').toLowerCase()
+}
+
+/** Tiền tố của mọi thông báo theo dòng ("Dòng 3: ..."). */
+export const rowLabel = (rowNumber: number) => `Dòng ${rowNumber}:`
+
+/** Bảng tra danh mục của cửa hàng theo khóa đã chuẩn hóa (không dấu, chữ thường). */
+export function categoryLookup(categories: readonly string[]): ReadonlyMap<string, string> {
+  return new Map(categories.map((category) => [normalizeHeader(category), category]))
+}
 
 /** So khớp danh mục không phân biệt hoa thường / dấu: "ao thun" → "Áo thun". */
-export function matchCategory(value: unknown): ProductCategory | null {
-  return CATEGORY_BY_KEY.get(normalizeHeader(value)) ?? null
+export function matchCategory(value: unknown, lookup: ReadonlyMap<string, string>): string | null {
+  return lookup.get(normalizeHeader(value)) ?? null
 }
 
 const UNIT_BY_KEY = new Map<string, ProductUnit>(
@@ -183,7 +190,12 @@ export function parseIntegerCell(value: unknown): number | null | undefined {
  * Kiểm tra & chuyển các dòng đọc từ file (mảng 2 chiều) thành sản phẩm.
  * Tất cả hoặc không: chỉ cần một lỗi là trả về danh sách lỗi để người dùng sửa file.
  */
-export function parseProductImport(rows: readonly (readonly unknown[])[]): ImportResult {
+export function parseProductImport(
+  rows: readonly (readonly unknown[])[],
+  /** Danh mục hiện có của cửa hàng. */
+  categories: readonly string[],
+): ImportResult {
+  const categoryByKey = categoryLookup(categories)
   const headerIndex = rows.findIndex((row) => row.some((cell) => !isBlank(cell)))
   if (headerIndex === -1) return { ok: false, errors: ['File trống, không có dòng tiêu đề.'] }
 
@@ -221,6 +233,8 @@ export function parseProductImport(rows: readonly (readonly unknown[])[]): Impor
   const errors: string[] = []
   const warnings: string[] = []
   const products: ImportedRow[] = []
+  // Tên đã gặp trong file → dòng đầu tiên, để báo trùng tên ngay trong file.
+  const firstRowByName = new Map<string, number>()
 
   for (const { row, rowNumber } of dataRows) {
     const rowErrors: string[] = []
@@ -242,7 +256,7 @@ export function parseProductImport(rows: readonly (readonly unknown[])[]): Impor
         input[spec.field] = parsed
       } else if (spec.field === 'category') {
         if (isBlank(raw)) continue // Zod báo "Vui lòng chọn danh mục"
-        const category = matchCategory(raw)
+        const category = matchCategory(raw, categoryByKey)
         if (!category) {
           rowErrors.push(`Danh mục "${String(raw).trim()}" không có trong danh sách`)
           reported.add(spec.field)
@@ -276,12 +290,19 @@ export function parseProductImport(rows: readonly (readonly unknown[])[]): Impor
       }
     }
 
-    if (rowErrors.length > 0) errors.push(`Dòng ${rowNumber}: ${rowErrors.join('; ')}.`)
+    if (parsed.success) {
+      const key = normalizeProductName(parsed.data.name)
+      const firstRow = firstRowByName.get(key)
+      if (firstRow === undefined) firstRowByName.set(key, rowNumber)
+      else rowErrors.push(`tên "${parsed.data.name}" trùng với dòng ${firstRow} trong file`)
+    }
+
+    if (rowErrors.length > 0) errors.push(`${rowLabel(rowNumber)} ${rowErrors.join('; ')}.`)
     else if (parsed.success) {
       products.push({ ...parsed.data, rowNumber })
       if (parsed.data.price < parsed.data.cost_price) {
         warnings.push(
-          `Dòng ${rowNumber}: giá bán ${formatCurrency(parsed.data.price)} thấp hơn giá vốn ${formatCurrency(parsed.data.cost_price)} (bán lỗ).`,
+          `${rowLabel(rowNumber)} giá bán ${formatCurrency(parsed.data.price)} thấp hơn giá vốn ${formatCurrency(parsed.data.cost_price)} (bán lỗ).`,
         )
       }
     }

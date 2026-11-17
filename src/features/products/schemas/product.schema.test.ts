@@ -39,9 +39,10 @@ describe('productSchema', () => {
     expect(errorsOf({ name: '   ' })).toEqual({ name: 'Vui lòng nhập tên sản phẩm' })
   })
 
-  it('danh mục phải chọn từ danh sách thời trang', () => {
+  it('danh mục bắt buộc (danh sách hợp lệ do seller quản lý, DB kiểm tra lại)', () => {
     expect(errorsOf({ category: undefined }).category).toBe('Vui lòng chọn danh mục')
-    expect(errorsOf({ category: 'Điện thoại' }).category).toBe('Vui lòng chọn danh mục')
+    expect(errorsOf({ category: '   ' }).category).toBe('Vui lòng chọn danh mục')
+    expect(errorsOf({ category: 'x'.repeat(51) }).category).toBe('Tên danh mục tối đa 50 ký tự')
     expect(errorsOf({ category: 'Đầm' })).toEqual({})
   })
 

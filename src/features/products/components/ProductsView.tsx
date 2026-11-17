@@ -1,5 +1,5 @@
 import { Button, Group, Pagination, Paper, Select, Skeleton, Table, Text } from '@mantine/core'
-import { IconPackage, IconSearchOff } from '@tabler/icons-react'
+import { IconPackage, IconSearchOff, IconTrash, IconX } from '@tabler/icons-react'
 import { useEffect, useState } from 'react'
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog'
 import { EmptyState } from '@/shared/components/EmptyState'
@@ -7,11 +7,11 @@ import { ErrorState } from '@/shared/components/ErrorState'
 import { getErrorMessage } from '@/shared/lib/errors'
 import { formatNumber } from '@/shared/lib/formatters'
 import {
-  useDeleteProduct,
   useProducts,
   useQuickAdjustStock,
   useQuickUpdatePrice,
   useSetProductActive,
+  useTrashProducts,
 } from '../api/products.queries'
 import { useProductFilters } from '../hooks/useProductFilters'
 import { PRODUCT_PAGE_SIZES } from '../schemas/productFilters.schema'
@@ -20,9 +20,10 @@ import { CreateProductButton } from './CreateProductButton'
 import { ProductFilters } from './ProductFilters'
 import { ProductFormModal } from './ProductFormModal'
 import { ProductInsightDrawer } from './ProductInsightDrawer'
-import { ProductTable, ProductTableShell } from './ProductTable'
+import { PRODUCT_TABLE_COLUMNS, ProductTable, ProductTableShell } from './ProductTable'
 
-type PendingConfirm = { type: 'delete' | 'deactivate'; product: Product } | null
+type PendingConfirm =
+  { type: 'delete'; products: Product[] } | { type: 'deactivate'; product: Product } | null
 
 const PAGE_SIZE_OPTIONS = PRODUCT_PAGE_SIZES.map((size) => ({
   value: String(size),
@@ -32,7 +33,7 @@ const PAGE_SIZE_OPTIONS = PRODUCT_PAGE_SIZES.map((size) => ({
 /** Danh sách sản phẩm: filter + bảng + phân trang + các hộp thoại sửa / xác nhận. */
 export function ProductsView() {
   const productFilters = useProductFilters()
-  const { filters, setFilters, setPage, toggleSort, resetFilters, hasActiveFilters } =
+  const { filters, setFilters, setPage, setSort, toggleSort, resetFilters, hasActiveFilters } =
     productFilters
   const products = useProducts(filters)
 
@@ -40,8 +41,18 @@ export function ProductsView() {
   const [inspecting, setInspecting] = useState<Product | null>(null)
   const [confirm, setConfirm] = useState<PendingConfirm>(null)
 
+  // Sản phẩm đang chọn (theo trang hiện tại). Đổi trang / bộ lọc / sắp xếp → bỏ chọn, để không
+  // xóa nhầm sản phẩm không còn nhìn thấy.
+  const [selected, setSelected] = useState<ReadonlyMap<string, Product>>(() => new Map())
+  const listKey = JSON.stringify(filters)
+  const [prevListKey, setPrevListKey] = useState(listKey)
+  if (listKey !== prevListKey) {
+    setPrevListKey(listKey)
+    setSelected(new Map())
+  }
+
   const setActive = useSetProductActive()
-  const deleteProduct = useDeleteProduct()
+  const trashProducts = useTrashProducts()
   const quickPrice = useQuickUpdatePrice()
   const quickStock = useQuickAdjustStock()
 
@@ -61,11 +72,30 @@ export function ProductsView() {
     else setActive.mutate({ product, isActive: true })
   }
 
+  const handleSelect = (product: Product, isSelected: boolean) => {
+    setSelected((current) => {
+      const next = new Map(current)
+      if (isSelected) next.set(product.id, product)
+      else next.delete(product.id)
+      return next
+    })
+  }
+
+  const handleSelectAll = (isSelected: boolean) => {
+    setSelected(isSelected ? new Map(products.data?.items.map((p) => [p.id, p]) ?? []) : new Map())
+  }
+
   const handleConfirm = () => {
     if (!confirm) return
     const close = { onSettled: () => setConfirm(null) }
-    if (confirm.type === 'delete') deleteProduct.mutate(confirm.product, close)
-    else setActive.mutate({ product: confirm.product, isActive: false }, close)
+    if (confirm.type === 'delete') {
+      trashProducts.mutate(confirm.products, {
+        ...close,
+        onSuccess: () => setSelected(new Map()),
+      })
+    } else {
+      setActive.mutate({ product: confirm.product, isActive: false }, close)
+    }
   }
 
   const renderBody = () => {
@@ -74,7 +104,7 @@ export function ProductsView() {
         <ProductTableShell sort={filters.sort} order={filters.order}>
           {Array.from({ length: Math.min(filters.pageSize, 10) }, (_, i) => (
             <Table.Tr key={i} data-testid="product-row-skeleton">
-              {Array.from({ length: 8 }, (_, j) => (
+              {Array.from({ length: PRODUCT_TABLE_COLUMNS }, (_, j) => (
                 <Table.Td key={j}>
                   <Skeleton height={14} />
                 </Table.Td>
@@ -123,10 +153,13 @@ export function ProductsView() {
         sort={filters.sort}
         order={filters.order}
         onSort={toggleSort}
+        selectedIds={new Set(selected.keys())}
+        onSelect={handleSelect}
+        onSelectAll={handleSelectAll}
         onEdit={setEditing}
         onInsight={setInspecting}
         onToggleActive={handleToggleActive}
-        onDelete={(product) => setConfirm({ type: 'delete', product })}
+        onDelete={(product) => setConfirm({ type: 'delete', products: [product] })}
         onQuickPrice={(product, price) => quickPrice.mutate({ product, price })}
         onQuickStock={(product, stock) => quickStock.mutate({ product, stock })}
       />
@@ -135,16 +168,61 @@ export function ProductsView() {
 
   const from = total === 0 ? 0 : (filters.page - 1) * filters.pageSize + 1
   const to = Math.min(filters.page * filters.pageSize, total)
-  const confirmProduct = confirm?.product
+  const deleting = confirm?.type === 'delete' ? confirm.products : []
+  const deleteTitle =
+    deleting.length === 1
+      ? 'Xóa sản phẩm?'
+      : `Xóa ${formatNumber(deleting.length)} sản phẩm đã chọn?`
+  const deleteMessage = `${
+    deleting.length === 1 ? `"${deleting[0]?.name}"` : `${formatNumber(deleting.length)} sản phẩm`
+  } sẽ được chuyển vào thùng rác và có thể khôi phục trong 30 ngày, sau đó bị xóa vĩnh viễn. Sản phẩm đã có trong đơn hàng / phiếu nhập không xóa được — sẽ chỉ chuyển sang "Ngừng bán".`
 
   return (
     <Paper withBorder radius="md" p="md">
       <ProductFilters
         filters={filters}
         setFilters={setFilters}
+        setSort={setSort}
         resetFilters={resetFilters}
         hasActiveFilters={hasActiveFilters}
       />
+
+      {selected.size > 0 && (
+        <Group
+          justify="space-between"
+          gap="sm"
+          wrap="wrap"
+          mb="sm"
+          p="xs"
+          bg="var(--mantine-primary-color-light)"
+          style={{ borderRadius: 'var(--mantine-radius-md)' }}
+          role="region"
+          aria-label="Thao tác với sản phẩm đã chọn"
+        >
+          <Text size="sm" fw={500}>
+            Đã chọn {formatNumber(selected.size)} sản phẩm
+          </Text>
+          <Group gap="xs">
+            <Button
+              variant="subtle"
+              color="gray"
+              size="xs"
+              leftSection={<IconX size={14} aria-hidden />}
+              onClick={() => setSelected(new Map())}
+            >
+              Bỏ chọn
+            </Button>
+            <Button
+              color="red"
+              size="xs"
+              leftSection={<IconTrash size={14} aria-hidden />}
+              onClick={() => setConfirm({ type: 'delete', products: [...selected.values()] })}
+            >
+              Xóa {formatNumber(selected.size)} sản phẩm
+            </Button>
+          </Group>
+        </Group>
+      )}
 
       <div aria-busy={products.isFetching}>{renderBody()}</div>
 
@@ -187,15 +265,15 @@ export function ProductsView() {
 
       <ConfirmDialog
         opened={confirm !== null}
-        title={confirm?.type === 'delete' ? 'Xóa sản phẩm?' : 'Ngừng bán sản phẩm?'}
+        title={confirm?.type === 'delete' ? deleteTitle : 'Ngừng bán sản phẩm?'}
         message={
           confirm?.type === 'delete'
-            ? `"${confirmProduct?.name}" sẽ bị xóa vĩnh viễn. Sản phẩm đã có trong đơn hàng không thể xóa — hãy dùng "Ngừng bán".`
-            : `"${confirmProduct?.name}" sẽ không thể thêm vào đơn hàng mới. Đơn hàng cũ không bị ảnh hưởng.`
+            ? deleteMessage
+            : `"${confirm?.product.name}" sẽ không thể thêm vào đơn hàng mới. Đơn hàng cũ không bị ảnh hưởng.`
         }
-        confirmLabel={confirm?.type === 'delete' ? 'Xóa vĩnh viễn' : 'Ngừng bán'}
+        confirmLabel={confirm?.type === 'delete' ? 'Chuyển vào thùng rác' : 'Ngừng bán'}
         color={confirm?.type === 'delete' ? 'red' : 'orange'}
-        loading={deleteProduct.isPending || (confirm?.type === 'deactivate' && setActive.isPending)}
+        loading={trashProducts.isPending || (confirm?.type === 'deactivate' && setActive.isPending)}
         onConfirm={handleConfirm}
         onClose={() => setConfirm(null)}
       />
