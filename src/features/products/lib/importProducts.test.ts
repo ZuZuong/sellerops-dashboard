@@ -1,20 +1,25 @@
 import { describe, expect, it } from 'vitest'
 import { formatCurrency } from '@/shared/lib/formatters'
+import { TEST_CATEGORIES } from '../test/fixtures'
 import {
+  categoryLookup,
   IMPORT_COLUMNS,
   matchCategory,
   matchUnit,
   MAX_IMPORT_ROWS,
   normalizeHeader,
+  normalizeProductName,
   parseIntegerCell,
   parseProductImport,
 } from './importProducts'
+
+const LOOKUP = categoryLookup(TEST_CATEGORIES)
 
 /** Đúng dòng tiêu đề của file mẫu. */
 const HEADER = IMPORT_COLUMNS.map((c) => (c.required ? `${c.label} *` : c.label))
 
 const expectErrors = (rows: unknown[][]) => {
-  const result = parseProductImport(rows)
+  const result = parseProductImport(rows, TEST_CATEGORIES)
   if (result.ok) throw new Error('expected errors')
   return result.errors
 }
@@ -27,15 +32,22 @@ describe('normalizeHeader / matchCategory / matchUnit', () => {
   })
 
   it('so khớp danh mục không phân biệt hoa thường / dấu', () => {
-    expect(matchCategory('ao thun')).toBe('Áo thun')
-    expect(matchCategory(' QUẦN JEAN ')).toBe('Quần jean')
-    expect(matchCategory('Điện thoại')).toBeNull()
+    expect(matchCategory('ao thun', LOOKUP)).toBe('Áo thun')
+    expect(matchCategory(' QUẦN JEAN ', LOOKUP)).toBe('Quần jean')
+    expect(matchCategory('Điện thoại', LOOKUP)).toBeNull()
   })
 
   it('so khớp đơn vị tính', () => {
     expect(matchUnit('cai')).toBe('Cái')
     expect(matchUnit('ĐÔI')).toBe('Đôi')
     expect(matchUnit('thùng')).toBeNull()
+  })
+})
+
+describe('normalizeProductName', () => {
+  it('bỏ khoảng trắng thừa, không phân biệt hoa thường (giữ dấu)', () => {
+    expect(normalizeProductName('  Áo   THUN basic ')).toBe('áo thun basic')
+    expect(normalizeProductName('Áo thun')).not.toBe(normalizeProductName('Ao thun'))
   })
 })
 
@@ -63,12 +75,15 @@ describe('parseIntegerCell', () => {
 
 describe('parseProductImport', () => {
   it('file mẫu hợp lệ → sản phẩm đã chuẩn hóa (ĐVT, giá vốn, tồn đầu kỳ), giữ số dòng', () => {
-    const result = parseProductImport([
-      HEADER,
-      ['Áo thun basic', 'áo thun', 'cai', '90.000', '150.000', 20, null, 'Cotton 100%'],
-      [null, null, null, null, null, null, null, null], // dòng trống bị bỏ qua
-      ['Giày sneaker', 'Giày dép', 'Đôi', 320000, 550000, null, 3, null],
-    ])
+    const result = parseProductImport(
+      [
+        HEADER,
+        ['Áo thun basic', 'áo thun', 'cai', '90.000', '150.000', 20, null, 'Cotton 100%'],
+        [null, null, null, null, null, null, null, null], // dòng trống bị bỏ qua
+        ['Giày sneaker', 'Giày dép', 'Đôi', 320000, 550000, null, 3, null],
+      ],
+      TEST_CATEGORIES,
+    )
 
     expect(result).toEqual({
       ok: true,
@@ -101,10 +116,13 @@ describe('parseProductImport', () => {
   })
 
   it('chấp nhận tên cột thường gặp (ĐVT, giá nhập), cột phụ và thứ tự bất kỳ', () => {
-    const result = parseProductImport([
-      ['Giá', 'Ảnh', 'Tên', 'ĐVT', 'Giá nhập', 'Nhóm hàng'],
-      [100000, 'https://example.com/a.jpg', 'Mũ lưỡi trai', 'Cái', 60000, 'Phụ kiện'],
-    ])
+    const result = parseProductImport(
+      [
+        ['Giá', 'Ảnh', 'Tên', 'ĐVT', 'Giá nhập', 'Nhóm hàng'],
+        [100000, 'https://example.com/a.jpg', 'Mũ lưỡi trai', 'Cái', 60000, 'Phụ kiện'],
+      ],
+      TEST_CATEGORIES,
+    )
     expect(result.ok && result.products[0]).toMatchObject({
       name: 'Mũ lưỡi trai',
       category: 'Phụ kiện',
@@ -145,10 +163,38 @@ describe('parseProductImport', () => {
   })
 
   it('giá bán thấp hơn giá vốn: vẫn nhập được nhưng có cảnh báo', () => {
-    const result = parseProductImport([HEADER, ['Áo xả kho', 'Áo thun', 'Cái', 120000, 99000]])
+    const result = parseProductImport(
+      [HEADER, ['Áo xả kho', 'Áo thun', 'Cái', 120000, 99000]],
+      TEST_CATEGORIES,
+    )
     expect(result.ok && result.warnings).toEqual([
       `Dòng 2: giá bán ${formatCurrency(99000)} thấp hơn giá vốn ${formatCurrency(120000)} (bán lỗ).`,
     ])
+  })
+
+  it('tên trùng nhau ngay trong file (khác hoa thường / khoảng trắng) → lỗi theo dòng', () => {
+    const errors = expectErrors([
+      ['Tên sản phẩm', 'Danh mục', 'Đơn vị tính', 'Giá vốn', 'Giá bán'],
+      ['Áo polo', 'Áo polo', 'Cái', 100000, 150000],
+      ['Quần jean', 'Quần jean', 'Cái', 200000, 300000],
+      ['  áo  POLO ', 'Áo polo', 'Cái', 100000, 150000],
+    ])
+    expect(errors).toEqual(['Dòng 4: tên "áo  POLO" trùng với dòng 2 trong file.'])
+  })
+
+  it('danh mục kiểm tra theo danh sách của cửa hàng (seller thêm / xóa được)', () => {
+    const rows = [
+      ['Tên sản phẩm', 'Danh mục', 'Đơn vị tính', 'Giá vốn', 'Giá bán'],
+      ['Áo hoodie nỉ', 'ao hoodie', 'Cái', 150000, 250000],
+    ]
+    expect(parseProductImport(rows, ['Áo hoodie'])).toMatchObject({
+      ok: true,
+      products: [expect.objectContaining({ category: 'Áo hoodie' })],
+    })
+    expect(parseProductImport(rows, TEST_CATEGORIES)).toEqual({
+      ok: false,
+      errors: ['Dòng 2: Danh mục "ao hoodie" không có trong danh sách.'],
+    })
   })
 
   it('file trống / không có dòng dữ liệu', () => {

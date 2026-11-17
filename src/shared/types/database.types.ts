@@ -53,13 +53,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "inventory_movements_receipt_id_fkey"
-            columns: ["receipt_id"]
-            isOneToOne: false
-            referencedRelation: "purchase_receipts"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "inventory_movements_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
@@ -71,6 +64,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_receipt_id_fkey"
+            columns: ["receipt_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_receipts"
             referencedColumns: ["id"]
           },
         ]
@@ -197,6 +197,27 @@ export type Database = {
         }
         Relationships: []
       }
+      product_categories: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       product_imports: {
         Row: {
           created_at: string
@@ -206,6 +227,7 @@ export type Database = {
           id: string
           imported_count: number
           published: boolean
+          published_count: number
           row_count: number
           sheet_name: string | null
           user_id: string
@@ -218,6 +240,7 @@ export type Database = {
           id?: string
           imported_count?: number
           published: boolean
+          published_count?: number
           row_count: number
           sheet_name?: string | null
           user_id?: string
@@ -230,6 +253,7 @@ export type Database = {
           id?: string
           imported_count?: number
           published?: boolean
+          published_count?: number
           row_count?: number
           sheet_name?: string | null
           user_id?: string
@@ -251,9 +275,79 @@ export type Database = {
         }
         Relationships: []
       }
+      product_sku_free_numbers: {
+        Row: {
+          user_id: string
+          value: number
+        }
+        Insert: {
+          user_id: string
+          value: number
+        }
+        Update: {
+          user_id?: string
+          value?: number
+        }
+        Relationships: []
+      }
+      product_trash: {
+        Row: {
+          category: string | null
+          cost_price: number
+          deleted_at: string
+          hero_image_path: string | null
+          id: string
+          image_paths: string[]
+          movements: Json
+          name: string
+          price: number
+          product: Json
+          purge_at: string
+          sku: string
+          stock: number
+          unit: string
+          user_id: string
+        }
+        Insert: {
+          category?: string | null
+          cost_price: number
+          deleted_at?: string
+          hero_image_path?: string | null
+          id: string
+          image_paths?: string[]
+          movements?: Json
+          name: string
+          price: number
+          product: Json
+          purge_at?: string
+          sku: string
+          stock: number
+          unit: string
+          user_id: string
+        }
+        Update: {
+          category?: string | null
+          cost_price?: number
+          deleted_at?: string
+          hero_image_path?: string | null
+          id?: string
+          image_paths?: string[]
+          movements?: Json
+          name?: string
+          price?: number
+          product?: Json
+          purge_at?: string
+          sku?: string
+          stock?: number
+          unit?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           category: string | null
+          category_missing: boolean
           cost_price: number
           created_at: string
           description: string | null
@@ -273,6 +367,7 @@ export type Database = {
         }
         Insert: {
           category?: string | null
+          category_missing?: boolean
           cost_price?: number
           created_at?: string
           description?: string | null
@@ -292,6 +387,7 @@ export type Database = {
         }
         Update: {
           category?: string | null
+          category_missing?: boolean
           cost_price?: number
           created_at?: string
           description?: string | null
@@ -455,16 +551,22 @@ export type Database = {
         }
         Returns: string
       }
+      create_product_category: { Args: { p_name: string }; Returns: string }
       dashboard_range_start: {
         Args: { p_days: number; p_tz: string }
         Returns: string
       }
       delete_product: { Args: { p_product_id: string }; Returns: undefined }
+      delete_product_category: { Args: { p_id: string }; Returns: Json }
       delete_purchase_receipt: {
         Args: { p_receipt_id: string }
         Returns: undefined
       }
       deliver_order: { Args: { p_order_id: string }; Returns: undefined }
+      find_existing_product_names: {
+        Args: { p_names: string[] }
+        Returns: string[]
+      }
       get_dashboard_kpis: {
         Args: { p_days: number; p_tz?: string }
         Returns: {
@@ -487,6 +589,16 @@ export type Database = {
           retail_value: number
           stock_value: number
           total_units: number
+        }[]
+      }
+      get_product_category_overview: {
+        Args: never
+        Returns: {
+          active_count: number
+          created_at: string
+          id: string
+          name: string
+          product_count: number
         }[]
       }
       get_product_insight: {
@@ -594,20 +706,21 @@ export type Database = {
         Returns: Database["public"]["Enums"]["order_status"]
       }
       next_order_code: { Args: { p_user_id: string }; Returns: string }
-      next_receipt_code: {
-        Args: { p_user_id: string }
-        Returns: string
-      }
-      order_cogs: {
-        Args: { p_order_id: string }
-        Returns: number
-      }
+      next_receipt_code: { Args: { p_user_id: string }; Returns: string }
+      normalize_product_name: { Args: { p_name: string }; Returns: string }
+      order_cogs: { Args: { p_order_id: string }; Returns: number }
       paths_owned_by: {
         Args: { p_owner: string; p_paths: string[] }
         Returns: boolean
       }
       post_purchase_receipt: {
         Args: { p_receipt_id: string }
+        Returns: undefined
+      }
+      purge_expired_trash: { Args: never; Returns: string[] }
+      purge_trash: { Args: { p_ids: string[] }; Returns: string[] }
+      rename_product_category: {
+        Args: { p_id: string; p_name: string }
         Returns: undefined
       }
       report_bounds: {
@@ -618,12 +731,19 @@ export type Database = {
           range_start: string
         }[]
       }
+      restore_products: { Args: { p_ids: string[] }; Returns: Json }
       save_purchase_receipt: {
         Args: { p_header: Json; p_items: Json; p_receipt_id: string }
         Returns: string
       }
+      seed_default_product_categories: {
+        Args: { p_user_id: string }
+        Returns: undefined
+      }
       ship_order: { Args: { p_order_id: string }; Returns: undefined }
       sku_name_part: { Args: { p_name: string }; Returns: string }
+      sku_sequence: { Args: { p_sku: string }; Returns: number }
+      trash_products: { Args: { p_ids: string[] }; Returns: Json }
     }
     Enums: {
       order_status:
@@ -767,6 +887,7 @@ export const Constants = {
         "delivered",
         "cancelled",
       ],
+      receipt_status: ["draft", "posted"],
     },
   },
 } as const

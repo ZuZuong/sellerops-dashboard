@@ -1,35 +1,37 @@
 import {
   Alert,
-  Badge,
   Button,
   Group,
   List,
   Modal,
   ScrollArea,
   Stack,
+  Switch,
   Table,
   Text,
-  Tooltip,
 } from '@mantine/core'
 import { useMediaQuery } from '@mantine/hooks'
 import { IconAlertTriangle, IconDownload } from '@tabler/icons-react'
+import { useState } from 'react'
 import { formatCurrency, formatNumber } from '@/shared/lib/formatters'
 import { useImportProducts } from '../api/products.queries'
-import { IMPORT_COLUMNS, type ImportResult } from '../lib/importProducts'
-import { previewSku } from '../lib/sku'
+import { IMPORT_COLUMNS, type ImportedRow, type ImportResult } from '../lib/importProducts'
 
 interface ProductImportModalProps {
   opened: boolean
   file: File | null
   sheetName: string | null
   result: ImportResult | null
+  /** Dòng trùng tên với sản phẩm đã có (không nhập). `result.products` chỉ còn sản phẩm mới. */
+  duplicates?: readonly ImportedRow[]
   onClose: () => void
   onDownloadTemplate: () => void
 }
 
 /**
  * Popup sau khi chọn file Excel:
- *  - File hợp lệ → danh sách sản phẩm sẽ nhập + chọn "Đăng tất cả" hoặc "Lưu chưa đăng".
+ *  - File hợp lệ → danh sách sản phẩm sẽ nhập; cột "Lưu chưa đăng" có công tắc cho từng dòng
+ *    (mặc định tắt = đăng bán ngay). Nút "Đăng tất cả" lưu toàn bộ theo lựa chọn đó.
  *  - File thiếu / sai dữ liệu → liệt kê lỗi theo cột / dòng để sửa file.
  */
 export function ProductImportModal({
@@ -37,23 +39,53 @@ export function ProductImportModal({
   file,
   sheetName,
   result,
+  duplicates = [],
   onClose,
   onDownloadTemplate,
 }: ProductImportModalProps) {
   const isMobile = useMediaQuery('(max-width: 36em)')
   const importProducts = useImportProducts()
 
-  const fileName = file?.name ?? ''
+  // Dòng (rowNumber) chỉ lưu, chưa đăng. Đặt lại khi chọn file khác.
+  const [drafts, setDrafts] = useState<ReadonlySet<number>>(() => new Set())
+  const [prevResult, setPrevResult] = useState(result)
+  if (result !== prevResult) {
+    setPrevResult(result)
+    setDrafts(new Set())
+  }
 
-  const handleImport = (publish: boolean) => {
+  const fileName = file?.name ?? ''
+  const total = result?.ok ? result.products.length : 0
+  const publishCount = total - drafts.size
+  const busy = importProducts.isPending
+
+  const toggleDraft = (rowNumber: number, draft: boolean) => {
+    setDrafts((current) => {
+      const next = new Set(current)
+      if (draft) next.add(rowNumber)
+      else next.delete(rowNumber)
+      return next
+    })
+  }
+
+  /** Gạt ở tiêu đề: bật = lưu chưa đăng tất cả, tắt = đăng liền tất cả. */
+  const toggleAllDrafts = (draft: boolean) => {
+    if (!result?.ok) return
+    setDrafts(draft ? new Set(result.products.map((p) => p.rowNumber)) : new Set())
+  }
+
+  const handleImport = () => {
     if (!result?.ok || !file) return
     importProducts.mutate(
-      { file, sheetName, rowCount: result.products.length, products: result.products, publish },
+      {
+        file,
+        sheetName,
+        rowCount: result.products.length + duplicates.length,
+        products: result.products.map((p) => ({ ...p, publish: !drafts.has(p.rowNumber) })),
+      },
       { onSuccess: onClose },
     )
   }
-
-  const busy = importProducts.isPending
 
   return (
     <Modal
@@ -62,9 +94,14 @@ export function ProductImportModal({
       closeOnEscape={!busy}
       closeOnClickOutside={!busy}
       title={
-        result?.ok === false ? 'File Excel chưa đủ dữ liệu' : 'Xem trước sản phẩm nhập từ Excel'
+        result?.ok === false
+          ? 'File Excel chưa đủ dữ liệu'
+          : duplicates.length > 0
+            ? 'File Excel có sản phẩm trùng tên'
+            : 'Xem trước sản phẩm nhập từ Excel'
       }
-      size="xl"
+      // Bảng xem trước cần rộng để thấy đủ cột, không phải cuộn ngang.
+      size={result?.ok ? '90rem' : 'xl'}
       fullScreen={isMobile}
       centered
     >
@@ -109,7 +146,47 @@ export function ProductImportModal({
         </Stack>
       )}
 
-      {result?.ok && (
+      {result?.ok && duplicates.length > 0 && (
+        <Stack gap="md" mb={total > 0 ? 'md' : 0}>
+          <Alert
+            color="red"
+            variant="light"
+            icon={<IconAlertTriangle size={18} aria-hidden />}
+            title={`${formatNumber(duplicates.length)} sản phẩm trong "${fileName}" đã có trong danh sách`}
+          >
+            <Text size="sm" mb={4}>
+              Các dòng này trùng tên với sản phẩm đã có nên sẽ không được nhập (tránh tạo thêm SKU
+              mới cho cùng một sản phẩm):
+            </Text>
+            <ScrollArea.Autosize mah={140} type="auto">
+              <List size="sm" spacing={2} aria-label="Sản phẩm trùng tên">
+                {duplicates.map((product) => (
+                  <List.Item key={product.rowNumber}>
+                    Dòng {product.rowNumber}: {product.name}
+                  </List.Item>
+                ))}
+              </List>
+            </ScrollArea.Autosize>
+          </Alert>
+          {total === 0 ? (
+            <>
+              <Text size="sm">
+                Tất cả sản phẩm trong file đều đã có, không có sản phẩm mới để thêm.
+              </Text>
+              <Group justify="flex-end">
+                <Button onClick={onClose}>Đóng</Button>
+              </Group>
+            </>
+          ) : (
+            <Text size="sm" fw={600}>
+              Còn {formatNumber(total)} sản phẩm mới chưa có. Bạn có muốn thêm ngay các sản phẩm mới
+              này không?
+            </Text>
+          )}
+        </Stack>
+      )}
+
+      {result?.ok && total > 0 && (
         <Stack gap="md">
           <Text size="sm">
             <Text span fw={600}>
@@ -119,7 +196,11 @@ export function ProductImportModal({
             <Text span fw={500}>
               {fileName}
             </Text>
-            . SKU được tạo tự động; file gốc được lưu lại trong Lịch sử import.
+            . SKU được tạo tự động; file gốc được lưu lại trong Lịch sử import. Gạt lên ở cột{' '}
+            <Text span fw={500}>
+              Lưu chưa đăng
+            </Text>{' '}
+            = lưu nhưng chưa đăng; để nguyên = đăng bán liền. Gạt ở tiêu đề cột áp dụng cho tất cả.
           </Text>
           {result.warnings.length > 0 && (
             <Alert
@@ -137,8 +218,8 @@ export function ProductImportModal({
               </ScrollArea.Autosize>
             </Alert>
           )}
-          <ScrollArea.Autosize mah={420} type="auto">
-            <Table striped verticalSpacing="xs" miw={860} stickyHeader>
+          <ScrollArea.Autosize mah="calc(100dvh - 20rem)" mih={240} type="auto">
+            <Table striped verticalSpacing="xs" miw={760} stickyHeader>
               <Table.Thead>
                 <Table.Tr>
                   <Table.Th scope="col">Dòng</Table.Th>
@@ -152,9 +233,20 @@ export function ProductImportModal({
                     Giá bán
                   </Table.Th>
                   <Table.Th scope="col" ta="right">
-                    Tồn đầu kỳ
+                    Số lượng
                   </Table.Th>
-                  <Table.Th scope="col">SKU dự kiến</Table.Th>
+                  <Table.Th scope="col" style={{ whiteSpace: 'nowrap' }}>
+                    <Stack gap={4} align="center">
+                      Lưu chưa đăng
+                      <Switch
+                        size="sm"
+                        aria-label="Lưu chưa đăng tất cả sản phẩm"
+                        checked={total > 0 && drafts.size === total}
+                        onChange={(event) => toggleAllDrafts(event.currentTarget.checked)}
+                        disabled={busy}
+                      />
+                    </Stack>
+                  </Table.Th>
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
@@ -171,11 +263,7 @@ export function ProductImportModal({
                         </Text>
                       )}
                     </Table.Td>
-                    <Table.Td>
-                      <Badge variant="light" color="gray" radius="sm">
-                        {product.category}
-                      </Badge>
-                    </Table.Td>
+                    <Table.Td style={{ whiteSpace: 'nowrap' }}>{product.category}</Table.Td>
                     <Table.Td>{product.unit}</Table.Td>
                     <Table.Td ta="right" style={{ whiteSpace: 'nowrap' }}>
                       {formatCurrency(product.cost_price)}
@@ -189,39 +277,35 @@ export function ProductImportModal({
                     </Table.Td>
                     <Table.Td ta="right">{formatNumber(product.stock)}</Table.Td>
                     <Table.Td>
-                      <Text size="xs" ff="monospace" c="dimmed">
-                        {previewSku(product.name)}
-                      </Text>
+                      <Group justify="center">
+                        <Switch
+                          size="sm"
+                          aria-label={`Lưu chưa đăng ${product.name}`}
+                          checked={drafts.has(product.rowNumber)}
+                          onChange={(event) =>
+                            toggleDraft(product.rowNumber, event.currentTarget.checked)
+                          }
+                          disabled={busy}
+                        />
+                      </Group>
                     </Table.Td>
                   </Table.Tr>
                 ))}
               </Table.Tbody>
             </Table>
           </ScrollArea.Autosize>
-          <Group justify="flex-end" gap="sm" wrap="wrap">
-            <Button variant="default" onClick={onClose} disabled={busy}>
-              Hủy
-            </Button>
-            <Tooltip
-              label="Lưu tất cả sản phẩm nhưng chưa đăng bán"
-              events={{ hover: true, focus: true, touch: true }}
-            >
-              <Button
-                variant="light"
-                onClick={() => handleImport(false)}
-                loading={busy && importProducts.variables?.publish === false}
-                disabled={busy}
-              >
-                Lưu chưa đăng
+          <Group justify="space-between" gap="sm" wrap="wrap">
+            <Text size="sm" c="dimmed" aria-live="polite">
+              Đăng {formatNumber(publishCount)} · lưu chưa đăng {formatNumber(drafts.size)}
+            </Text>
+            <Group gap="sm" wrap="wrap">
+              <Button variant="default" onClick={onClose} disabled={busy}>
+                Hủy
               </Button>
-            </Tooltip>
-            <Button
-              onClick={() => handleImport(true)}
-              loading={busy && importProducts.variables?.publish === true}
-              disabled={busy}
-            >
-              Đăng tất cả
-            </Button>
+              <Button onClick={handleImport} loading={busy}>
+                {duplicates.length > 0 ? `Thêm ${formatNumber(total)} sản phẩm mới` : 'Đăng tất cả'}
+              </Button>
+            </Group>
           </Group>
         </Stack>
       )}

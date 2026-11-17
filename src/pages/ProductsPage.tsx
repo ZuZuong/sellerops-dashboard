@@ -1,7 +1,12 @@
 import { Button } from '@mantine/core'
-import { IconHistory } from '@tabler/icons-react'
+import { IconCategory, IconHistory } from '@tabler/icons-react'
 import { Link } from 'react-router'
-import { CreateProductButton, ProductImportButton, ProductsView } from '@/features/products'
+import {
+  CreateProductButton,
+  ProductImportButton,
+  ProductsView,
+  ProductTrashButton,
+} from '@/features/products'
 import { PageHeader } from '@/shared/components/PageHeader'
 import { ROUTES } from '@/shared/constants/routes'
 
@@ -15,12 +20,21 @@ export default function ProductsPage() {
           <>
             <Button
               component={Link}
+              to={ROUTES.productCategories}
+              variant="subtle"
+              leftSection={<IconCategory size={16} aria-hidden />}
+            >
+              Danh mục
+            </Button>
+            <Button
+              component={Link}
               to={ROUTES.productImports}
               variant="subtle"
               leftSection={<IconHistory size={16} aria-hidden />}
             >
               Lịch sử import
             </Button>
+            <ProductTrashButton />
             <ProductImportButton />
             <CreateProductButton />
           </>

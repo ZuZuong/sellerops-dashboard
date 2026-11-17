@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import * as XLSX from 'xlsx'
+import { TEST_CATEGORIES } from '../test/fixtures'
 import { IMPORT_COLUMNS, parseProductImport } from './importProducts'
 import { buildGuideRows, readSpreadsheet, TEMPLATE_DATA_SHEET } from './spreadsheet'
 
@@ -23,7 +24,7 @@ describe('readSpreadsheet (SheetJS)', () => {
     ])
     const { sheetName, rows } = await readSpreadsheet(file)
     expect(sheetName).toBe('Sản phẩm')
-    expect(parseProductImport(rows)).toMatchObject({
+    expect(parseProductImport(rows, TEST_CATEGORIES)).toMatchObject({
       ok: true,
       products: [
         {
@@ -48,7 +49,7 @@ describe('readSpreadsheet (SheetJS)', () => {
       ],
       'B3',
     )
-    const result = parseProductImport((await readSpreadsheet(file)).rows)
+    const result = parseProductImport((await readSpreadsheet(file)).rows, TEST_CATEGORIES)
     // Tiêu đề ở dòng 3 → dòng lỗi (thiếu tên) là dòng 6 như người dùng thấy trong Excel.
     expect(result).toEqual({ ok: false, errors: ['Dòng 6: thiếu Tên sản phẩm.'] })
   })
@@ -64,7 +65,7 @@ describe('file mẫu', () => {
       ['Đơn vị tính', 'Có'],
       ['Giá vốn', 'Có'],
       ['Giá bán', 'Có'],
-      ['Tồn đầu kỳ', 'Không'],
+      ['Số lượng', 'Không'],
       ['Ngưỡng cảnh báo', 'Không'],
       ['Mô tả', 'Không'],
     ])
@@ -74,6 +75,9 @@ describe('file mẫu', () => {
   it('dòng ví dụ của file mẫu nhập được ngay (không lỗi)', () => {
     const header = IMPORT_COLUMNS.map((c) => (c.required ? `${c.label} *` : c.label))
     const example = IMPORT_COLUMNS.map((c) => c.example)
-    expect(parseProductImport([header, example])).toMatchObject({ ok: true, warnings: [] })
+    expect(parseProductImport([header, example], TEST_CATEGORIES)).toMatchObject({
+      ok: true,
+      warnings: [],
+    })
   })
 })

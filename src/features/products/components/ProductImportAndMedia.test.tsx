@@ -1,6 +1,7 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { TEST_CATEGORIES, testCategoryOverview } from '../test/fixtures'
 import { renderWithProviders } from '@/test/render'
 import { importProductsFromFile } from '../api/productImports.api'
 import { createProduct } from '../api/products.api'
@@ -11,6 +12,10 @@ import { ProductImportModal } from './ProductImportModal'
 vi.mock('../api/products.api', () => ({
   createProduct: vi.fn(),
   updateProduct: vi.fn(),
+}))
+
+vi.mock('../api/productCategories.api', () => ({
+  fetchProductCategories: vi.fn(() => Promise.resolve(testCategoryOverview())),
 }))
 
 vi.mock('../api/productImports.api', () => ({
@@ -36,7 +41,7 @@ describe('ProductImportModal', () => {
         opened
         file={FILE}
         sheetName="Sản phẩm"
-        result={parseProductImport(rows)}
+        result={parseProductImport(rows, TEST_CATEGORIES)}
         onClose={onClose}
         onDownloadTemplate={vi.fn()}
       />,
@@ -44,7 +49,7 @@ describe('ProductImportModal', () => {
     return { onClose }
   }
 
-  it('file hợp lệ: hiện danh sách xem trước với SKU dự kiến', async () => {
+  it('file hợp lệ: hiện danh sách xem trước, danh mục đầy đủ, cột Số lượng, chỉ 2 nút', async () => {
     renderModal([
       HEADER,
       ['Áo thun basic', 'Áo thun', 'Cái', 90000, 150000, 10],
@@ -53,51 +58,175 @@ describe('ProductImportModal', () => {
 
     const dialog = await screen.findByRole('dialog', { name: 'Xem trước sản phẩm nhập từ Excel' })
     expect(within(dialog).getByText(/2 sản phẩm/)).toBeInTheDocument()
+    expect(within(dialog).getByRole('columnheader', { name: 'Số lượng' })).toBeInTheDocument()
+    expect(within(dialog).queryByText('SKU dự kiến')).not.toBeInTheDocument()
     const rows = within(dialog).getAllByRole('row')
     expect(rows).toHaveLength(3) // tiêu đề + 2 sản phẩm
     expect(rows[1]).toHaveTextContent('Áo thun basic')
-    expect(rows[1]).toHaveTextContent('DN-AOTHUNBASIC-###')
     expect(rows[1]).toHaveTextContent(/90\.000\s₫/)
+    expect(
+      within(rows[1] as HTMLElement).getByRole('cell', { name: 'Áo thun' }),
+    ).toBeInTheDocument()
     expect(rows[2]).toHaveTextContent('Đầm maxi')
+
+    // Mặc định đăng hết; chỉ còn nút Hủy và Đăng tất cả.
+    expect(within(dialog).getByRole('columnheader', { name: /^Lưu chưa đăng/ })).toBeInTheDocument()
+    expect(
+      within(dialog).getByRole('switch', { name: 'Lưu chưa đăng Áo thun basic' }),
+    ).not.toBeChecked()
+    expect(within(dialog).getByRole('switch', { name: 'Lưu chưa đăng Đầm maxi' })).not.toBeChecked()
+    expect(within(dialog).queryByRole('button', { name: 'Lưu chưa đăng' })).not.toBeInTheDocument()
+    expect(within(dialog).getByRole('button', { name: 'Hủy' })).toBeInTheDocument()
+    expect(within(dialog).getByRole('button', { name: 'Đăng tất cả' })).toBeInTheDocument()
   })
 
-  it.each([
-    ['Đăng tất cả', true],
-    ['Lưu chưa đăng', false],
-  ])(
-    '"%s": lưu file gốc + nhập toàn bộ với publish = %s rồi đóng popup',
-    async (label, publish) => {
-      importMock.mockResolvedValue({ importId: 'imp-1', count: 1 })
-      const { onClose } = renderModal([HEADER, ['Áo polo', 'Áo polo', 'Cái', 120000, 200000]])
+  it('"Đăng tất cả": lưu file gốc + nhập toàn bộ, mặc định đăng hết rồi đóng popup', async () => {
+    importMock.mockResolvedValue({ importId: 'imp-1', count: 1, publishedCount: 1 })
+    const { onClose } = renderModal([HEADER, ['Áo polo', 'Áo polo', 'Cái', 120000, 200000]])
 
-      await userEvent.click(await screen.findByRole('button', { name: label }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Đăng tất cả' }))
 
-      await waitFor(() => expect(importMock).toHaveBeenCalledTimes(1))
-      expect(importMock).toHaveBeenCalledWith({
-        file: FILE,
-        sheetName: 'Sản phẩm',
-        rowCount: 1,
-        publish,
-        products: [
-          expect.objectContaining({
-            name: 'Áo polo',
-            category: 'Áo polo',
-            unit: 'Cái',
-            cost_price: 120000,
-            price: 200000,
-            stock: 0,
-          }),
-        ],
-      })
-      await waitFor(() => expect(onClose).toHaveBeenCalled())
-    },
-  )
+    await waitFor(() => expect(importMock).toHaveBeenCalledTimes(1))
+    expect(importMock).toHaveBeenCalledWith({
+      file: FILE,
+      sheetName: 'Sản phẩm',
+      rowCount: 1,
+      products: [
+        expect.objectContaining({
+          name: 'Áo polo',
+          category: 'Áo polo',
+          unit: 'Cái',
+          cost_price: 120000,
+          price: 200000,
+          stock: 0,
+          publish: true,
+        }),
+      ],
+    })
+    await waitFor(() => expect(onClose).toHaveBeenCalled())
+  })
+
+  it('bật công tắc "Lưu chưa đăng" ở sản phẩm: sản phẩm đó được lưu nhưng chưa đăng', async () => {
+    importMock.mockResolvedValue({ importId: 'imp-1', count: 2, publishedCount: 1 })
+    renderModal([
+      HEADER,
+      ['Áo polo', 'Áo polo', 'Cái', 120000, 200000],
+      ['Đầm maxi', 'Đầm', 'Chiếc', 250000, 450000],
+    ])
+
+    await userEvent.click(await screen.findByRole('switch', { name: 'Lưu chưa đăng Đầm maxi' }))
+    expect(screen.getByText('Đăng 1 · lưu chưa đăng 1')).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Đăng tất cả' }))
+
+    await waitFor(() => expect(importMock).toHaveBeenCalledTimes(1))
+    expect(importMock.mock.calls[0]?.[0].products).toEqual([
+      expect.objectContaining({ name: 'Áo polo', publish: true }),
+      expect.objectContaining({ name: 'Đầm maxi', publish: false }),
+    ])
+  })
 
   it('giá bán thấp hơn giá vốn: hiện cảnh báo nhưng vẫn cho nhập', async () => {
     renderModal([HEADER, ['Áo xả kho', 'Áo thun', 'Cái', 120000, 99000]])
     const dialog = await screen.findByRole('dialog', { name: 'Xem trước sản phẩm nhập từ Excel' })
     expect(within(dialog).getByText('1 dòng cần xem lại')).toBeInTheDocument()
     expect(within(dialog).getByRole('button', { name: 'Đăng tất cả' })).toBeEnabled()
+  })
+
+  it('gạt ở tiêu đề: bật = lưu chưa đăng tất cả, tắt = đăng liền tất cả', async () => {
+    importMock.mockResolvedValue({ importId: 'imp-1', count: 2, publishedCount: 0 })
+    renderModal([
+      HEADER,
+      ['Áo polo', 'Áo polo', 'Cái', 120000, 200000],
+      ['Đầm maxi', 'Đầm', 'Chiếc', 250000, 450000],
+    ])
+
+    const all = await screen.findByRole('switch', { name: 'Lưu chưa đăng tất cả sản phẩm' })
+    expect(all).not.toBeChecked()
+
+    await userEvent.click(all)
+    expect(screen.getByRole('switch', { name: 'Lưu chưa đăng Áo polo' })).toBeChecked()
+    expect(screen.getByRole('switch', { name: 'Lưu chưa đăng Đầm maxi' })).toBeChecked()
+    expect(screen.getByText('Đăng 0 · lưu chưa đăng 2')).toBeInTheDocument()
+
+    // Tắt một dòng → gạt tổng tự tắt theo.
+    await userEvent.click(screen.getByRole('switch', { name: 'Lưu chưa đăng Áo polo' }))
+    expect(all).not.toBeChecked()
+
+    await userEvent.click(all)
+    await userEvent.click(screen.getByRole('button', { name: 'Đăng tất cả' }))
+    await waitFor(() => expect(importMock).toHaveBeenCalledTimes(1))
+    expect(importMock.mock.calls[0]?.[0].products).toEqual([
+      expect.objectContaining({ name: 'Áo polo', publish: false }),
+      expect.objectContaining({ name: 'Đầm maxi', publish: false }),
+    ])
+
+    await userEvent.click(all)
+    expect(screen.getByText('Đăng 2 · lưu chưa đăng 0')).toBeInTheDocument()
+  })
+
+  it('có sản phẩm trùng tên: báo lỗi + hỏi có thêm ngay các sản phẩm mới không', async () => {
+    importMock.mockResolvedValue({ importId: 'imp-1', count: 1, publishedCount: 1 })
+    const parsed = parseProductImport(
+      [
+        HEADER,
+        ['Áo polo', 'Áo polo', 'Cái', 120000, 200000],
+        ['Đầm maxi', 'Đầm', 'Chiếc', 250000, 450000],
+      ],
+      TEST_CATEGORIES,
+    )
+    if (!parsed.ok) throw new Error('expected ok')
+    const [duplicate, fresh] = parsed.products
+    renderWithProviders(
+      <ProductImportModal
+        opened
+        file={FILE}
+        sheetName="Sản phẩm"
+        result={{ ok: true, products: fresh ? [fresh] : [], warnings: [] }}
+        duplicates={duplicate ? [duplicate] : []}
+        onClose={vi.fn()}
+        onDownloadTemplate={vi.fn()}
+      />,
+    )
+
+    const dialog = await screen.findByRole('dialog', { name: 'File Excel có sản phẩm trùng tên' })
+    expect(within(dialog).getByRole('list', { name: 'Sản phẩm trùng tên' })).toHaveTextContent(
+      'Dòng 2: Áo polo',
+    )
+    expect(dialog).toHaveTextContent('Bạn có muốn thêm ngay các sản phẩm mới này không?')
+    expect(within(dialog).getAllByRole('row')).toHaveLength(2) // tiêu đề + 1 sản phẩm mới
+
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Thêm 1 sản phẩm mới' }))
+    await waitFor(() => expect(importMock).toHaveBeenCalledTimes(1))
+    expect(importMock.mock.calls[0]?.[0]).toMatchObject({
+      rowCount: 2,
+      products: [expect.objectContaining({ name: 'Đầm maxi' })],
+    })
+  })
+
+  it('tất cả sản phẩm đều trùng tên: không có nút nhập', async () => {
+    const parsed = parseProductImport(
+      [HEADER, ['Áo polo', 'Áo polo', 'Cái', 120000, 200000]],
+      TEST_CATEGORIES,
+    )
+    if (!parsed.ok) throw new Error('expected ok')
+    renderWithProviders(
+      <ProductImportModal
+        opened
+        file={FILE}
+        sheetName="Sản phẩm"
+        result={{ ok: true, products: [], warnings: [] }}
+        duplicates={parsed.products}
+        onClose={vi.fn()}
+        onDownloadTemplate={vi.fn()}
+      />,
+    )
+    const dialog = await screen.findByRole('dialog', { name: 'File Excel có sản phẩm trùng tên' })
+    expect(dialog).toHaveTextContent('không có sản phẩm mới để thêm')
+    expect(
+      within(dialog).queryByRole('button', { name: /Thêm|Đăng tất cả/ }),
+    ).not.toBeInTheDocument()
+    expect(within(dialog).getByRole('button', { name: 'Đóng' })).toBeInTheDocument()
   })
 
   it('file thiếu dữ liệu: liệt kê lỗi, không có nút nhập', async () => {

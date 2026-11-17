@@ -27,13 +27,18 @@ export interface ImportFromFileInput {
   sheetName: string | null
   /** Số dòng dữ liệu trong file. */
   rowCount: number
-  products: readonly ImportedRow[]
+  /** Mỗi dòng kèm `publish`: đăng bán ngay hay chỉ lưu (chưa đăng). */
+  products: readonly ImportRowToSave[]
+}
+
+export interface ImportRowToSave extends ImportedRow {
   publish: boolean
 }
 
 export interface ImportFromFileResult {
   importId: string
   count: number
+  publishedCount: number
 }
 
 /**
@@ -47,7 +52,6 @@ export async function importProductsFromFile({
   sheetName,
   rowCount,
   products,
-  publish,
 }: ImportFromFileInput): Promise<ImportFromFileResult> {
   const { data: session } = await supabase.auth.getSession()
   const userId = session.session?.user.id
@@ -62,7 +66,7 @@ export async function importProductsFromFile({
 
   // Chỉ gửi các cột được phép ghi (dòng nhập kèm field phụ như rowNumber).
   const rows = products.map(
-    ({ name, category, unit, cost_price, price, stock, low_stock_threshold, description }) => ({
+    ({
       name,
       category,
       unit,
@@ -71,6 +75,17 @@ export async function importProductsFromFile({
       stock,
       low_stock_threshold,
       description,
+      publish,
+    }) => ({
+      name,
+      category,
+      unit,
+      cost_price,
+      price,
+      stock,
+      low_stock_threshold,
+      description,
+      is_active: publish,
     }),
   )
 
@@ -83,17 +98,22 @@ export async function importProductsFromFile({
       row_count: rowCount,
     },
     p_products: rows,
-    p_publish: publish,
+    // Mặc định cho dòng không ghi is_active — ở đây mọi dòng đều ghi rõ.
+    p_publish: false,
   })
   if (error) {
     await supabase.storage.from(PRODUCT_IMPORTS_BUCKET).remove([path])
     throw error
   }
-  return { importId: data, count: rows.length }
+  return {
+    importId: data,
+    count: rows.length,
+    publishedCount: rows.filter((row) => row.is_active).length,
+  }
 }
 
 const IMPORT_COLUMNS =
-  'id, file_name, file_path, file_size, sheet_name, row_count, imported_count, published, created_at'
+  'id, file_name, file_path, file_size, sheet_name, row_count, imported_count, published, published_count, created_at'
 
 /** Lịch sử import, mới nhất trước, phân trang phía server. */
 export async function fetchProductImports(

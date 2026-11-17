@@ -5,6 +5,7 @@ import {
   productFiltersSchema,
   type ProductFilters,
   type ProductSortField,
+  type SortOrder,
 } from '../schemas/productFilters.schema'
 
 /** Các trường làm thay đổi tập kết quả (khác với sort / phân trang). */
@@ -39,6 +40,11 @@ export function useProductFilters() {
     [filters.order, filters.sort, setState],
   )
 
+  const setSort = useCallback(
+    (sort: ProductSortField, order: SortOrder) => setState({ sort, order, page: 1 }),
+    [setState],
+  )
+
   // Giữ nguyên sort và kích thước trang; chỉ xóa điều kiện lọc.
   const resetFilters = useCallback(() => {
     const { q, category, status, stock } = defaults
@@ -47,5 +53,5 @@ export function useProductFilters() {
 
   const hasActiveFilters = FILTER_FIELDS.some((key) => filters[key] !== defaults[key])
 
-  return { filters, setFilters, setPage, toggleSort, resetFilters, hasActiveFilters }
+  return { filters, setFilters, setPage, setSort, toggleSort, resetFilters, hasActiveFilters }
 }

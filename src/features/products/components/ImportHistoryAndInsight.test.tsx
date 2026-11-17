@@ -39,6 +39,7 @@ const IMPORT: ProductImport = {
   row_count: 2,
   imported_count: 2,
   published: true,
+  published_count: 2,
   created_at: '2026-11-10T03:00:00Z',
 }
 
@@ -61,7 +62,7 @@ describe('ProductImportHistory', () => {
 
     const row = (await screen.findByText('hang-ve-thang-11.xlsx')).closest('tr')
     expect(row).toHaveTextContent('24 KB · sheet "Sản phẩm"')
-    expect(row).toHaveTextContent('Đăng bán ngay')
+    expect(row).toHaveTextContent('Đăng tất cả')
     expect(row).toHaveTextContent('Thành công')
     expect(api.fetchProductImports).toHaveBeenCalledWith(1, 10)
   })
@@ -118,6 +119,7 @@ describe('ProductInsightDrawer', () => {
     sku: 'DN-AOTHUN-001',
     name: 'Áo thun basic',
     category: 'Áo thun',
+    category_missing: false,
     unit: 'Cái',
     cost_price: 99_642.86,
     price: 150_000,

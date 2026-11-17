@@ -27,6 +27,14 @@ export const router = createBrowserRouter([
             path: ROUTES.productImports,
             lazy: page(() => import('@/pages/ProductImportsPage')),
           },
+          {
+            path: ROUTES.productTrash,
+            lazy: page(() => import('@/pages/ProductTrashPage')),
+          },
+          {
+            path: ROUTES.productCategories,
+            lazy: page(() => import('@/pages/ProductCategoriesPage')),
+          },
           { path: ROUTES.orders, lazy: page(() => import('@/pages/OrdersPage')) },
           { path: ROUTES.orderDetail, lazy: page(() => import('@/pages/OrderDetailPage')) },
           { path: ROUTES.purchases, lazy: page(() => import('@/pages/PurchasesPage')) },

@@ -1,14 +1,25 @@
 import { Button, CloseButton, Group, Select, TextInput } from '@mantine/core'
 import { IconFilterOff, IconSearch } from '@tabler/icons-react'
 import { useSearchInput } from '@/shared/hooks/useSearchInput'
-import { PRODUCT_CATEGORIES } from '../constants'
+import { useProductCategoryNames } from '../api/products.queries'
 import type { useProductFilters } from '../hooks/useProductFilters'
+import {
+  parseSortOption,
+  PRODUCT_SORT_OPTIONS,
+  type ProductFilters as ProductFiltersState,
+} from '../schemas/productFilters.schema'
 
 const STATUS_OPTIONS = [
   { value: 'all', label: 'Tất cả trạng thái' },
   { value: 'active', label: 'Đang bán' },
   { value: 'inactive', label: 'Chưa đăng / ngừng bán' },
+  { value: 'needs_category', label: 'Cần cập nhật danh mục' },
 ]
+
+const STATUS_VALUES = STATUS_OPTIONS.map((option) => option.value)
+type StatusValue = ProductFiltersState['status']
+const isStatus = (value: string | null): value is StatusValue =>
+  value !== null && STATUS_VALUES.includes(value)
 
 const STOCK_OPTIONS = [
   { value: 'all', label: 'Mọi mức tồn kho' },
@@ -18,15 +29,17 @@ const STOCK_OPTIONS = [
 
 type ProductFiltersProps = Pick<
   ReturnType<typeof useProductFilters>,
-  'filters' | 'setFilters' | 'resetFilters' | 'hasActiveFilters'
+  'filters' | 'setFilters' | 'setSort' | 'resetFilters' | 'hasActiveFilters'
 >
 
 export function ProductFilters({
   filters,
   setFilters,
+  setSort,
   resetFilters,
   hasActiveFilters,
 }: ProductFiltersProps) {
+  const categories = useProductCategoryNames()
   const [search, setSearch] = useSearchInput(filters.q, (q) => setFilters({ q }, { replace: true }))
 
   return (
@@ -47,7 +60,7 @@ export function ProductFilters({
       <Select
         aria-label="Danh mục"
         placeholder="Tất cả danh mục"
-        data={PRODUCT_CATEGORIES}
+        data={categories.data ?? []}
         value={filters.category || null}
         onChange={(value) => setFilters({ category: value ?? '' })}
         clearable
@@ -60,12 +73,10 @@ export function ProductFilters({
         data={STATUS_OPTIONS}
         value={filters.status}
         onChange={(value) => {
-          if (value === 'all' || value === 'active' || value === 'inactive') {
-            setFilters({ status: value })
-          }
+          if (isStatus(value)) setFilters({ status: value })
         }}
         allowDeselect={false}
-        w={{ base: '100%', xs: 170 }}
+        w={{ base: '100%', xs: 200 }}
       />
       <Select
         aria-label="Mức tồn kho"
@@ -76,6 +87,17 @@ export function ProductFilters({
         }}
         allowDeselect={false}
         w={{ base: '100%', xs: 170 }}
+      />
+      <Select
+        aria-label="Sắp xếp"
+        data={PRODUCT_SORT_OPTIONS}
+        value={`${filters.sort}:${filters.order}`}
+        onChange={(value) => {
+          const option = parseSortOption(value)
+          if (option) setSort(option.sort, option.order)
+        }}
+        allowDeselect={false}
+        w={{ base: '100%', xs: 190 }}
       />
       {hasActiveFilters && (
         <Button
