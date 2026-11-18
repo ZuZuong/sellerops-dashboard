@@ -5,6 +5,7 @@ import { productKeys } from '@/features/products'
 import { formatNumber } from '@/shared/lib/formatters'
 import { getInventoryErrorMessage } from '../lib/inventoryLib'
 import type { InventoryFilters } from '../schemas/inventoryFilters.schema'
+import type { StocktakeScope } from '../schemas/stocktakeScope.schema'
 import {
   buildAdjustNote,
   computeStockDelta,
@@ -16,6 +17,7 @@ import {
   fetchInventory,
   fetchInventorySummary,
   fetchStockMovements,
+  fetchStocktakeItems,
 } from './inventory.api'
 
 /**
@@ -27,6 +29,7 @@ export const inventoryKeys = {
   lists: () => [...inventoryKeys.all, 'list'] as const,
   list: (filters: InventoryFilters) => [...inventoryKeys.lists(), filters] as const,
   summary: () => [...inventoryKeys.all, 'summary'] as const,
+  stocktake: (scope: StocktakeScope) => [...inventoryKeys.all, 'stocktake', scope] as const,
   movements: (productId: string, page: number, pageSize: number) =>
     [...inventoryKeys.all, 'movements', productId, page, pageSize] as const,
 }
@@ -41,6 +44,16 @@ export function useInventory(filters: InventoryFilters) {
 
 export function useInventorySummary() {
   return useQuery({ queryKey: inventoryKeys.summary(), queryFn: fetchInventorySummary })
+}
+
+/** Số liệu sổ sách cho biên bản kiểm kê — luôn lấy mới khi mở trang (không dùng cache cũ). */
+export function useStocktakeItems(scope: StocktakeScope) {
+  return useQuery({
+    queryKey: inventoryKeys.stocktake(scope),
+    queryFn: () => fetchStocktakeItems(scope),
+    staleTime: 0,
+    refetchOnMount: 'always',
+  })
 }
 
 export function useStockMovements(productId: string, page: number, pageSize: number) {

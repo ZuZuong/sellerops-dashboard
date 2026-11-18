@@ -7,6 +7,10 @@ export type SalesSummary = RpcRow<'get_sales_summary'>
 export type DailyRevenue = RpcRow<'get_revenue_by_day'>
 export type TopProductRow = RpcRow<'get_top_products_by_range'>
 export type StockLedgerRow = RpcRow<'get_stock_ledger'>
+/** Đơn tạo trước khi có trường phương thức thanh toán → `payment_method` null (type sinh ra không thể hiện). */
+export type RevenueReportRow = Omit<RpcRow<'get_revenue_report'>, 'payment_method'> & {
+  payment_method: RpcRow<'get_revenue_report'>['payment_method'] | null
+}
 
 export interface CategoryRevenue {
   /** null = sản phẩm chưa gán danh mục. */

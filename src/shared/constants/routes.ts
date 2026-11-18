@@ -10,7 +10,9 @@ export const ROUTES = {
   purchaseNew: '/purchases/new',
   purchaseDetail: '/purchases/:receiptId',
   inventory: '/inventory',
+  inventoryStocktake: '/inventory/stocktake',
   analytics: '/analytics',
+  analyticsRevenueReport: '/analytics/revenue-report',
   login: '/login',
 } as const
 

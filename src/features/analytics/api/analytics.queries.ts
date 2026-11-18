@@ -4,6 +4,7 @@ import type { ReportRange } from '../types'
 import {
   fetchRevenueByCategory,
   fetchRevenueByDay,
+  fetchRevenueReport,
   fetchSalesSummary,
   fetchStockLedger,
   fetchTopProductsByRange,
@@ -19,6 +20,7 @@ export const analyticsKeys = {
   revenueByDay: (range: ReportRange) => [...analyticsKeys.all, 'revenue-by-day', range] as const,
   revenueByCategory: (range: ReportRange) =>
     [...analyticsKeys.all, 'revenue-by-category', range] as const,
+  revenueReport: (range: ReportRange) => [...analyticsKeys.all, 'revenue-report', range] as const,
   stockLedger: (range: ReportRange) => [...analyticsKeys.all, 'stock-ledger', range] as const,
   topProducts: (range: ReportRange, limit: number) =>
     [...analyticsKeys.all, 'top-products', range, limit] as const,
@@ -64,5 +66,14 @@ export function useStockLedger(range: ReportRange) {
     queryKey: analyticsKeys.stockLedger(range),
     queryFn: () => fetchStockLedger(range),
     ...options,
+  })
+}
+
+/** Bảng kê doanh thu để in / nộp: không giữ dữ liệu khoảng cũ (tránh in nhầm kỳ). */
+export function useRevenueReport(range: ReportRange) {
+  return useQuery({
+    queryKey: analyticsKeys.revenueReport(range),
+    queryFn: () => fetchRevenueReport(range),
+    staleTime: 0,
   })
 }

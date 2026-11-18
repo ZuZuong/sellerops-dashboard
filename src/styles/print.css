@@ -1,4 +1,4 @@
-/* In chứng từ (phiếu nhập kho): chỉ in nội dung trang, ẩn khung ứng dụng. */
+/* In chứng từ (phiếu nhập kho, biên bản kiểm kê, bảng kê doanh thu): chỉ in nội dung trang, ẩn khung ứng dụng. */
 @media print {
   .mantine-AppShell-header,
   .mantine-AppShell-navbar,
@@ -19,5 +19,31 @@
   body {
     background: #fff !important;
     color: #000 !important;
+  }
+}
+
+/* Chứng từ nhiều cột (biên bản kiểm kê, bảng kê doanh thu): in khổ A4 ngang. */
+@page landscape {
+  size: A4 landscape;
+  margin: 10mm;
+}
+
+@media print {
+  .print-landscape {
+    page: landscape;
+  }
+
+  /* Không cắt bảng trong khung cuộn khi in; lặp lại tiêu đề bảng ở mỗi trang. */
+  .print-sheet .mantine-Table-scrollContainer,
+  .print-sheet .mantine-ScrollArea-viewport {
+    overflow: visible !important;
+  }
+
+  .print-sheet thead {
+    display: table-header-group;
+  }
+
+  .print-sheet tr {
+    break-inside: avoid;
   }
 }

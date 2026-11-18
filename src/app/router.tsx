@@ -44,7 +44,15 @@ export const router = createBrowserRouter([
             lazy: page(() => import('@/pages/PurchaseDetailPage')),
           },
           { path: ROUTES.inventory, lazy: page(() => import('@/pages/InventoryPage')) },
+          {
+            path: ROUTES.inventoryStocktake,
+            lazy: page(() => import('@/pages/InventoryStocktakePage')),
+          },
           { path: ROUTES.analytics, lazy: page(() => import('@/pages/AnalyticsPage')) },
+          {
+            path: ROUTES.analyticsRevenueReport,
+            lazy: page(() => import('@/pages/RevenueReportPage')),
+          },
         ],
       },
     ],
