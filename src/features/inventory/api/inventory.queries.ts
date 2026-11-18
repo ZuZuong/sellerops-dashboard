@@ -2,11 +2,13 @@ import { notifications } from '@mantine/notifications'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { dashboardKeys } from '@/features/dashboard'
 import { productKeys } from '@/features/products'
+import { change, withChanges } from '@/shared/lib/activityChanges'
 import { formatNumber } from '@/shared/lib/formatters'
 import { getInventoryErrorMessage } from '../lib/inventoryLib'
 import type { InventoryFilters } from '../schemas/inventoryFilters.schema'
 import type { StocktakeScope } from '../schemas/stocktakeScope.schema'
 import {
+  ADJUST_TYPE_META,
   buildAdjustNote,
   computeStockDelta,
   type StockAdjustValues,
@@ -78,11 +80,16 @@ export function useAdjustStock() {
         computeStockDelta(values.type, values.quantity, product.stock),
         buildAdjustNote(values.type, values.note),
       ),
-    onSuccess: (newStock, { product }) => {
+    onSuccess: (newStock, { product, values }) => {
       notifications.show({
         color: 'green',
         title: 'Đã cập nhật tồn kho',
         message: `${product.name}: ${formatNumber(product.stock)} → ${formatNumber(newStock)}`,
+        ...withChanges([
+          change('Tồn kho', formatNumber(product.stock), formatNumber(newStock)),
+          change('Loại điều chỉnh', null, ADJUST_TYPE_META[values.type].label),
+          change('Ghi chú', null, values.note),
+        ]),
       })
     },
     onError: (error) => {

@@ -7,7 +7,9 @@ import {
   type QueryClient,
 } from '@tanstack/react-query'
 import { dashboardKeys } from '@/features/dashboard'
+import { change, describeChanges, withChanges } from '@/shared/lib/activityChanges'
 import { formatCurrency, formatNumber } from '@/shared/lib/formatters'
+import { activeLabel, productCreateChanges, productUpdateChanges } from '../lib/productActivity'
 import type { ProductMedia } from '../lib/productImages'
 import { getProductErrorMessage } from '../lib/productErrors'
 import type { ProductFormValues } from '../schemas/product.schema'
@@ -98,6 +100,7 @@ export function useCreateProduct() {
         color: 'green',
         title: product.is_active ? 'Đã đăng sản phẩm' : 'Đã thêm sản phẩm (chưa đăng)',
         message: `${product.name} · SKU ${product.sku}`,
+        ...withChanges(productCreateChanges(product)),
       })
       return invalidateAfterProductChange(queryClient)
     },
@@ -117,8 +120,17 @@ export function useUpdateProduct() {
       values: ProductFormValues
       media: ProductMedia
     }) => updateProduct(product, values, media),
-    onSuccess: (product) => {
-      notifications.show({ color: 'green', title: 'Đã lưu thay đổi', message: product.name })
+    onSuccess: (updated, { product: before }) => {
+      const changes = productUpdateChanges(before, updated)
+      notifications.show({
+        color: 'green',
+        title: 'Đã lưu thay đổi sản phẩm',
+        message:
+          changes.length > 0
+            ? `${updated.name}\n${describeChanges(changes)}`
+            : `${updated.name} · không có thay đổi`,
+        ...withChanges(changes),
+      })
       return invalidateAfterProductChange(queryClient)
     },
     onError: (error) => notifyError('Không lưu được sản phẩm', error),
@@ -134,7 +146,10 @@ export function useSetProductActive() {
       notifications.show({
         color: 'green',
         title: isActive ? 'Đã đăng bán' : 'Đã ngừng bán',
-        message: product.name,
+        message: `${product.name}: ${activeLabel(product.is_active)} → ${activeLabel(isActive)}`,
+        ...withChanges([
+          change('Trạng thái', activeLabel(product.is_active), activeLabel(isActive)),
+        ]),
       })
       return invalidateAfterProductChange(queryClient)
     },
@@ -166,6 +181,7 @@ export function useTrashProducts() {
         color: trashed > 0 ? 'green' : 'orange',
         title: trashed > 0 ? (single ? `Đã xóa "${single}"` : 'Đã xóa sản phẩm') : 'Không xóa được',
         message: parts.join(' ') || 'Sản phẩm không còn tồn tại.',
+        ...withChanges(products.map((p) => change('Sản phẩm', p.name, null))),
       })
       return invalidateAfterProductChange(queryClient)
     },
@@ -313,7 +329,10 @@ export function useQuickUpdateCost() {
       notifications.show({
         color: 'green',
         title: 'Đã cập nhật giá vốn',
-        message: `${product.name}: ${formatCurrency(costPrice)}`,
+        message: `${product.name}: ${formatCurrency(product.cost_price)} → ${formatCurrency(costPrice)}`,
+        ...withChanges([
+          change('Giá vốn', formatCurrency(product.cost_price), formatCurrency(costPrice)),
+        ]),
       })
     },
     onError: (error, _vars, context) => {
@@ -335,8 +354,9 @@ export function useQuickUpdatePrice() {
     onSuccess: (_data, { product, price }) => {
       notifications.show({
         color: 'green',
-        title: 'Đã cập nhật giá',
-        message: `${product.name}: ${formatCurrency(price)}`,
+        title: 'Đã cập nhật giá bán',
+        message: `${product.name}: ${formatCurrency(product.price)} → ${formatCurrency(price)}`,
+        ...withChanges([change('Giá bán', formatCurrency(product.price), formatCurrency(price))]),
       })
     },
     onError: (error, _vars, context) => {
@@ -373,7 +393,12 @@ export function useCreateProductCategory() {
   return useMutation({
     mutationFn: (name: string) => createProductCategory(name),
     onSuccess: (_id, name) => {
-      notifications.show({ color: 'green', title: 'Đã thêm danh mục', message: name.trim() })
+      notifications.show({
+        color: 'green',
+        title: 'Đã thêm danh mục',
+        message: name.trim(),
+        ...withChanges([change('Danh mục', null, name.trim())]),
+      })
       return invalidateAfterProductChange(queryClient)
     },
     onError: (error) => notifyError('Không thêm được danh mục', error),
@@ -390,6 +415,7 @@ export function useRenameProductCategory() {
         color: 'green',
         title: 'Đã đổi tên danh mục',
         message: `"${oldName}" → "${name.trim()}". Sản phẩm trong danh mục đã được cập nhật theo.`,
+        ...withChanges([change('Tên danh mục', oldName, name.trim())]),
       })
       return invalidateAfterProductChange(queryClient)
     },
@@ -405,6 +431,7 @@ export function useDeleteProductCategory() {
       notifications.show({
         color: products > 0 ? 'orange' : 'green',
         title: `Đã xóa danh mục "${name}"`,
+        ...withChanges([change('Danh mục', name, null)]),
         message:
           products === 0
             ? 'Không có sản phẩm nào dùng danh mục này.'

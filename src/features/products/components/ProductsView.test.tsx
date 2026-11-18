@@ -1,6 +1,6 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { Notifications } from '@mantine/notifications'
+import { Notifications, notifications } from '@mantine/notifications'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { testCategoryOverview } from '../test/fixtures'
 import { renderWithProviders } from '@/test/render'
@@ -326,6 +326,32 @@ describe('ProductsView', () => {
 
     rejectUpdate(new Error('boom'))
     await waitFor(() => expect(normalize(cell().textContent)).toContain('150.000 ₫'))
+  })
+
+  it('sửa nhanh giá bán: thông báo ghi rõ giá cũ → giá mới', async () => {
+    // Toast của test trước còn trong store dùng chung → dọn để toast mới hiện ngay.
+    act(() => notifications.clean())
+    api.fetchProducts.mockResolvedValue(page([makeProduct({ price: 150_000 })]))
+    api.updateProductPrice.mockResolvedValue()
+    renderWithProviders(
+      <>
+        <Notifications />
+        <ProductsView />
+      </>,
+      { route: '/products' },
+    )
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Sửa nhanh giá của Áo thun basic' }),
+    )
+    const input = await screen.findByRole('textbox', { name: 'Sửa nhanh giá của Áo thun basic' })
+    await userEvent.clear(input)
+    await userEvent.type(input, '199000{Enter}')
+
+    const toast = await screen.findByText('Đã cập nhật giá bán')
+    expect(normalize(toast.closest('.mantine-Notification-root')?.textContent)).toContain(
+      'Áo thun basic: 150.000 ₫ → 199.000 ₫',
+    )
   })
 
   it('sửa nhanh giá vốn: cột giá vốn đứng trước giá bán, lưu giá trị mới', async () => {
