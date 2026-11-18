@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import type { SortOrder } from '@/shared/types/sort'
 
-export const PRODUCT_SORT_FIELDS = ['created_at', 'name', 'price', 'cost_price', 'stock'] as const
+export const PRODUCT_SORT_FIELDS = ['created_at', 'name', 'price', 'cost_price'] as const
 export const PRODUCT_PAGE_SIZES = [10, 20, 50] as const
 
 export type ProductSortField = (typeof PRODUCT_SORT_FIELDS)[number]
@@ -15,7 +15,6 @@ export const productFiltersSchema = z.object({
   q: z.string().trim().max(100).catch(''),
   category: z.string().trim().max(100).catch(''),
   status: z.enum(['all', 'active', 'inactive', 'needs_category']).catch('all'),
-  stock: z.enum(['all', 'low', 'out']).catch('all'),
   sort: z.enum(PRODUCT_SORT_FIELDS).catch('created_at'),
   order: z.enum(['asc', 'desc']).catch('desc'),
   page: z.coerce.number().int().min(1).catch(1),
@@ -33,7 +32,6 @@ export const DEFAULT_SORT_ORDER: Readonly<Record<ProductSortField, SortOrder>> =
   name: 'asc',
   price: 'desc',
   cost_price: 'desc',
-  stock: 'asc',
 }
 
 /** Các cách sắp xếp trong ô "Sắp xếp" (giá trị `field:order`). */
@@ -49,8 +47,6 @@ export const PRODUCT_SORT_OPTIONS: ReadonlyArray<{
   { value: 'price:asc', label: 'Giá bán thấp → cao' },
   { value: 'cost_price:desc', label: 'Giá vốn cao → thấp' },
   { value: 'cost_price:asc', label: 'Giá vốn thấp → cao' },
-  { value: 'stock:asc', label: 'Tồn kho thấp → cao' },
-  { value: 'stock:desc', label: 'Tồn kho cao → thấp' },
 ]
 
 /** "price:asc" → { sort: 'price', order: 'asc' }; giá trị lạ → null. */

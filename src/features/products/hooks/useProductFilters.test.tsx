@@ -59,20 +59,19 @@ describe('useProductFilters', () => {
     const { result } = setup('/products?sort=name&order=asc&page=2')
     expect(result.current.hasActiveFilters).toBe(false)
 
-    act(() => result.current.setFilters({ stock: 'low' }))
+    act(() => result.current.setFilters({ status: 'active' }))
     expect(result.current.hasActiveFilters).toBe(true)
   })
 
   it('resetFilters xóa điều kiện lọc nhưng giữ sort và kích thước trang', () => {
     const { result, search } = setup(
-      '/products?q=ao&category=%C3%81o&status=inactive&stock=out&sort=price&order=asc&pageSize=20&page=3',
+      '/products?q=ao&category=%C3%81o&status=inactive&sort=price&order=asc&pageSize=20&page=3',
     )
     act(() => result.current.resetFilters())
     expect(result.current.filters).toEqual({
       q: '',
       category: '',
       status: 'all',
-      stock: 'all',
       sort: 'price',
       order: 'asc',
       page: 1,

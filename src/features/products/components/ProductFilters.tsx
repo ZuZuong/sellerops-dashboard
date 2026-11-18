@@ -21,12 +21,6 @@ type StatusValue = ProductFiltersState['status']
 const isStatus = (value: string | null): value is StatusValue =>
   value !== null && STATUS_VALUES.includes(value)
 
-const STOCK_OPTIONS = [
-  { value: 'all', label: 'Mọi mức tồn kho' },
-  { value: 'low', label: 'Sắp hết hàng' },
-  { value: 'out', label: 'Hết hàng' },
-]
-
 type ProductFiltersProps = Pick<
   ReturnType<typeof useProductFilters>,
   'filters' | 'setFilters' | 'setSort' | 'resetFilters' | 'hasActiveFilters'
@@ -77,16 +71,6 @@ export function ProductFilters({
         }}
         allowDeselect={false}
         w={{ base: '100%', xs: 200 }}
-      />
-      <Select
-        aria-label="Mức tồn kho"
-        data={STOCK_OPTIONS}
-        value={filters.stock}
-        onChange={(value) => {
-          if (value === 'all' || value === 'low' || value === 'out') setFilters({ stock: value })
-        }}
-        allowDeselect={false}
-        w={{ base: '100%', xs: 170 }}
       />
       <Select
         aria-label="Sắp xếp"

@@ -23,8 +23,6 @@ function buildListQuery(filters: ProductFilters, head = false) {
     query = query.eq('is_active', filters.status === 'active')
   }
   if (filters.status === 'needs_category') query = query.eq('category_missing', true)
-  if (filters.stock === 'low') query = query.eq('is_low_stock', true)
-  if (filters.stock === 'out') query = query.eq('stock', 0)
 
   return query
 }
@@ -121,20 +119,15 @@ export async function updateProductPrice(id: string, price: number): Promise<voi
   if (error) throw error
 }
 
-export async function setProductActive(id: string, isActive: boolean): Promise<void> {
-  const { error } = await supabase.from('products').update({ is_active: isActive }).eq('id', id)
+/** Sửa giá vốn hiện hành. Đơn đã xác nhận giữ giá vốn đã chốt (order_items.unit_cost). */
+export async function updateProductCost(id: string, costPrice: number): Promise<void> {
+  const { error } = await supabase.from('products').update({ cost_price: costPrice }).eq('id', id)
   if (error) throw error
 }
 
-/** Điều chỉnh kho qua RPC (atomic, ghi `inventory_movements`). Trả về tồn kho mới. */
-export async function adjustProductStock(id: string, delta: number, note: string): Promise<number> {
-  const { data, error } = await supabase.rpc('adjust_stock', {
-    p_product_id: id,
-    p_delta: delta,
-    p_note: note,
-  })
+export async function setProductActive(id: string, isActive: boolean): Promise<void> {
+  const { error } = await supabase.from('products').update({ is_active: isActive }).eq('id', id)
   if (error) throw error
-  return data
 }
 
 /** Hiệu quả sản phẩm (toàn thời gian): bán ra, giá vốn, lợi nhuận gộp, nhập hàng. */

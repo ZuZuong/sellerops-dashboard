@@ -14,12 +14,12 @@ import type { ProductFormValues } from '../schemas/product.schema'
 import type { ProductFilters } from '../schemas/productFilters.schema'
 import type { Product, ProductPage } from '../types'
 import {
-  adjustProductStock,
   createProduct,
   fetchProductInsight,
   fetchProducts,
   setProductActive,
   updateProduct,
+  updateProductCost,
   updateProductPrice,
 } from './products.api'
 import {
@@ -301,6 +301,29 @@ function rollback(queryClient: QueryClient, snapshot: ListSnapshot | undefined) 
   snapshot?.forEach(([key, data]) => queryClient.setQueryData(key, data))
 }
 
+export function useQuickUpdateCost() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ product, costPrice }: { product: Product; costPrice: number }) =>
+      updateProductCost(product.id, costPrice),
+    onMutate: async ({ product, costPrice }) => ({
+      snapshot: await patchProductInLists(queryClient, product.id, { cost_price: costPrice }),
+    }),
+    onSuccess: (_data, { product, costPrice }) => {
+      notifications.show({
+        color: 'green',
+        title: 'Đã cập nhật giá vốn',
+        message: `${product.name}: ${formatCurrency(costPrice)}`,
+      })
+    },
+    onError: (error, _vars, context) => {
+      rollback(queryClient, context?.snapshot)
+      notifyError('Không cập nhật được giá vốn', error)
+    },
+    onSettled: () => invalidateAfterProductChange(queryClient),
+  })
+}
+
 export function useQuickUpdatePrice() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -319,35 +342,6 @@ export function useQuickUpdatePrice() {
     onError: (error, _vars, context) => {
       rollback(queryClient, context?.snapshot)
       notifyError('Không cập nhật được giá', error)
-    },
-    onSettled: () => invalidateAfterProductChange(queryClient),
-  })
-}
-
-export const QUICK_STOCK_NOTE = 'Sửa nhanh từ danh sách sản phẩm'
-
-export function useQuickAdjustStock() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    // Chuyển "tồn kho mới" thành delta để DB kiểm tra & ghi lịch sử trong một transaction.
-    mutationFn: ({ product, stock }: { product: Product; stock: number }) =>
-      adjustProductStock(product.id, stock - product.stock, QUICK_STOCK_NOTE),
-    onMutate: async ({ product, stock }) => ({
-      snapshot: await patchProductInLists(queryClient, product.id, {
-        stock,
-        is_low_stock: stock <= product.low_stock_threshold,
-      }),
-    }),
-    onSuccess: (newStock, { product }) => {
-      notifications.show({
-        color: 'green',
-        title: 'Đã cập nhật tồn kho',
-        message: `${product.name}: ${formatNumber(newStock)}`,
-      })
-    },
-    onError: (error, _vars, context) => {
-      rollback(queryClient, context?.snapshot)
-      notifyError('Không cập nhật được tồn kho', error)
     },
     onSettled: () => invalidateAfterProductChange(queryClient),
   })
