@@ -1,5 +1,6 @@
 import { AppShell, Box } from '@mantine/core'
 import { Outlet, useNavigation } from 'react-router'
+import { useActivityCapture } from '@/features/activity'
 import { useUiStore } from '@/shared/stores/useUiStore'
 import { Header } from './Header'
 import { NAVBAR_COLLAPSED_WIDTH, NAVBAR_WIDTH, Sidebar } from './Sidebar'
@@ -8,6 +9,8 @@ export function DashboardLayout() {
   const mobileNavOpened = useUiStore((s) => s.mobileNavOpened)
   const desktopNavCollapsed = useUiStore((s) => s.desktopNavCollapsed)
   const isNavigating = useNavigation().state === 'loading'
+  // Ghi mọi thông báo hiển thị vào nhật ký hoạt động (chuông thông báo).
+  useActivityCapture()
 
   return (
     <AppShell
