@@ -21,6 +21,7 @@ import { formatCurrency, formatDateTime, formatPercent } from '@/shared/lib/form
 import { calcMargin } from '@/shared/lib/metrics'
 import { useOrderDetail } from '../api/orders.queries'
 import { orderCogs } from '../domain/orderProfit'
+import { getPaymentMethodLabel } from '../domain/paymentMethod'
 import { useOrderTransitionFlow } from '../hooks/useOrderTransitionFlow'
 import type { OrderDetail } from '../types'
 import { OrderItemsTable } from './OrderItemsTable'
@@ -117,6 +118,12 @@ function OrderDetailLoaded({ order }: { order: OrderDetail }) {
                     '—'
                   )}
                 </InfoRow>
+                <InfoRow label="Địa chỉ giao">
+                  <Text size="sm" style={{ whiteSpace: 'pre-line' }}>
+                    {order.shipping_address ?? '—'}
+                  </Text>
+                </InfoRow>
+                <InfoRow label="Thanh toán">{getPaymentMethodLabel(order.payment_method)}</InfoRow>
                 <InfoRow label="Tổng tiền">
                   <Text fw={600} size="sm">
                     {formatCurrency(order.total)}

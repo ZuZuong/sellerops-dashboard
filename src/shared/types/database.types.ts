@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      customers: {
+        Row: {
+          address: string | null
+          created_at: string
+          id: string
+          last_order_at: string | null
+          name: string
+          payment_method: Database["public"]["Enums"]["payment_method"] | null
+          phone: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          id?: string
+          last_order_at?: string | null
+          name: string
+          payment_method?: Database["public"]["Enums"]["payment_method"] | null
+          phone: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          id?: string
+          last_order_at?: string | null
+          name?: string
+          payment_method?: Database["public"]["Enums"]["payment_method"] | null
+          phone?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       inventory_movements: {
         Row: {
           created_at: string
@@ -171,6 +207,8 @@ export type Database = {
           customer_name: string
           customer_phone: string | null
           id: string
+          payment_method: Database["public"]["Enums"]["payment_method"] | null
+          shipping_address: string | null
           status: Database["public"]["Enums"]["order_status"]
           total: number
           user_id: string
@@ -181,6 +219,8 @@ export type Database = {
           customer_name: string
           customer_phone?: string | null
           id?: string
+          payment_method?: Database["public"]["Enums"]["payment_method"] | null
+          shipping_address?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           total?: number
           user_id?: string
@@ -191,6 +231,8 @@ export type Database = {
           customer_name?: string
           customer_phone?: string | null
           id?: string
+          payment_method?: Database["public"]["Enums"]["payment_method"] | null
+          shipping_address?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           total?: number
           user_id?: string
@@ -548,6 +590,9 @@ export type Database = {
           p_customer_name: string
           p_customer_phone: string
           p_items: Json
+          p_payment_method?: string
+          p_save_customer?: boolean
+          p_shipping_address?: string
         }
         Returns: string
       }
@@ -632,6 +677,20 @@ export type Database = {
           gross_profit: number
           order_count: number
           revenue: number
+        }[]
+      }
+      get_revenue_report: {
+        Args: { p_from: string; p_to: string; p_tz?: string }
+        Returns: {
+          code: string
+          cogs: number
+          created_at: string
+          customer_name: string
+          order_id: string
+          payment_method: Database["public"]["Enums"]["payment_method"]
+          quantity: number
+          revenue: number
+          status: Database["public"]["Enums"]["order_status"]
         }[]
       }
       get_revenue_series: {
@@ -752,6 +811,7 @@ export type Database = {
         | "shipping"
         | "delivered"
         | "cancelled"
+      payment_method: "cod" | "bank_transfer" | "cash" | "card" | "e_wallet"
       receipt_status: "draft" | "posted"
     }
     CompositeTypes: {
@@ -887,6 +947,7 @@ export const Constants = {
         "delivered",
         "cancelled",
       ],
+      payment_method: ["cod", "bank_transfer", "cash", "card", "e_wallet"],
       receipt_status: ["draft", "posted"],
     },
   },

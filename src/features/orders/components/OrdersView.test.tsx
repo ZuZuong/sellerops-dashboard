@@ -6,6 +6,7 @@ import {
   createOrder,
   fetchOrders,
   searchOrderableProducts,
+  searchSavedCustomers,
   transitionOrder,
 } from '../api/orders.api'
 import type { Order, OrderableProduct, OrderPage } from '../types'
@@ -16,6 +17,7 @@ vi.mock('../api/orders.api', () => ({
   fetchOrders: vi.fn(),
   fetchOrderDetail: vi.fn(),
   searchOrderableProducts: vi.fn(),
+  searchSavedCustomers: vi.fn(),
   createOrder: vi.fn(),
   transitionOrder: vi.fn(),
 }))
@@ -23,6 +25,7 @@ vi.mock('../api/orders.api', () => ({
 const api = {
   fetchOrders: vi.mocked(fetchOrders),
   searchOrderableProducts: vi.mocked(searchOrderableProducts),
+  searchSavedCustomers: vi.mocked(searchSavedCustomers),
   createOrder: vi.mocked(createOrder),
   transitionOrder: vi.mocked(transitionOrder),
 }
@@ -32,6 +35,8 @@ const makeOrder = (overrides: Partial<Order> = {}): Order => ({
   code: 'DH-000001',
   customer_name: 'Nguyễn Văn A',
   customer_phone: '0901234567',
+  shipping_address: null,
+  payment_method: 'cod',
   status: 'pending',
   total: 300_000,
   created_at: '2026-11-10T02:00:00Z',
@@ -206,6 +211,9 @@ describe('CreateOrderForm', () => {
       expect(api.createOrder).toHaveBeenCalledWith({
         customer_name: 'Lê Văn C',
         customer_phone: '0912345678',
+        shipping_address: null,
+        payment_method: 'cod',
+        save_customer: false,
         items: [
           { product_id: 'p1', quantity: 3 },
           { product_id: 'p2', quantity: 2 },
@@ -213,6 +221,57 @@ describe('CreateOrderForm', () => {
       }),
     )
     await waitFor(() => expect(onCreated).toHaveBeenCalledWith('new-order-id'))
+  })
+
+  it('chọn khách đã lưu điền sẵn thông tin; bật lưu khách gửi kèm địa chỉ + thanh toán', async () => {
+    api.searchSavedCustomers.mockResolvedValue([
+      {
+        id: 'c1',
+        name: 'Phạm Thị D',
+        phone: '0987654321',
+        address: '12 Lý Thường Kiệt, Hà Nội',
+        payment_method: 'bank_transfer',
+      },
+    ])
+    api.createOrder.mockResolvedValue('new-order-id')
+    renderWithProviders(<CreateOrderForm onCancel={vi.fn()} onCreated={vi.fn()} />)
+
+    await userEvent.click(screen.getByRole('combobox', { name: 'Khách đã lưu' }))
+    await userEvent.click(await screen.findByRole('option', { name: /Phạm Thị D/ }))
+
+    expect(screen.getByRole('textbox', { name: /Tên khách hàng/ })).toHaveValue('Phạm Thị D')
+    expect(screen.getByRole('textbox', { name: /Số điện thoại/ })).toHaveValue('0987654321')
+    expect(screen.getByRole('textbox', { name: /Địa chỉ giao hàng/ })).toHaveValue(
+      '12 Lý Thường Kiệt, Hà Nội',
+    )
+    expect(screen.getByDisplayValue('Chuyển khoản ngân hàng')).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('switch', { name: /Lưu thông tin khách/ }))
+    await pickProduct(1, 'Áo thun basic')
+    await userEvent.click(screen.getByRole('button', { name: 'Tạo đơn' }))
+
+    await waitFor(() =>
+      expect(api.createOrder).toHaveBeenCalledWith(
+        expect.objectContaining({
+          customer_name: 'Phạm Thị D',
+          customer_phone: '0987654321',
+          shipping_address: '12 Lý Thường Kiệt, Hà Nội',
+          payment_method: 'bank_transfer',
+          save_customer: true,
+        }),
+      ),
+    )
+  })
+
+  it('bật lưu khách mà không có SĐT thì báo lỗi', async () => {
+    renderWithProviders(<CreateOrderForm onCancel={vi.fn()} onCreated={vi.fn()} />)
+    await userEvent.type(screen.getByRole('textbox', { name: /Tên khách hàng/ }), 'Khách lẻ')
+    await userEvent.click(screen.getByRole('switch', { name: /Lưu thông tin khách/ }))
+    await pickProduct(1, 'Áo thun basic')
+    await userEvent.click(screen.getByRole('button', { name: 'Tạo đơn' }))
+
+    expect(await screen.findByText('Cần số điện thoại để lưu thông tin khách')).toBeInTheDocument()
+    expect(api.createOrder).not.toHaveBeenCalled()
   })
 
   it('sản phẩm đã chọn không xuất hiện lại ở dòng khác', async () => {

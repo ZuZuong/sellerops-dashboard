@@ -18,6 +18,7 @@ import {
   fetchOrderDetail,
   fetchOrders,
   searchOrderableProducts,
+  searchSavedCustomers,
   transitionOrder,
 } from './orders.api'
 
@@ -28,6 +29,7 @@ export const orderKeys = {
   details: () => [...orderKeys.all, 'detail'] as const,
   detail: (id: string) => [...orderKeys.details(), id] as const,
   orderableProducts: (q: string) => [...orderKeys.all, 'orderable-products', q] as const,
+  savedCustomers: (q: string) => [...orderKeys.all, 'saved-customers', q] as const,
 }
 
 export function useOrders(filters: OrderFilters) {
@@ -56,6 +58,16 @@ export function useOrderableProducts(q: string, enabled = true) {
   })
 }
 
+export function useSavedCustomers(q: string, enabled = true) {
+  return useQuery({
+    queryKey: orderKeys.savedCustomers(q),
+    queryFn: () => searchSavedCustomers(q),
+    enabled,
+    placeholderData: keepPreviousData,
+    staleTime: 60_000,
+  })
+}
+
 /**
  * Đơn hàng thay đổi kéo theo: danh sách / chi tiết đơn, tồn kho sản phẩm (xác nhận / hủy)
  * và số liệu dashboard (doanh thu, đơn chờ xử lý, sắp hết hàng).
@@ -76,7 +88,9 @@ export function useCreateOrder() {
       notifications.show({
         color: 'green',
         title: 'Đã tạo đơn hàng',
-        message: `Đơn của ${values.customer_name} đang chờ xác nhận`,
+        message: values.save_customer
+          ? `Đơn của ${values.customer_name} đang chờ xác nhận · đã lưu thông tin khách`
+          : `Đơn của ${values.customer_name} đang chờ xác nhận`,
       })
       return invalidateAfterOrderChange(queryClient)
     },

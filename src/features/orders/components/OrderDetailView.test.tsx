@@ -27,6 +27,8 @@ const makeOrder = (overrides: Partial<OrderDetail> = {}): OrderDetail => ({
   code: 'DH-000123',
   customer_name: 'Trần Thị B',
   customer_phone: '0901234567',
+  shipping_address: '45 Nguyễn Huệ, Quận 1, TP.HCM',
+  payment_method: 'bank_transfer',
   status: 'pending',
   total: 450_000,
   created_at: '2026-11-10T02:00:00Z',
@@ -86,6 +88,8 @@ describe('OrderDetailView', () => {
     const row = screen.getByText('Áo thun basic').closest('tr')
     expect(row).toHaveTextContent(/300\.000\s₫/)
     expect(screen.getByText('Trần Thị B')).toBeInTheDocument()
+    expect(screen.getByText('45 Nguyễn Huệ, Quận 1, TP.HCM')).toBeInTheDocument()
+    expect(screen.getByText('Chuyển khoản ngân hàng')).toBeInTheDocument()
     expect(
       screen.getByText('Chờ xác nhận', { selector: '.mantine-Timeline-itemTitle' }),
     ).toBeInTheDocument()

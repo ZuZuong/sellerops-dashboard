@@ -4,9 +4,10 @@ import { supabase } from '@/shared/lib/supabase'
 import { assertTransition, type OrderStatus } from '../domain/orderStatus'
 import type { CreateOrderPayload } from '../schemas/order.schema'
 import type { OrderFilters } from '../schemas/orderFilters.schema'
-import type { OrderableProduct, OrderDetail, OrderPage } from '../types'
+import type { OrderableProduct, OrderDetail, OrderPage, SavedCustomer } from '../types'
 
-const ORDER_COLUMNS = 'id, code, customer_name, customer_phone, status, total, created_at'
+const ORDER_COLUMNS =
+  'id, code, customer_name, customer_phone, shipping_address, payment_method, status, total, created_at'
 
 const ORDER_DETAIL_COLUMNS = `${ORDER_COLUMNS},
   items:order_items(id, product_id, quantity, unit_price, unit_cost, product:products(id, name, sku, stock, is_active)),
@@ -75,6 +76,22 @@ export async function searchOrderableProducts(q: string, limit = 20): Promise<Or
 }
 
 /**
+ * Khách đã lưu, tìm theo tên / SĐT; khách đặt gần nhất lên đầu. Giới hạn số dòng: ô chọn khách
+ * tìm phía server khi gõ.
+ */
+export async function searchSavedCustomers(q: string, limit = 20): Promise<SavedCustomer[]> {
+  let query = supabase.from('customers').select('id, name, phone, address, payment_method')
+  const term = toSearchTerm(q)
+  if (term) query = query.or(`name.ilike.%${term}%,phone.ilike.%${term}%`)
+  const { data, error } = await query
+    .order('last_order_at', { ascending: false, nullsFirst: false })
+    .order('name')
+    .limit(limit)
+  if (error) throw error
+  return data
+}
+
+/**
  * Tạo đơn qua RPC: đơn + các dòng hàng trong một transaction; mã đơn, giá chốt và tổng tiền do DB
  * tính. Không trừ kho (kho chỉ trừ khi xác nhận). Trả về id đơn mới.
  */
@@ -84,6 +101,9 @@ export async function createOrder(payload: CreateOrderPayload): Promise<string> 
     // RPC nhận chuỗi rỗng = không có số điện thoại.
     p_customer_phone: payload.customer_phone ?? '',
     p_items: payload.items,
+    p_shipping_address: payload.shipping_address ?? '',
+    p_payment_method: payload.payment_method,
+    p_save_customer: payload.save_customer,
   })
   if (error) throw error
   return data

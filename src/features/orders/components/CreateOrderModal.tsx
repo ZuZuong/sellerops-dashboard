@@ -9,9 +9,12 @@ import {
   Modal,
   NumberInput,
   Paper,
+  Select,
   SimpleGrid,
   Stack,
+  Switch,
   Text,
+  Textarea,
   TextInput,
 } from '@mantine/core'
 import { useMediaQuery } from '@mantine/hooks'
@@ -19,17 +22,21 @@ import { IconAlertTriangle, IconPlus, IconTrash } from '@tabler/icons-react'
 import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form'
 import { formatCurrency, formatNumber } from '@/shared/lib/formatters'
 import { useCreateOrder } from '../api/orders.queries'
+import { isPaymentMethod, PAYMENT_METHOD_OPTIONS } from '../domain/paymentMethod'
 import { calcOrderTotal, lineTotal } from '../lib/orderTotal'
 import {
   createOrderSchema,
   EMPTY_ORDER_FORM,
   EMPTY_ORDER_ITEM,
+  MAX_ADDRESS_LENGTH,
   MAX_ORDER_ITEMS,
   MAX_QUANTITY,
   type CreateOrderInput,
   type CreateOrderValues,
 } from '../schemas/order.schema'
+import type { SavedCustomer } from '../types'
 import { ProductPicker } from './ProductPicker'
+import { SavedCustomerPicker } from './SavedCustomerPicker'
 
 interface CreateOrderModalProps {
   opened: boolean
@@ -73,6 +80,7 @@ export function CreateOrderForm({ onCancel, onCreated }: CreateOrderFormProps) {
     register,
     control,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<CreateOrderInput, unknown, CreateOrderValues>({
     resolver: zodResolver(createOrderSchema),
@@ -88,6 +96,15 @@ export function CreateOrderForm({ onCancel, onCreated }: CreateOrderFormProps) {
     (item) => item?.product && item.quantity && item.quantity > item.product.stock,
   )
 
+  const fillFromCustomer = (customer: SavedCustomer | null) => {
+    if (!customer) return
+    const options = { shouldValidate: true, shouldDirty: true }
+    setValue('customer_name', customer.name, options)
+    setValue('customer_phone', customer.phone, options)
+    setValue('shipping_address', customer.address ?? '', options)
+    if (customer.payment_method) setValue('payment_method', customer.payment_method, options)
+  }
+
   const onSubmit = handleSubmit((values) => {
     createOrder.mutate(values, { onSuccess: (orderId) => onCreated(orderId) })
   })
@@ -97,6 +114,7 @@ export function CreateOrderForm({ onCancel, onCreated }: CreateOrderFormProps) {
   return (
     <form onSubmit={onSubmit} noValidate aria-label="Tạo đơn hàng">
       <Stack gap="md">
+        <SavedCustomerPicker onSelect={fillFromCustomer} />
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
           <TextInput
             label="Tên khách hàng"
@@ -115,6 +133,53 @@ export function CreateOrderForm({ onCancel, onCreated }: CreateOrderFormProps) {
             autoComplete="off"
             error={errors.customer_phone?.message}
             {...register('customer_phone')}
+          />
+        </SimpleGrid>
+        <Textarea
+          label="Địa chỉ giao hàng"
+          placeholder="Số nhà, đường, phường / xã, quận / huyện, tỉnh / thành phố"
+          autosize
+          minRows={2}
+          maxRows={4}
+          maxLength={MAX_ADDRESS_LENGTH}
+          autoComplete="off"
+          error={errors.shipping_address?.message}
+          {...register('shipping_address')}
+        />
+        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md" verticalSpacing="sm">
+          <Controller
+            control={control}
+            name="payment_method"
+            render={({ field }) => (
+              <Select
+                label="Phương thức thanh toán"
+                data={PAYMENT_METHOD_OPTIONS}
+                value={field.value}
+                onChange={(value) => {
+                  if (isPaymentMethod(value)) field.onChange(value)
+                }}
+                onBlur={field.onBlur}
+                ref={field.ref}
+                allowDeselect={false}
+                withAsterisk
+                error={errors.payment_method?.message}
+              />
+            )}
+          />
+          <Controller
+            control={control}
+            name="save_customer"
+            render={({ field }) => (
+              <Switch
+                label="Lưu thông tin khách"
+                description="Lần sau chọn lại khách, không phải nhập lại (cần số điện thoại)"
+                checked={field.value}
+                onChange={(event) => field.onChange(event.currentTarget.checked)}
+                onBlur={field.onBlur}
+                ref={field.ref}
+                mt={{ base: 0, sm: 'lg' }}
+              />
+            )}
           />
         </SimpleGrid>
 
