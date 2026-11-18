@@ -1,15 +1,15 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { Notifications } from '@mantine/notifications'
+import { Notifications, notifications } from '@mantine/notifications'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { testCategoryOverview } from '../test/fixtures'
 import { renderWithProviders } from '@/test/render'
 import {
-  adjustProductStock,
   createProduct,
   fetchProducts,
   setProductActive,
   updateProduct,
+  updateProductCost,
   updateProductPrice,
 } from '../api/products.api'
 import { trashProducts } from '../api/productTrash.api'
@@ -22,8 +22,8 @@ vi.mock('../api/products.api', () => ({
   createProduct: vi.fn(),
   updateProduct: vi.fn(),
   updateProductPrice: vi.fn(),
+  updateProductCost: vi.fn(),
   setProductActive: vi.fn(),
-  adjustProductStock: vi.fn(),
 }))
 
 vi.mock('../api/productCategories.api', () => ({
@@ -39,8 +39,8 @@ const api = {
   createProduct: vi.mocked(createProduct),
   updateProduct: vi.mocked(updateProduct),
   updateProductPrice: vi.mocked(updateProductPrice),
+  updateProductCost: vi.mocked(updateProductCost),
   setProductActive: vi.mocked(setProductActive),
-  adjustProductStock: vi.mocked(adjustProductStock),
   trashProducts: vi.mocked(trashProducts),
 }
 
@@ -78,7 +78,7 @@ describe('ProductsView', () => {
     expect(screen.getAllByTestId('product-row-skeleton').length).toBeGreaterThan(0)
   })
 
-  it('hiện danh sách, badge tồn kho và thông tin phân trang', async () => {
+  it('hiện danh sách, cột giá vốn (không có tồn kho) và thông tin phân trang', async () => {
     api.fetchProducts.mockResolvedValue(
       page(
         [
@@ -98,8 +98,11 @@ describe('ProductsView', () => {
     renderWithProviders(<ProductsView />, { route: '/products' })
 
     const row = (await screen.findByText('Quần jean slim')).closest('tr')
-    expect(row).toHaveTextContent('Sắp hết')
-    expect(screen.getByText('Mũ').closest('tr')).toHaveTextContent('Hết hàng')
+    // Danh sách sản phẩm hiện giá vốn thay cho tồn kho (tồn kho xem ở trang Kho hàng).
+    expect(screen.getByRole('columnheader', { name: /Giá vốn/ })).toBeInTheDocument()
+    expect(screen.queryByRole('columnheader', { name: /Tồn kho/ })).not.toBeInTheDocument()
+    expect(row).not.toHaveTextContent('Sắp hết')
+    expect(screen.getByText('Mũ').closest('tr')).not.toHaveTextContent('Hết hàng')
     expect(screen.getByText(/Hiển thị 1–10 trong 23 sản phẩm/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Trang 3' })).toBeInTheDocument()
   })
@@ -141,7 +144,7 @@ describe('ProductsView', () => {
     expect(await screen.findByText('Chưa có sản phẩm nào')).toBeInTheDocument()
     first.unmount()
 
-    renderWithProviders(<ProductsView />, { route: '/products?stock=out' })
+    renderWithProviders(<ProductsView />, { route: '/products?status=inactive' })
     expect(await screen.findByText('Không tìm thấy sản phẩm phù hợp')).toBeInTheDocument()
   })
 
@@ -325,23 +328,56 @@ describe('ProductsView', () => {
     await waitFor(() => expect(normalize(cell().textContent)).toContain('150.000 ₫'))
   })
 
-  it('sửa nhanh tồn kho gửi delta qua adjust_stock', async () => {
-    api.fetchProducts.mockResolvedValue(page([makeProduct({ stock: 20 })]))
-    api.adjustProductStock.mockResolvedValue(15)
-    renderWithProviders(<ProductsView />, { route: '/products' })
+  it('sửa nhanh giá bán: thông báo ghi rõ giá cũ → giá mới', async () => {
+    // Toast của test trước còn trong store dùng chung → dọn để toast mới hiện ngay.
+    act(() => notifications.clean())
+    api.fetchProducts.mockResolvedValue(page([makeProduct({ price: 150_000 })]))
+    api.updateProductPrice.mockResolvedValue()
+    renderWithProviders(
+      <>
+        <Notifications />
+        <ProductsView />
+      </>,
+      { route: '/products' },
+    )
 
     await userEvent.click(
-      await screen.findByRole('button', { name: 'Sửa nhanh tồn kho của Áo thun basic' }),
+      await screen.findByRole('button', { name: 'Sửa nhanh giá của Áo thun basic' }),
+    )
+    const input = await screen.findByRole('textbox', { name: 'Sửa nhanh giá của Áo thun basic' })
+    await userEvent.clear(input)
+    await userEvent.type(input, '199000{Enter}')
+
+    const toast = await screen.findByText('Đã cập nhật giá bán')
+    expect(normalize(toast.closest('.mantine-Notification-root')?.textContent)).toContain(
+      'Áo thun basic: 150.000 ₫ → 199.000 ₫',
+    )
+  })
+
+  it('sửa nhanh giá vốn: cột giá vốn đứng trước giá bán, lưu giá trị mới', async () => {
+    api.fetchProducts.mockResolvedValue(page([makeProduct()]))
+    // Giữ request chưa xong để kiểm tra bảng cập nhật ngay (optimistic).
+    api.updateProductCost.mockReturnValue(new Promise(() => {}))
+    renderWithProviders(<ProductsView />, { route: '/products' })
+
+    await screen.findByText('Áo thun basic')
+    const headers = screen.getAllByRole('columnheader').map((th) => th.textContent ?? '')
+    expect(headers.findIndex((h) => h.includes('Giá vốn'))).toBeLessThan(
+      headers.findIndex((h) => h.includes('Giá bán')),
+    )
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Sửa nhanh giá vốn của Áo thun basic' }),
     )
     const input = await screen.findByRole('textbox', {
-      name: 'Sửa nhanh tồn kho của Áo thun basic',
+      name: 'Sửa nhanh giá vốn của Áo thun basic',
     })
     await userEvent.clear(input)
-    await userEvent.type(input, '15{Enter}')
+    await userEvent.type(input, '95000{Enter}')
 
-    await waitFor(() =>
-      expect(api.adjustProductStock).toHaveBeenCalledWith('p1', -5, expect.any(String)),
-    )
+    await waitFor(() => expect(api.updateProductCost).toHaveBeenCalledWith('p1', 95_000))
+    const cell = () => screen.getByRole('button', { name: 'Sửa nhanh giá vốn của Áo thun basic' })
+    await waitFor(() => expect(normalize(cell().textContent)).toContain('95.000 ₫'))
   })
 })
 

@@ -9,7 +9,7 @@ import {
 } from '../schemas/productFilters.schema'
 
 /** Các trường làm thay đổi tập kết quả (khác với sort / phân trang). */
-const FILTER_FIELDS = ['q', 'category', 'status', 'stock'] as const
+const FILTER_FIELDS = ['q', 'category', 'status'] as const
 
 /**
  * Filter / sort / phân trang sản phẩm trên URL.
@@ -47,8 +47,8 @@ export function useProductFilters() {
 
   // Giữ nguyên sort và kích thước trang; chỉ xóa điều kiện lọc.
   const resetFilters = useCallback(() => {
-    const { q, category, status, stock } = defaults
-    setState({ q, category, status, stock, page: 1 })
+    const { q, category, status } = defaults
+    setState({ q, category, status, page: 1 })
   }, [defaults, setState])
 
   const hasActiveFilters = FILTER_FIELDS.some((key) => filters[key] !== defaults[key])

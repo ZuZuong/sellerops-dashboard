@@ -2,10 +2,13 @@ import { notifications } from '@mantine/notifications'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { dashboardKeys } from '@/features/dashboard'
 import { productKeys } from '@/features/products'
+import { change, withChanges } from '@/shared/lib/activityChanges'
 import { formatNumber } from '@/shared/lib/formatters'
 import { getInventoryErrorMessage } from '../lib/inventoryLib'
 import type { InventoryFilters } from '../schemas/inventoryFilters.schema'
+import type { StocktakeScope } from '../schemas/stocktakeScope.schema'
 import {
+  ADJUST_TYPE_META,
   buildAdjustNote,
   computeStockDelta,
   type StockAdjustValues,
@@ -16,6 +19,7 @@ import {
   fetchInventory,
   fetchInventorySummary,
   fetchStockMovements,
+  fetchStocktakeItems,
 } from './inventory.api'
 
 /**
@@ -27,6 +31,7 @@ export const inventoryKeys = {
   lists: () => [...inventoryKeys.all, 'list'] as const,
   list: (filters: InventoryFilters) => [...inventoryKeys.lists(), filters] as const,
   summary: () => [...inventoryKeys.all, 'summary'] as const,
+  stocktake: (scope: StocktakeScope) => [...inventoryKeys.all, 'stocktake', scope] as const,
   movements: (productId: string, page: number, pageSize: number) =>
     [...inventoryKeys.all, 'movements', productId, page, pageSize] as const,
 }
@@ -41,6 +46,16 @@ export function useInventory(filters: InventoryFilters) {
 
 export function useInventorySummary() {
   return useQuery({ queryKey: inventoryKeys.summary(), queryFn: fetchInventorySummary })
+}
+
+/** Số liệu sổ sách cho biên bản kiểm kê — luôn lấy mới khi mở trang (không dùng cache cũ). */
+export function useStocktakeItems(scope: StocktakeScope) {
+  return useQuery({
+    queryKey: inventoryKeys.stocktake(scope),
+    queryFn: () => fetchStocktakeItems(scope),
+    staleTime: 0,
+    refetchOnMount: 'always',
+  })
 }
 
 export function useStockMovements(productId: string, page: number, pageSize: number) {
@@ -65,11 +80,16 @@ export function useAdjustStock() {
         computeStockDelta(values.type, values.quantity, product.stock),
         buildAdjustNote(values.type, values.note),
       ),
-    onSuccess: (newStock, { product }) => {
+    onSuccess: (newStock, { product, values }) => {
       notifications.show({
         color: 'green',
         title: 'Đã cập nhật tồn kho',
         message: `${product.name}: ${formatNumber(product.stock)} → ${formatNumber(newStock)}`,
+        ...withChanges([
+          change('Tồn kho', formatNumber(product.stock), formatNumber(newStock)),
+          change('Loại điều chỉnh', null, ADJUST_TYPE_META[values.type].label),
+          change('Ghi chú', null, values.note),
+        ]),
       })
     },
     onError: (error) => {

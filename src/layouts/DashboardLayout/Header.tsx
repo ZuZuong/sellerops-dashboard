@@ -1,14 +1,13 @@
 import { Burger, Group, Text, ThemeIcon } from '@mantine/core'
 import { IconBuildingStore } from '@tabler/icons-react'
+import { NotificationBell } from '@/features/activity'
 import { UserMenu } from '@/features/auth'
 import { useUiStore } from '@/shared/stores/useUiStore'
 import { ColorSchemeToggle } from './ColorSchemeToggle'
 
 export function Header() {
   const mobileNavOpened = useUiStore((s) => s.mobileNavOpened)
-  const desktopNavCollapsed = useUiStore((s) => s.desktopNavCollapsed)
   const toggleMobileNav = useUiStore((s) => s.toggleMobileNav)
-  const toggleDesktopNav = useUiStore((s) => s.toggleDesktopNav)
 
   return (
     <Group h="100%" px="md" justify="space-between" wrap="nowrap">
@@ -19,13 +18,6 @@ export function Header() {
           hiddenFrom="sm"
           size="sm"
           aria-label={mobileNavOpened ? 'Đóng menu' : 'Mở menu'}
-        />
-        <Burger
-          opened={!desktopNavCollapsed}
-          onClick={toggleDesktopNav}
-          visibleFrom="sm"
-          size="sm"
-          aria-label={desktopNavCollapsed ? 'Mở rộng thanh bên' : 'Thu gọn thanh bên'}
         />
         <Group gap={8} wrap="nowrap">
           <ThemeIcon variant="filled" size="md" aria-hidden>
@@ -38,6 +30,7 @@ export function Header() {
       </Group>
       <Group gap="sm" wrap="nowrap">
         <ColorSchemeToggle />
+        <NotificationBell />
         <UserMenu />
       </Group>
     </Group>

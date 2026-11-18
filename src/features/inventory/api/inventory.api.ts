@@ -2,6 +2,7 @@ import { getDbErrorInfo } from '@/shared/lib/errors'
 import { toSearchTerm } from '@/shared/lib/search'
 import { supabase } from '@/shared/lib/supabase'
 import type { InventoryFilters } from '../schemas/inventoryFilters.schema'
+import type { StocktakeScope } from '../schemas/stocktakeScope.schema'
 import type { InventoryItem, InventoryPage, InventorySummary, MovementPage } from '../types'
 
 const INVENTORY_COLUMNS =
@@ -55,6 +56,24 @@ export async function fetchInventoryForExport(filters: InventoryFilters): Promis
   const { data, error } = await ordered(filters).range(0, EXPORT_LIMIT - 1)
   if (error) throw error
   return data
+}
+
+/**
+ * Sản phẩm đưa vào biên bản kiểm kê (gồm cả sản phẩm tồn 0 — thực tế vẫn có thể còn hàng trên kệ).
+ * Giới hạn như xuất CSV; `truncated` báo khi còn sản phẩm chưa lấy hết.
+ */
+export async function fetchStocktakeItems(
+  scope: StocktakeScope,
+): Promise<{ items: InventoryItem[]; truncated: boolean }> {
+  let query = supabase.from('products').select(INVENTORY_COLUMNS, { count: 'exact' })
+  if (scope.status === 'active') query = query.eq('is_active', true)
+  if (scope.category) query = query.eq('category', scope.category)
+  const { data, error, count } = await query
+    .order('name', { ascending: true })
+    .order('id', { ascending: true })
+    .range(0, EXPORT_LIMIT - 1)
+  if (error) throw error
+  return { items: data, truncated: (count ?? data.length) > data.length }
 }
 
 /** Số liệu tổng quan kho (sản phẩm đang bán), tính ở Postgres. */

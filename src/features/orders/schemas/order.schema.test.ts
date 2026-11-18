@@ -12,6 +12,9 @@ const product = (id: string, price = 100_000) => ({
 const valid: CreateOrderInput = {
   customer_name: '  Nguyễn Văn A ',
   customer_phone: '090 123 4567',
+  shipping_address: '  12 Lý Thường Kiệt, Hà Nội ',
+  payment_method: 'cod',
+  save_customer: false,
   items: [
     { product: product('p1'), quantity: 2 },
     { product: product('p2'), quantity: 1 },
@@ -29,6 +32,9 @@ describe('createOrderSchema', () => {
     expect(toCreateOrderPayload(values)).toEqual({
       customer_name: 'Nguyễn Văn A',
       customer_phone: '0901234567',
+      shipping_address: '12 Lý Thường Kiệt, Hà Nội',
+      payment_method: 'cod',
+      save_customer: false,
       items: [
         { product_id: 'p1', quantity: 2 },
         { product_id: 'p2', quantity: 1 },
@@ -83,5 +89,27 @@ describe('createOrderSchema', () => {
         ],
       }),
     ).toEqual([['items.1.product', 'Sản phẩm đã có trong đơn — hãy tăng số lượng ở dòng trước']])
+  })
+
+  it('địa chỉ bỏ trống → null; quá 500 ký tự bị chặn', () => {
+    expect(
+      createOrderSchema.parse({ ...valid, shipping_address: '  ' }).shipping_address,
+    ).toBeNull()
+    expect(issues({ ...valid, shipping_address: 'a'.repeat(501) })).toEqual([
+      ['shipping_address', 'Địa chỉ tối đa 500 ký tự'],
+    ])
+  })
+
+  it('phương thức thanh toán phải thuộc danh sách hỗ trợ', () => {
+    expect(
+      issues({ ...valid, payment_method: 'bitcoin' as CreateOrderInput['payment_method'] }),
+    ).toEqual([['payment_method', 'Chọn phương thức thanh toán']])
+  })
+
+  it('lưu thông tin khách bắt buộc có SĐT (khách được nhận diện theo SĐT)', () => {
+    expect(issues({ ...valid, customer_phone: '', save_customer: true })).toEqual([
+      ['customer_phone', 'Cần số điện thoại để lưu thông tin khách'],
+    ])
+    expect(issues({ ...valid, save_customer: true })).toEqual([])
   })
 })

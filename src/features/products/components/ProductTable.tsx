@@ -26,10 +26,9 @@ import { SortableTh } from '@/shared/components/SortableTh'
 import { formatCurrency, formatDate, formatPercent } from '@/shared/lib/formatters'
 import { calcMargin } from '@/shared/lib/metrics'
 import { getProductImageUrl } from '../api/productImages.api'
-import { priceSchema, stockSchema } from '../schemas/product.schema'
+import { costPriceSchema, priceSchema } from '../schemas/product.schema'
 import type { ProductSortField, SortOrder } from '../schemas/productFilters.schema'
 import type { Product } from '../types'
-import { ProductStock } from './ProductStock'
 import { QuickEditNumber } from './QuickEditNumber'
 
 export interface ProductTableActions {
@@ -38,7 +37,7 @@ export interface ProductTableActions {
   onToggleActive: (product: Product) => void
   onDelete: (product: Product) => void
   onQuickPrice: (product: Product, price: number) => void
-  onQuickStock: (product: Product, stock: number) => void
+  onQuickCost: (product: Product, costPrice: number) => void
 }
 
 interface ProductTableProps extends ProductTableActions {
@@ -132,8 +131,8 @@ export function ProductTableShell({
             <Table.Th scope="col">SKU</Table.Th>
             {sortable('name', 'Tên sản phẩm')}
             <Table.Th scope="col">Danh mục</Table.Th>
+            {sortable('cost_price', 'Giá vốn', 'right')}
             {sortable('price', 'Giá bán', 'right')}
-            {sortable('stock', 'Tồn kho')}
             <Table.Th scope="col">Trạng thái</Table.Th>
             {sortable('created_at', 'Ngày tạo')}
             <Table.Th scope="col">
@@ -156,7 +155,7 @@ function ProductRow({
   onToggleActive,
   onDelete,
   onQuickPrice,
-  onQuickStock,
+  onQuickCost,
 }: {
   product: Product
   selected: boolean
@@ -226,6 +225,20 @@ function ProductRow({
         )}
       </Table.Td>
       <Table.Td ta="right">
+        <QuickEditNumber
+          value={Math.round(product.cost_price)}
+          label={`Sửa nhanh giá vốn của ${product.name}`}
+          schema={costPriceSchema}
+          suffix=" ₫"
+          display={
+            <Text size="sm" style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+              {formatCurrency(product.cost_price)}
+            </Text>
+          }
+          onSave={(costPrice) => onQuickCost(product, costPrice)}
+        />
+      </Table.Td>
+      <Table.Td ta="right">
         <Stack gap={0} align="flex-end">
           <QuickEditNumber
             value={product.price}
@@ -239,17 +252,8 @@ function ProductRow({
             }
             onSave={(price) => onQuickPrice(product, price)}
           />
-          <CostLine product={product} />
+          <MarginLine product={product} />
         </Stack>
-      </Table.Td>
-      <Table.Td>
-        <QuickEditNumber
-          value={product.stock}
-          label={`Sửa nhanh tồn kho của ${product.name}`}
-          schema={stockSchema}
-          display={<ProductStock product={product} />}
-          onSave={(stock) => onQuickStock(product, stock)}
-        />
       </Table.Td>
       <Table.Td>
         <Badge color={product.is_active ? 'green' : 'gray'} variant="light" radius="sm">
@@ -309,14 +313,14 @@ function ProductRow({
   )
 }
 
-/** Giá vốn + biên lãi gộp dưới giá bán (đỏ khi bán dưới giá vốn). */
-function CostLine({ product }: { product: Product }) {
+/** Biên lãi gộp dưới giá bán (đỏ + chữ "lỗ" khi bán dưới giá vốn, không chỉ dựa vào màu). */
+function MarginLine({ product }: { product: Product }) {
   const margin = calcMargin(product.price - product.cost_price, product.price)
+  if (margin === null) return null
   const loss = product.price < product.cost_price
   return (
     <Text size="xs" c={loss ? 'red' : 'dimmed'} style={{ whiteSpace: 'nowrap' }}>
-      Vốn {formatCurrency(product.cost_price)}
-      {margin !== null && ` · lãi ${formatPercent(margin)}`}
+      {loss ? 'Lỗ' : 'Lãi'} {formatPercent(Math.abs(margin))}
     </Text>
   )
 }

@@ -1,4 +1,4 @@
-import { AnalyticsView } from '@/features/analytics'
+import { AnalyticsView, RevenueReportButton } from '@/features/analytics'
 import { PageHeader } from '@/shared/components/PageHeader'
 
 export default function AnalyticsPage() {
@@ -7,6 +7,7 @@ export default function AnalyticsPage() {
       <PageHeader
         title="Phân tích"
         description="Doanh thu theo thời gian, danh mục và sản phẩm bán chạy; so sánh với kỳ trước."
+        actions={<RevenueReportButton />}
       />
       <AnalyticsView />
     </>

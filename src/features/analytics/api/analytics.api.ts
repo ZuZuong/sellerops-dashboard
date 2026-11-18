@@ -3,6 +3,7 @@ import type {
   CategoryRevenue,
   DailyRevenue,
   ReportRange,
+  RevenueReportRow,
   SalesSummary,
   StockLedgerRow,
   TopProductRow,
@@ -48,6 +49,13 @@ export async function fetchTopProductsByRange(
 /** Báo cáo xuất nhập tồn theo sản phẩm (số lượng + giá trị theo giá vốn) trong khoảng ngày. */
 export async function fetchStockLedger(range: ReportRange): Promise<StockLedgerRow[]> {
   const { data, error } = await supabase.rpc('get_stock_ledger', params(range))
+  if (error) throw error
+  return data
+}
+
+/** Bảng kê doanh thu: từng đơn được ghi nhận doanh thu trong khoảng ngày (cũ → mới). */
+export async function fetchRevenueReport(range: ReportRange): Promise<RevenueReportRow[]> {
+  const { data, error } = await supabase.rpc('get_revenue_report', params(range))
   if (error) throw error
   return data
 }

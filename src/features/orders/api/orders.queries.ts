@@ -8,7 +8,11 @@ import {
 } from '@tanstack/react-query'
 import { dashboardKeys } from '@/features/dashboard'
 import { productKeys } from '@/features/products'
+import { change, withChanges, type ActivityChange } from '@/shared/lib/activityChanges'
+import { formatCurrency, formatNumber } from '@/shared/lib/formatters'
 import { ORDER_STATUS_META, type OrderStatus } from '../domain/orderStatus'
+import { getPaymentMethodLabel } from '../domain/paymentMethod'
+import { calcOrderTotal } from '../lib/orderTotal'
 import { getOrderErrorMessage } from '../lib/orderErrors'
 import { toCreateOrderPayload, type CreateOrderValues } from '../schemas/order.schema'
 import type { OrderFilters } from '../schemas/orderFilters.schema'
@@ -18,6 +22,7 @@ import {
   fetchOrderDetail,
   fetchOrders,
   searchOrderableProducts,
+  searchSavedCustomers,
   transitionOrder,
 } from './orders.api'
 
@@ -28,6 +33,7 @@ export const orderKeys = {
   details: () => [...orderKeys.all, 'detail'] as const,
   detail: (id: string) => [...orderKeys.details(), id] as const,
   orderableProducts: (q: string) => [...orderKeys.all, 'orderable-products', q] as const,
+  savedCustomers: (q: string) => [...orderKeys.all, 'saved-customers', q] as const,
 }
 
 export function useOrders(filters: OrderFilters) {
@@ -56,6 +62,16 @@ export function useOrderableProducts(q: string, enabled = true) {
   })
 }
 
+export function useSavedCustomers(q: string, enabled = true) {
+  return useQuery({
+    queryKey: orderKeys.savedCustomers(q),
+    queryFn: () => searchSavedCustomers(q),
+    enabled,
+    placeholderData: keepPreviousData,
+    staleTime: 60_000,
+  })
+}
+
 /**
  * Đơn hàng thay đổi kéo theo: danh sách / chi tiết đơn, tồn kho sản phẩm (xác nhận / hủy)
  * và số liệu dashboard (doanh thu, đơn chờ xử lý, sắp hết hàng).
@@ -76,7 +92,10 @@ export function useCreateOrder() {
       notifications.show({
         color: 'green',
         title: 'Đã tạo đơn hàng',
-        message: `Đơn của ${values.customer_name} đang chờ xác nhận`,
+        message: values.save_customer
+          ? `Đơn của ${values.customer_name} đang chờ xác nhận · đã lưu thông tin khách`
+          : `Đơn của ${values.customer_name} đang chờ xác nhận`,
+        ...withChanges(createOrderChanges(values)),
       })
       return invalidateAfterOrderChange(queryClient)
     },
@@ -88,6 +107,56 @@ export function useCreateOrder() {
       })
     },
   })
+}
+
+/** Tạo đơn: thông tin khách, thanh toán, từng dòng hàng và tạm tính (cũ = trống). */
+function createOrderChanges(values: CreateOrderValues): ActivityChange[] {
+  const total = calcOrderTotal(
+    values.items.map((item) => ({ price: item.product?.price, quantity: item.quantity })),
+  )
+  return [
+    change('Khách hàng', null, values.customer_name),
+    change('Điện thoại', null, values.customer_phone),
+    change('Địa chỉ giao', null, values.shipping_address),
+    change('Thanh toán', null, getPaymentMethodLabel(values.payment_method)),
+    change('Trạng thái', null, ORDER_STATUS_META.pending.label),
+    ...values.items.flatMap(({ product, quantity }) =>
+      product
+        ? [
+            change(
+              product.name,
+              null,
+              `${formatNumber(quantity)} × ${formatCurrency(product.price)}`,
+            ),
+          ]
+        : [],
+    ),
+    change('Tạm tính', null, formatCurrency(total)),
+  ]
+}
+
+/** Chuyển trạng thái: trạng thái cũ → mới; xác nhận / hủy đơn đã xác nhận kèm biến động tồn kho. */
+function transitionChanges(
+  from: OrderStatus,
+  to: OrderStatus,
+  items: readonly OrderItem[] | undefined,
+): ActivityChange[] {
+  const changes = [change('Trạng thái', ORDER_STATUS_META[from].label, ORDER_STATUS_META[to].label)]
+  const direction = to === 'confirmed' ? -1 : to === 'cancelled' && from === 'confirmed' ? 1 : 0
+  if (direction !== 0) {
+    for (const item of items ?? []) {
+      if (!item.product) continue
+      const before = item.product.stock
+      changes.push(
+        change(
+          `Tồn kho ${item.product.name}`,
+          formatNumber(before),
+          formatNumber(before + direction * item.quantity),
+        ),
+      )
+    }
+  }
+  return changes
 }
 
 export interface TransitionVariables {
@@ -108,11 +177,12 @@ export function useTransitionOrder() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ order, to }: TransitionVariables) => transitionOrder(order.id, order.status, to),
-    onSuccess: (_data, { order, to }) => {
+    onSuccess: (_data, { order, to, items }) => {
       notifications.show({
         color: 'green',
         title: SUCCESS_TITLES[to] ?? 'Đã cập nhật đơn hàng',
-        message: `${order.code} · ${ORDER_STATUS_META[to].label}`,
+        message: `${order.code}: ${ORDER_STATUS_META[order.status].label} → ${ORDER_STATUS_META[to].label}`,
+        ...withChanges(transitionChanges(order.status, to, items)),
       })
     },
     onError: (error, { order, items }) => {

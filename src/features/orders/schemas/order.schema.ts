@@ -1,9 +1,17 @@
 import { z } from 'zod'
+import {
+  DEFAULT_PAYMENT_METHOD,
+  PAYMENT_METHODS,
+  type PaymentMethod,
+} from '../domain/paymentMethod'
 
 /** Giới hạn theo cột `int` (int4) trong DB. */
 export const MAX_QUANTITY = 100_000
 /** Giới hạn số dòng hàng một đơn (RPC `create_order` từ chối nếu vượt). */
 export const MAX_ORDER_ITEMS = 50
+
+/** Giới hạn cột `orders.shipping_address`. */
+export const MAX_ADDRESS_LENGTH = 500
 
 /** Số điện thoại Việt Nam: 0xxxxxxxxx hoặc +84xxxxxxxxx (9 số sau đầu số). */
 const PHONE_PATTERN = /^(?:\+84|0)\d{9}$/
@@ -31,37 +39,50 @@ const orderItemSchema = z.object({
  * Form tạo đơn. Giá trong form chỉ để hiển thị / tính tạm tổng tiền: server chốt `unit_price`
  * theo giá hiện tại của sản phẩm tại thời điểm tạo đơn.
  */
-export const createOrderSchema = z.object({
-  customer_name: z
-    .string()
-    .trim()
-    .min(1, 'Vui lòng nhập tên khách hàng')
-    .max(200, 'Tên khách hàng tối đa 200 ký tự'),
-  customer_phone: z
-    .string()
-    .trim()
-    .transform((phone) => phone.replace(/[\s.-]/g, ''))
-    .refine((phone) => phone === '' || PHONE_PATTERN.test(phone), 'Số điện thoại không hợp lệ')
-    .transform((phone) => (phone === '' ? null : phone)),
-  items: z
-    .array(orderItemSchema)
-    .min(1, 'Đơn hàng cần ít nhất một sản phẩm')
-    .max(MAX_ORDER_ITEMS, `Tối đa ${MAX_ORDER_ITEMS} sản phẩm mỗi đơn`)
-    .superRefine((items, ctx) => {
-      const seen = new Set<string>()
-      items.forEach((item, index) => {
-        if (!item.product) return
-        if (seen.has(item.product.id)) {
-          ctx.addIssue({
-            code: 'custom',
-            message: 'Sản phẩm đã có trong đơn — hãy tăng số lượng ở dòng trước',
-            path: [index, 'product'],
-          })
-        }
-        seen.add(item.product.id)
-      })
-    }),
-})
+export const createOrderSchema = z
+  .object({
+    customer_name: z
+      .string()
+      .trim()
+      .min(1, 'Vui lòng nhập tên khách hàng')
+      .max(200, 'Tên khách hàng tối đa 200 ký tự'),
+    customer_phone: z
+      .string()
+      .trim()
+      .transform((phone) => phone.replace(/[\s.-]/g, ''))
+      .refine((phone) => phone === '' || PHONE_PATTERN.test(phone), 'Số điện thoại không hợp lệ')
+      .transform((phone) => (phone === '' ? null : phone)),
+    shipping_address: z
+      .string()
+      .trim()
+      .max(MAX_ADDRESS_LENGTH, `Địa chỉ tối đa ${MAX_ADDRESS_LENGTH} ký tự`)
+      .transform((address) => (address === '' ? null : address)),
+    payment_method: z.enum(PAYMENT_METHODS, { error: 'Chọn phương thức thanh toán' }),
+    /** Lưu / cập nhật khách vào danh bạ (theo SĐT) để lần sau chọn lại nhanh. */
+    save_customer: z.boolean(),
+    items: z
+      .array(orderItemSchema)
+      .min(1, 'Đơn hàng cần ít nhất một sản phẩm')
+      .max(MAX_ORDER_ITEMS, `Tối đa ${MAX_ORDER_ITEMS} sản phẩm mỗi đơn`)
+      .superRefine((items, ctx) => {
+        const seen = new Set<string>()
+        items.forEach((item, index) => {
+          if (!item.product) return
+          if (seen.has(item.product.id)) {
+            ctx.addIssue({
+              code: 'custom',
+              message: 'Sản phẩm đã có trong đơn — hãy tăng số lượng ở dòng trước',
+              path: [index, 'product'],
+            })
+          }
+          seen.add(item.product.id)
+        })
+      }),
+  })
+  .refine((order) => !order.save_customer || order.customer_phone !== null, {
+    message: 'Cần số điện thoại để lưu thông tin khách',
+    path: ['customer_phone'],
+  })
 
 export type CreateOrderInput = z.input<typeof createOrderSchema>
 export type CreateOrderValues = z.output<typeof createOrderSchema>
@@ -70,6 +91,9 @@ export type CreateOrderValues = z.output<typeof createOrderSchema>
 export interface CreateOrderPayload {
   customer_name: string
   customer_phone: string | null
+  shipping_address: string | null
+  payment_method: PaymentMethod
+  save_customer: boolean
   items: Array<{ product_id: string; quantity: number }>
 }
 
@@ -77,6 +101,9 @@ export function toCreateOrderPayload(values: CreateOrderValues): CreateOrderPayl
   return {
     customer_name: values.customer_name,
     customer_phone: values.customer_phone,
+    shipping_address: values.shipping_address,
+    payment_method: values.payment_method,
+    save_customer: values.save_customer,
     items: values.items.flatMap(({ product, quantity }) =>
       product ? [{ product_id: product.id, quantity }] : [],
     ),
@@ -91,5 +118,8 @@ export const EMPTY_ORDER_ITEM: CreateOrderInput['items'][number] = {
 export const EMPTY_ORDER_FORM: CreateOrderInput = {
   customer_name: '',
   customer_phone: '',
+  shipping_address: '',
+  payment_method: DEFAULT_PAYMENT_METHOD,
+  save_customer: false,
   items: [EMPTY_ORDER_ITEM],
 }

@@ -2,7 +2,15 @@ import type { Tables } from '@/shared/types/database.types'
 
 export type Order = Pick<
   Tables<'orders'>,
-  'id' | 'code' | 'customer_name' | 'customer_phone' | 'status' | 'total' | 'created_at'
+  | 'id'
+  | 'code'
+  | 'customer_name'
+  | 'customer_phone'
+  | 'shipping_address'
+  | 'payment_method'
+  | 'status'
+  | 'total'
+  | 'created_at'
 >
 
 export interface OrderPage {
@@ -27,3 +35,9 @@ export interface OrderDetail extends Order {
 
 /** Sản phẩm có thể thêm vào đơn mới (đang bán). */
 export type OrderableProduct = Pick<Tables<'products'>, 'id' | 'name' | 'sku' | 'price' | 'stock'>
+
+/** Khách đã lưu để điền nhanh khi tạo đơn. */
+export type SavedCustomer = Pick<
+  Tables<'customers'>,
+  'id' | 'name' | 'phone' | 'address' | 'payment_method'
+>

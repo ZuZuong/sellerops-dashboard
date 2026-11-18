@@ -8,7 +8,7 @@ import { getErrorMessage } from '@/shared/lib/errors'
 import { formatNumber } from '@/shared/lib/formatters'
 import {
   useProducts,
-  useQuickAdjustStock,
+  useQuickUpdateCost,
   useQuickUpdatePrice,
   useSetProductActive,
   useTrashProducts,
@@ -54,7 +54,7 @@ export function ProductsView() {
   const setActive = useSetProductActive()
   const trashProducts = useTrashProducts()
   const quickPrice = useQuickUpdatePrice()
-  const quickStock = useQuickAdjustStock()
+  const quickCost = useQuickUpdateCost()
 
   const total = products.data?.total ?? 0
   const totalPages = Math.max(1, Math.ceil(total / filters.pageSize))
@@ -161,7 +161,7 @@ export function ProductsView() {
         onToggleActive={handleToggleActive}
         onDelete={(product) => setConfirm({ type: 'delete', products: [product] })}
         onQuickPrice={(product, price) => quickPrice.mutate({ product, price })}
-        onQuickStock={(product, stock) => quickStock.mutate({ product, stock })}
+        onQuickCost={(product, costPrice) => quickCost.mutate({ product, costPrice })}
       />
     )
   }

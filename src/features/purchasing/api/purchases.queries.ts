@@ -8,6 +8,7 @@ import {
 } from '@tanstack/react-query'
 import { dashboardKeys } from '@/features/dashboard'
 import { productKeys } from '@/features/products'
+import { change, withChanges, type ActivityChange } from '@/shared/lib/activityChanges'
 import { formatCurrency, formatNumber } from '@/shared/lib/formatters'
 import { receiptTotals } from '../domain/costing'
 import { getReceiptErrorMessage } from '../lib/receiptErrors'
@@ -67,6 +68,37 @@ function invalidateAfterReceiptChange(queryClient: QueryClient, posted: boolean)
   return Promise.all(tasks)
 }
 
+/**
+ * Phiếu nhập: nhà cung cấp, tổng tiền; khi nhập kho thêm tồn kho từng sản phẩm cũ → mới
+ * (theo số tồn lúc thao tác + SL thực nhận).
+ */
+function receiptChanges(values: ReceiptFormValues, post: boolean): ActivityChange[] {
+  const totals = receiptTotals(values.items)
+  return [
+    change('Nhà cung cấp', null, values.supplier_name),
+    change('Tổng tiền', null, formatCurrency(totals.amount)),
+    change('Trạng thái phiếu', null, post ? 'Đã nhập kho' : 'Nháp'),
+    ...values.items.flatMap(({ product, received_qty, unit_cost }) => {
+      if (!product) return []
+      return post
+        ? [
+            change(
+              `Tồn kho ${product.name}`,
+              formatNumber(product.stock),
+              formatNumber(product.stock + received_qty),
+            ),
+          ]
+        : [
+            change(
+              product.name,
+              null,
+              `${formatNumber(received_qty)} × ${formatCurrency(unit_cost ?? 0)}`,
+            ),
+          ]
+    }),
+  ]
+}
+
 export interface SaveReceiptVariables {
   id: string | null
   values: ReceiptFormValues
@@ -94,6 +126,7 @@ export function useSaveReceipt() {
         message: post
           ? `${formatNumber(totals.received)} sản phẩm · ${formatCurrency(totals.amount)} từ ${values.supplier_name}`
           : `${values.supplier_name} · chưa cộng vào tồn kho`,
+        ...withChanges(receiptChanges(values, post)),
       })
     },
     onError: (error, { post }) => {
@@ -112,7 +145,12 @@ export function useDeleteReceipt() {
   return useMutation({
     mutationFn: ({ id }: { id: string; code: string }) => deleteReceipt(id),
     onSuccess: (_data, { code }) => {
-      notifications.show({ color: 'green', title: 'Đã xóa phiếu nháp', message: code })
+      notifications.show({
+        color: 'green',
+        title: 'Đã xóa phiếu nháp',
+        message: code,
+        ...withChanges([change('Phiếu nhập', code, null)]),
+      })
       return invalidateAfterReceiptChange(queryClient, false)
     },
     onError: (error) => {

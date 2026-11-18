@@ -11,7 +11,6 @@ describe('productFiltersSchema', () => {
       q: '',
       category: '',
       status: 'all',
-      stock: 'all',
       sort: 'created_at',
       order: 'desc',
       page: 1,
@@ -25,7 +24,6 @@ describe('productFiltersSchema', () => {
         q: '  áo  ',
         category: 'Áo',
         status: 'inactive',
-        stock: 'low',
         sort: 'price',
         order: 'asc',
         page: '3',
@@ -35,7 +33,6 @@ describe('productFiltersSchema', () => {
       q: 'áo',
       category: 'Áo',
       status: 'inactive',
-      stock: 'low',
       sort: 'price',
       order: 'asc',
       page: 3,
@@ -50,7 +47,6 @@ describe('productFiltersSchema', () => {
       order: 'up',
       page: '-2',
       pageSize: '1000',
-      stock: 'low',
     })
     expect(parsed).toMatchObject({
       status: 'all',
@@ -58,7 +54,6 @@ describe('productFiltersSchema', () => {
       order: 'desc',
       page: 1,
       pageSize: 10,
-      stock: 'low',
     })
   })
 

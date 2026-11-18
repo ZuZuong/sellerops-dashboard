@@ -4,7 +4,7 @@ import { persist } from 'zustand/middleware'
 interface UiState {
   /** Drawer sidebar trên mobile (không lưu lại giữa các lần tải trang). */
   mobileNavOpened: boolean
-  /** Thu gọn sidebar trên desktop (lưu vào localStorage). */
+  /** Thu gọn sidebar trên desktop thành thanh chỉ có icon (lưu vào localStorage). */
   desktopNavCollapsed: boolean
   toggleMobileNav: () => void
   closeMobileNav: () => void

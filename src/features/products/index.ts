@@ -1,4 +1,4 @@
-export { productKeys } from './api/products.queries'
+export { productKeys, useProductCategoryNames } from './api/products.queries'
 export { CreateProductButton } from './components/CreateProductButton'
 export { ProductImportButton } from './components/ProductImportButton'
 export { ProductsView } from './components/ProductsView'

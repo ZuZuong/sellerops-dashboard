@@ -4,3 +4,8 @@ export { OrderDetailView } from './components/OrderDetailView'
 export { OrdersView } from './components/OrdersView'
 export { OrderStatusBadge } from './components/OrderStatusBadge'
 export { ORDER_STATUS_META, type OrderStatus } from './domain/orderStatus'
+export {
+  getPaymentMethodLabel,
+  PAYMENT_METHOD_LABELS,
+  type PaymentMethod,
+} from './domain/paymentMethod'
