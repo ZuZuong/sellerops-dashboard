@@ -1,7 +1,7 @@
 # SellerOps – Kế hoạch build chuẩn doanh nghiệp
 
 > E-commerce Management Dashboard · Portfolio project ứng tuyển công ty lớn
-> Thời gian: 5 ngày (28–35 giờ) · Nguyên tắc: **ít tính năng, chất lượng production**
+> Thời gian: 7 ngày (40–50 giờ) · Nguyên tắc: **ít tính năng, chất lượng production**
 
 ---
 
@@ -251,7 +251,7 @@ Client gọi `supabase.rpc('confirm_order', ...)`, map mã lỗi (`INSUFFICIENT_
 
 ---
 
-## 7. Lộ trình 5 ngày (checklist)
+## 7. Lộ trình 7 ngày (checklist)
 
 > Phân loại: **[MUST]** bắt buộc · **[SHOULD]** nên có · **[STRETCH]** nếu còn thời gian. Nếu trễ tiến độ, cắt STRETCH trước.
 
@@ -305,24 +305,57 @@ Client gọi `supabase.rpc('confirm_order', ...)`, map mã lỗi (`INSUFFICIENT_
 - [x] [MUST] Export CSV (xử lý đúng UTF-8 BOM cho tiếng Việt khi mở bằng Excel)
 - [x] [STRETCH] Biểu đồ theo danh mục, so sánh kỳ trước
 
-### Ngày 4 – Polish, kiểm thử, tối ưu (4–5h)
+### Ngày 4 – Đa seller, phân quyền, đăng ký doanh nghiệp, Admin (10–12h)
 
-- [ ] [MUST] Responsive toàn bộ trang, bảng cuộn ngang trên mobile
+> Chi tiết: `docs/PROMPT-Day4-MultiSeller-Admin.md`. Mỗi phase một nhánh + PR riêng từ `main`.
+
+**Phase 1 – Database (`feat/multi-tenant-db`)**
+
+- [ ] [MUST] `profiles` (role trong DB, không dùng metadata), `sellers`, `seller_documents`, `categories`, `audit_logs`
+- [ ] [MUST] Mọi bảng dữ liệu shop đổi `user_id` → `seller_id`; `products.category` → `category_id` (khóa ngoại kép cùng shop)
+- [ ] [MUST] RLS: seller chỉ đọc / ghi shop mình khi `approved`; admin chỉ đọc; khóa tài khoản có hiệu lực ngay
+- [ ] [MUST] RPC onboarding / admin / danh mục; báo cáo nhận `p_seller_id`; mọi hành động admin ghi `audit_logs`
+- [ ] [MUST] State machine `seller_status` ở SQL + TypeScript, test đối chiếu hai nơi
+- [ ] [MUST] Bucket riêng tư `seller-documents`; `supabase/tests/rls_checks.sql`; `docs/admin-setup.md`; ADR 006, 007
+
+**Phase 2 – Auth & Onboarding (`feat/seller-auth-onboarding`)**
+
+- [ ] [MUST] Đăng ký (xác minh email), quên / đặt lại mật khẩu, chuyển hướng theo role
+- [ ] [MUST] Dashboard chuyển về `/seller/*`, query key chứa `sellerId`
+- [ ] [MUST] `RoleGuard`, `SellerStatusGuard`, `SellerGateModal` (draft / pending / rejected / suspended)
+- [ ] [MUST] Stepper 4 bước lưu nháp: thông tin doanh nghiệp, giấy tờ, danh mục, cam kết
+- [ ] [SHOULD] Playwright E2E đăng ký → chờ duyệt (chạy khi có tài khoản test); ADR 009
+
+**Phase 3 – Admin Console (`feat/admin-console`)**
+
+- [ ] [MUST] Layout admin riêng, tổng quan nền tảng, quản lý tài khoản, duyệt hồ sơ, quản lý seller, nhật ký
+- [ ] [MUST] Xem dashboard seller chỉ đọc qua `SellerScopeProvider` (không impersonation); ADR 008
+- [ ] [SHOULD] Spotlight `Ctrl+K`
+- [ ] [STRETCH] `/admin/settings`
+
+### Ngày 5 – Hoàn thiện, kiểm thử, tối ưu (6–8h)
+
+- [ ] [MUST] Responsive toàn bộ trang (seller + admin), bảng cuộn ngang trên mobile
 - [ ] [MUST] Error Boundary toàn cục + theo route, trang 404, xử lý mất mạng
 - [ ] [MUST] Rà soát toàn bộ loading/empty/error state
-- [ ] [MUST] Lazy-load route (`React.lazy`), code-split Recharts
-- [ ] [MUST] Playwright E2E: đăng nhập → tạo đơn → xác nhận → kiểm tra tồn kho giảm
+- [ ] [MUST] Lazy-load route theo vai trò, code-split Recharts
+- [ ] [MUST] Playwright E2E: đăng nhập seller → tạo đơn → xác nhận → kiểm tra tồn kho giảm; admin duyệt hồ sơ
 - [ ] [MUST] A11y: label, focus, contrast; chạy Lighthouse (mục tiêu ≥ 90 Performance/Accessibility/Best Practices)
 - [ ] [SHOULD] Refactor component trùng lặp, rà soát bundle bằng `vite-bundle-visualizer`
 
-### Ngày 5 – Deploy & Portfolio (4–5h)
+### Ngày 6 – Deploy & Portfolio (4–5h)
 
-- [ ] [MUST] Deploy production Vercel, cấu hình env, tài khoản demo (read-only hoặc dữ liệu reset được)
-- [ ] [MUST] README chuẩn (mục 10)
-- [ ] [MUST] Screenshot, GIF luồng chính, video demo 1–2 phút
-- [ ] [MUST] ADR ngắn (mục 10) và sơ đồ kiến trúc / ERD
+- [ ] [MUST] Deploy production Vercel, cấu hình env, tài khoản demo seller + admin (dữ liệu reset được)
+- [ ] [MUST] Screenshot, GIF luồng chính (seller + duyệt hồ sơ), video demo 1–2 phút
+- [ ] [MUST] Sơ đồ kiến trúc / ERD (có `sellers`, `profiles`, RLS)
 - [ ] [MUST] Thêm project vào CV và LinkedIn
 - [ ] [SHOULD] Luyện trả lời câu hỏi phỏng vấn (mục 12)
+
+### Ngày 7 – README & tài liệu (3–4h)
+
+- [ ] [MUST] README đầy đủ (mục 10): vai trò, luồng duyệt seller, kiến trúc đa seller, chạy local, testing
+- [ ] [MUST] Rà soát ADR 001–009 và `CLAUDE.md` khớp với code cuối cùng
+- [ ] [SHOULD] Mục "Hướng phát triển": impersonation, nhiều nhân viên mỗi shop, thanh toán thật, KYC tự động, email khi duyệt hồ sơ, storefront
 
 ---
 
@@ -412,6 +445,10 @@ Client gọi `supabase.rpc('confirm_order', ...)`, map mã lỗi (`INSUFFICIENT_
 - `003-atomic-order-confirmation-with-rpc.md`
 - `004-url-as-source-of-truth-for-filters.md`
 - `005-supabase-rls.md`
+- `006-multi-tenant-shared-db.md`
+- `007-role-in-profiles-not-metadata.md`
+- `008-admin-readonly-view-no-impersonation.md`
+- `009-private-bucket-signed-urls.md`
 
 Mỗi ADR gồm: Bối cảnh · Quyết định · Lý do · Đánh đổi.
 
@@ -421,7 +458,9 @@ Mỗi ADR gồm: Bối cảnh · Quyết định · Lý do · Đánh đổi.
 
 **Làm:** đúng các module trong lộ trình, làm sâu, làm chắc.
 
-**Không làm (ghi vào README mục "Hướng phát triển"):** thanh toán thật, đa kho, phân quyền nhiều vai trò, realtime, tích hợp sàn TMĐT, i18n đa ngôn ngữ.
+**Không làm (ghi vào README mục "Hướng phát triển"):** thanh toán thật, đa kho, realtime, tích hợp sàn TMĐT, i18n đa ngôn ngữ, đăng nhập thay seller (impersonation), nhiều nhân viên trong một shop, KYC tự động, email thông báo khi duyệt hồ sơ, admin sửa nội dung cam kết trên giao diện, storefront.
+
+**Đã đưa vào phạm vi (Ngày 4):** ba vai trò `admin` / `seller` / `customer`, đa seller dùng chung database, admin duyệt hồ sơ và xem shop ở chế độ chỉ đọc.
 
 **Quy tắc cắt scope:** trong Ngày 3, nếu chưa xong Order Management với RPC và test thì chưa làm Inventory & Analytics; dồn thời gian hoàn thiện luồng đơn hàng trước. Một luồng đơn hàng đúng nghiệp vụ có giá trị hơn năm trang giao diện.
 
