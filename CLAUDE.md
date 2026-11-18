@@ -27,6 +27,18 @@ React 19, TypeScript (strict), Vite, Mantine UI, TanStack Query, Zustand, React 
 - Filter / sort / phân trang → URL search params
 - Form → React Hook Form + Zod (`z.infer` cho type)
 
+## Đa seller & phân quyền
+
+- Ba vai trò `admin` / `seller` / `customer`. **Role đọc từ bảng `profiles`**, không bao giờ từ `user_metadata` / `app_metadata`. Client không tự đổi được `role`, `is_locked`.
+- **Mọi bảng dữ liệu shop có `seller_id`** (tham chiếu `sellers.id`); bảng con thuộc shop qua bảng cha. Bảng mới phải có `seller_id`, index `(seller_id, …)`, RLS seller + admin-read.
+- RLS: seller đọc / ghi khi `seller_id = current_approved_seller_id()` (shop `approved`, tài khoản không khóa); admin **chỉ đọc**. Guard / modal ở UI chỉ phục vụ UX.
+- RPC ghi dữ liệu kinh doanh mở đầu bằng `require_approved_seller()`; hành động admin chỉ qua RPC, luôn ghi `audit_logs`.
+- Hàm báo cáo nhận `p_seller_id` (bỏ trống = shop của người gọi); query key luôn chứa `sellerId`.
+- Xem shop của seller từ admin: `SellerScopeProvider` cung cấp `sellerId` + `readOnly` (không impersonation); khi `readOnly` ẩn mọi nút ghi.
+- Bảng `customers` = **khách do seller lưu** khi tạo đơn (danh bạ của shop), KHÁC role `customer` (tài khoản người mua).
+- State machine `seller_status` (`draft → pending → approved ⇄ suspended`, `pending → rejected → pending`): SQL `seller_status_can_transition` + `features/sellers/domain/sellerStatus.ts`, test đối chiếu hai nơi.
+- Migration mới: chạy `supabase/tests/rls_checks.sql` trong SQL Editor; Claude Code **không** chạy `db:push`.
+
 ## Business rules
 
 - Order: `pending → confirmed → shipping → delivered`; `pending|confirmed → cancelled`
@@ -61,4 +73,4 @@ Chạy đúng happy path + edge case · đủ loading/empty/error · validate Zo
 
 ## Ngoài phạm vi
 
-Thanh toán thật, đa kho, phân quyền nhiều vai trò, realtime, tích hợp sàn TMĐT, i18n.
+Thanh toán thật, đa kho, realtime, tích hợp sàn TMĐT, i18n, impersonation (đăng nhập thay seller), nhiều nhân viên trong một shop, KYC tự động, email khi duyệt hồ sơ, admin sửa nội dung cam kết trên giao diện, storefront.
