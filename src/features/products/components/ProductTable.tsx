@@ -23,6 +23,7 @@ import {
 } from '@tabler/icons-react'
 import type { ReactNode } from 'react'
 import { SortableTh } from '@/shared/components/SortableTh'
+import { useSellerScope } from '@/shared/hooks/useSellerScope'
 import { formatCurrency, formatDate, formatPercent } from '@/shared/lib/formatters'
 import { calcMargin } from '@/shared/lib/metrics'
 import { getProductImageUrl } from '../api/productImages.api'
@@ -65,6 +66,7 @@ export function ProductTable({
   onSelectAll,
   ...actions
 }: ProductTableProps) {
+  const { readOnly } = useSellerScope()
   const selectedOnPage = products.filter((p) => selectedIds.has(p.id)).length
   return (
     <ProductTableShell
@@ -72,12 +74,14 @@ export function ProductTable({
       order={order}
       onSort={onSort}
       selectAll={
-        <Checkbox
-          aria-label="Chọn tất cả sản phẩm trên trang"
-          checked={products.length > 0 && selectedOnPage === products.length}
-          indeterminate={selectedOnPage > 0 && selectedOnPage < products.length}
-          onChange={(event) => onSelectAll(event.currentTarget.checked)}
-        />
+        readOnly ? undefined : (
+          <Checkbox
+            aria-label="Chọn tất cả sản phẩm trên trang"
+            checked={products.length > 0 && selectedOnPage === products.length}
+            indeterminate={selectedOnPage > 0 && selectedOnPage < products.length}
+            onChange={(event) => onSelectAll(event.currentTarget.checked)}
+          />
+        )
       }
     >
       {products.map((product) => (
@@ -161,6 +165,8 @@ function ProductRow({
   selected: boolean
   onSelect: (product: Product, selected: boolean) => void
 } & ProductTableActions) {
+  // Admin xem shop (chỉ đọc): không chọn, không sửa nhanh, menu chỉ còn "Hiệu quả sản phẩm".
+  const { readOnly } = useSellerScope()
   return (
     <Table.Tr
       style={product.is_active ? undefined : { opacity: 0.7 }}
@@ -168,11 +174,13 @@ function ProductRow({
       aria-selected={selected}
     >
       <Table.Td>
-        <Checkbox
-          aria-label={`Chọn ${product.name}`}
-          checked={selected}
-          onChange={(event) => onSelect(product, event.currentTarget.checked)}
-        />
+        {!readOnly && (
+          <Checkbox
+            aria-label={`Chọn ${product.name}`}
+            checked={selected}
+            onChange={(event) => onSelect(product, event.currentTarget.checked)}
+          />
+        )}
       </Table.Td>
       <Table.Td>
         <Text size="sm" ff="monospace">
@@ -196,7 +204,7 @@ function ProductRow({
         </Group>
       </Table.Td>
       <Table.Td>
-        {product.category_id === null ? (
+        {product.category_id === null && !readOnly ? (
           <Group gap={6} wrap="nowrap">
             <Text size="sm" c="dimmed">
               Chưa có
@@ -225,33 +233,48 @@ function ProductRow({
         )}
       </Table.Td>
       <Table.Td ta="right">
-        <QuickEditNumber
-          value={Math.round(product.cost_price)}
-          label={`Sửa nhanh giá vốn của ${product.name}`}
-          schema={costPriceSchema}
-          suffix=" ₫"
-          display={
-            <Text size="sm" style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-              {formatCurrency(product.cost_price)}
-            </Text>
-          }
-          onSave={(costPrice) => onQuickCost(product, costPrice)}
-        />
-      </Table.Td>
-      <Table.Td ta="right">
-        <Stack gap={0} align="flex-end">
+        {readOnly ? (
+          <Text size="sm" style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+            {formatCurrency(product.cost_price)}
+          </Text>
+        ) : (
           <QuickEditNumber
-            value={product.price}
-            label={`Sửa nhanh giá của ${product.name}`}
-            schema={priceSchema}
+            value={Math.round(product.cost_price)}
+            label={`Sửa nhanh giá vốn của ${product.name}`}
+            schema={costPriceSchema}
             suffix=" ₫"
             display={
               <Text size="sm" style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-                {formatCurrency(product.price)}
+                {formatCurrency(product.cost_price)}
               </Text>
             }
-            onSave={(price) => onQuickPrice(product, price)}
+            onSave={(costPrice) => onQuickCost(product, costPrice)}
           />
+        )}
+      </Table.Td>
+      <Table.Td ta="right">
+        <Stack gap={0} align="flex-end">
+          {readOnly ? (
+            <Text size="sm" style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+              {formatCurrency(product.price)}
+            </Text>
+          ) : (
+            <QuickEditNumber
+              value={product.price}
+              label={`Sửa nhanh giá của ${product.name}`}
+              schema={priceSchema}
+              suffix=" ₫"
+              display={
+                <Text
+                  size="sm"
+                  style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}
+                >
+                  {formatCurrency(product.price)}
+                </Text>
+              }
+              onSave={(price) => onQuickPrice(product, price)}
+            />
+          )}
           <MarginLine product={product} />
         </Stack>
       </Table.Td>
@@ -280,31 +303,39 @@ function ProductRow({
               >
                 Hiệu quả sản phẩm
               </Menu.Item>
-              <Menu.Item leftSection={<IconEdit size={16} />} onClick={() => onEdit(product)}>
-                Sửa
-              </Menu.Item>
-              <Menu.Item
-                leftSection={
-                  product.is_active ? <IconPlayerPause size={16} /> : <IconPlayerPlay size={16} />
-                }
-                onClick={() => onToggleActive(product)}
-                // Chưa có danh mục: DB không cho đăng bán, phải chọn danh mục trước.
-                disabled={!product.is_active && product.category_id === null}
-              >
-                {product.is_active
-                  ? 'Ngừng bán'
-                  : product.category_id === null
-                    ? 'Đăng bán (cần chọn danh mục)'
-                    : 'Đăng bán'}
-              </Menu.Item>
-              <Menu.Divider />
-              <Menu.Item
-                color="red"
-                leftSection={<IconTrash size={16} />}
-                onClick={() => onDelete(product)}
-              >
-                Xóa
-              </Menu.Item>
+              {!readOnly && (
+                <>
+                  <Menu.Item leftSection={<IconEdit size={16} />} onClick={() => onEdit(product)}>
+                    Sửa
+                  </Menu.Item>
+                  <Menu.Item
+                    leftSection={
+                      product.is_active ? (
+                        <IconPlayerPause size={16} />
+                      ) : (
+                        <IconPlayerPlay size={16} />
+                      )
+                    }
+                    onClick={() => onToggleActive(product)}
+                    // Chưa có danh mục: DB không cho đăng bán, phải chọn danh mục trước.
+                    disabled={!product.is_active && product.category_id === null}
+                  >
+                    {product.is_active
+                      ? 'Ngừng bán'
+                      : product.category_id === null
+                        ? 'Đăng bán (cần chọn danh mục)'
+                        : 'Đăng bán'}
+                  </Menu.Item>
+                  <Menu.Divider />
+                  <Menu.Item
+                    color="red"
+                    leftSection={<IconTrash size={16} />}
+                    onClick={() => onDelete(product)}
+                  >
+                    Xóa
+                  </Menu.Item>
+                </>
+              )}
             </Menu.Dropdown>
           </Menu>
         </Group>

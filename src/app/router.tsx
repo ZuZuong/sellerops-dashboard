@@ -1,6 +1,7 @@
 import type { ComponentType } from 'react'
 import { createBrowserRouter } from 'react-router'
 import { AccountGate, GuestRoute, HomeRedirect, ProtectedRoute, RoleGuard } from '@/features/auth'
+import { AdminLayout } from '@/layouts/AdminLayout'
 import { SellerLayout } from '@/layouts/SellerLayout'
 import { PageLoader } from '@/shared/components/PageLoader'
 import { ROUTES } from '@/shared/constants/routes'
@@ -21,7 +22,7 @@ const common = { ErrorBoundary: RouteErrorBoundary, HydrateFallback: PageLoader 
  *     /                       chuyển hướng theo role
  *     /no-access              tài khoản người mua
  *     /seller/*  (seller)     SellerLayout: SellerScope + khóa theo trạng thái shop
- *     /admin/*   (admin)      Admin Console (Phase 3)
+ *     /admin/*   (admin)      AdminLayout: Admin Console (xem shop ở chế độ chỉ đọc)
  */
 export const router = createBrowserRouter([
   {
@@ -81,7 +82,39 @@ export const router = createBrowserRouter([
           },
           {
             element: <RoleGuard allow={['admin']} />,
-            children: [{ path: ROUTES.admin, lazy: page(() => import('@/pages/AdminHomePage')) }],
+            children: [
+              {
+                path: ROUTES.admin,
+                Component: AdminLayout,
+                children: [
+                  { index: true, lazy: page(() => import('@/pages/AdminDashboardPage')) },
+                  {
+                    path: ROUTES.adminAccounts,
+                    lazy: page(() => import('@/pages/AdminAccountsPage')),
+                  },
+                  {
+                    path: ROUTES.adminApprovals,
+                    lazy: page(() => import('@/pages/AdminApprovalsPage')),
+                  },
+                  {
+                    path: ROUTES.adminSellers,
+                    lazy: page(() => import('@/pages/AdminSellersPage')),
+                  },
+                  {
+                    path: ROUTES.adminSellerDetail,
+                    lazy: page(() => import('@/pages/AdminSellerDetailPage')),
+                  },
+                  {
+                    path: ROUTES.adminDeletions,
+                    lazy: page(() => import('@/pages/AdminDeletionsPage')),
+                  },
+                  {
+                    path: ROUTES.adminAuditLog,
+                    lazy: page(() => import('@/pages/AdminAuditLogPage')),
+                  },
+                ],
+              },
+            ],
           },
         ],
       },

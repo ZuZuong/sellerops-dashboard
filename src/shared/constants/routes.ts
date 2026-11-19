@@ -29,8 +29,14 @@ export const ROUTES = {
   analytics: '/seller/analytics',
   analyticsRevenueReport: '/seller/analytics/revenue-report',
 
-  // Admin (Phase 3 xây console đầy đủ)
+  // Admin
   admin: '/admin',
+  adminAccounts: '/admin/accounts',
+  adminApprovals: '/admin/approvals',
+  adminSellers: '/admin/sellers',
+  adminSellerDetail: '/admin/sellers/:sellerId',
+  adminDeletions: '/admin/deletions',
+  adminAuditLog: '/admin/audit-log',
 } as const
 
 /** Đường dẫn trang chi tiết đơn hàng. */
@@ -38,3 +44,7 @@ export const orderDetailPath = (orderId: string) => `${ROUTES.orders}/${orderId}
 
 /** Đường dẫn trang chi tiết phiếu nhập kho. */
 export const purchaseDetailPath = (receiptId: string) => `${ROUTES.purchases}/${receiptId}`
+
+/** Trang chi tiết shop trong Admin Console (tùy chọn mở sẵn một tab). */
+export const adminSellerPath = (sellerId: string, tab?: string) =>
+  `${ROUTES.adminSellers}/${sellerId}${tab ? `?tab=${tab}` : ''}`

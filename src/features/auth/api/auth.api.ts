@@ -73,7 +73,7 @@ export function subscribeToAuthChanges(
 async function fetchProfile(userId: string) {
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, role, full_name, is_locked, locked_reason')
+    .select('id, role, full_name, is_locked, locked_reason, account_status')
     .eq('id', userId)
     .maybeSingle()
   if (error) throw error
@@ -128,7 +128,27 @@ export async function fetchAccount(user: User): Promise<Account> {
     // Thiếu dòng profiles (trigger chưa chạy) → coi như customer: không có quyền dashboard.
     role: profile?.role ?? 'customer',
     fullName: profile?.full_name ?? null,
+    status: profile?.account_status ?? 'active',
     isLocked: profile?.is_locked ?? false,
     lockedReason: profile?.locked_reason ?? null,
+  }
+}
+
+/**
+ * Nghe thay đổi trên dòng `profiles` của CHÍNH người dùng (Realtime tôn trọng RLS "select own").
+ * Admin khóa / xóa tài khoản → callback chạy trong ~1 giây để giao diện đá người dùng ra ngay.
+ * Trả về hàm hủy đăng ký.
+ */
+export function subscribeToOwnProfile(userId: string, onChange: () => void): () => void {
+  const channel = supabase
+    .channel(`profile:${userId}`)
+    .on(
+      'postgres_changes',
+      { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${userId}` },
+      onChange,
+    )
+    .subscribe()
+  return () => {
+    void supabase.removeChannel(channel)
   }
 }

@@ -11,3 +11,18 @@ export async function fetchOwnSeller(userId: string): Promise<Seller | null> {
   if (error) throw error
   return data
 }
+
+/** Nghe thay đổi trên shop của chính mình (admin duyệt / từ chối / tạm khóa). Trả về hàm hủy. */
+export function subscribeToOwnSeller(userId: string, onChange: () => void): () => void {
+  const channel = supabase
+    .channel(`seller:${userId}`)
+    .on(
+      'postgres_changes',
+      { event: 'UPDATE', schema: 'public', table: 'sellers', filter: `owner_id=eq.${userId}` },
+      onChange,
+    )
+    .subscribe()
+  return () => {
+    void supabase.removeChannel(channel)
+  }
+}

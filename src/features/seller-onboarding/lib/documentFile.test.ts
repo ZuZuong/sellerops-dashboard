@@ -3,9 +3,9 @@ import {
   buildDocumentPath,
   documentMimeType,
   DOCUMENT_MAX_BYTES,
-  sanitizeFileName,
   validateDocumentFile,
 } from './documentFile'
+import { sanitizeFileName } from '@/shared/lib/fileName'
 
 const file = (name: string, type: string, size = 1024) => ({ name, type, size })
 

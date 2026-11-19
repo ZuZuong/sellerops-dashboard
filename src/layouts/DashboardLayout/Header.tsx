@@ -5,7 +5,12 @@ import { UserMenu } from '@/features/auth'
 import { useUiStore } from '@/shared/stores/useUiStore'
 import { ColorSchemeToggle } from './ColorSchemeToggle'
 
-export function Header() {
+interface HeaderProps {
+  /** Tên hiển thị trên header — tên shop của seller (mặc định "SellerOps"). */
+  brand?: string
+}
+
+export function Header({ brand = 'SellerOps' }: HeaderProps) {
   const mobileNavOpened = useUiStore((s) => s.mobileNavOpened)
   const toggleMobileNav = useUiStore((s) => s.toggleMobileNav)
 
@@ -23,8 +28,8 @@ export function Header() {
           <ThemeIcon variant="filled" size="md" aria-hidden>
             <IconBuildingStore size={18} />
           </ThemeIcon>
-          <Text fw={700} size="lg">
-            SellerOps
+          <Text fw={700} size="lg" truncate="end" maw={{ base: 180, sm: 360 }} title={brand}>
+            {brand}
           </Text>
         </Group>
       </Group>

@@ -494,3 +494,30 @@ describe('ProductForm', () => {
     )
   })
 })
+
+describe('ProductsView — admin xem chỉ đọc', () => {
+  it('ẩn chọn nhiều, sửa nhanh và mọi thao tác ghi; vẫn xem được hiệu quả sản phẩm', async () => {
+    api.fetchProducts.mockResolvedValue(page([makeProduct()]))
+    renderWithProviders(<ProductsView />, {
+      route: '/admin/sellers/s1?tab=products',
+      sellerScope: { readOnly: true },
+    })
+
+    await screen.findByText('Áo thun basic')
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Sửa nhanh/ })).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Thao tác cho Áo thun basic' }))
+    expect(await screen.findByRole('menuitem', { name: 'Hiệu quả sản phẩm' })).toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: 'Sửa' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: /Ngừng bán|Đăng bán/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: 'Xóa' })).not.toBeInTheDocument()
+  })
+
+  it('shop chưa có sản phẩm: không có nút thêm sản phẩm', async () => {
+    api.fetchProducts.mockResolvedValue(page([]))
+    renderWithProviders(<ProductsView />, { route: '/admin', sellerScope: { readOnly: true } })
+    expect(await screen.findByText('Chưa có sản phẩm nào')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Thêm sản phẩm/ })).not.toBeInTheDocument()
+  })
+})

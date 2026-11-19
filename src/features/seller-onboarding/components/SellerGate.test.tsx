@@ -14,6 +14,7 @@ vi.mock('@/features/auth/api/auth.api', () => ({
     email: 'shop@example.com',
     role: 'seller',
     fullName: null,
+    status: 'active',
     isLocked: false,
     lockedReason: null,
   })),

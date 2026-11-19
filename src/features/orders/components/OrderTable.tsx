@@ -6,6 +6,7 @@ import { SortableTh } from '@/shared/components/SortableTh'
 import { orderDetailPath } from '@/shared/constants/routes'
 import { formatCurrency, formatDateTime } from '@/shared/lib/formatters'
 import type { SortOrder } from '@/shared/types/sort'
+import { useSellerScope } from '@/shared/hooks/useSellerScope'
 import { getNextStatuses, ORDER_ACTIONS, type OrderTransitionTarget } from '../domain/orderStatus'
 import type { OrderSortField } from '../schemas/orderFilters.schema'
 import type { Order } from '../types'
@@ -89,12 +90,20 @@ function OrderRow({ order, busy, onTransition }: OrderRowProps) {
   const targets = getNextStatuses(order.status).filter(
     (status): status is OrderTransitionTarget => status !== 'pending',
   )
+  // Admin xem shop (chỉ đọc): không có trang chi tiết đơn và không có thao tác chuyển trạng thái.
+  const { readOnly } = useSellerScope()
   return (
     <Table.Tr>
       <Table.Td>
-        <Anchor component={Link} to={orderDetailPath(order.id)} size="sm" fw={500} ff="monospace">
-          {order.code}
-        </Anchor>
+        {readOnly ? (
+          <Text size="sm" fw={500} ff="monospace">
+            {order.code}
+          </Text>
+        ) : (
+          <Anchor component={Link} to={orderDetailPath(order.id)} size="sm" fw={500} ff="monospace">
+            {order.code}
+          </Anchor>
+        )}
       </Table.Td>
       <Table.Td>
         <Stack gap={0}>
@@ -120,39 +129,41 @@ function OrderRow({ order, busy, onTransition }: OrderRowProps) {
         </Text>
       </Table.Td>
       <Table.Td>
-        <Group justify="flex-end">
-          <Menu position="bottom-end" withinPortal>
-            <Menu.Target>
-              <ActionIcon
-                variant="subtle"
-                color="gray"
-                loading={busy}
-                aria-label={`Thao tác cho đơn ${order.code}`}
-              >
-                <IconDots size={18} />
-              </ActionIcon>
-            </Menu.Target>
-            <Menu.Dropdown>
-              <Menu.Item
-                component={Link}
-                to={orderDetailPath(order.id)}
-                leftSection={<IconEye size={16} />}
-              >
-                Xem chi tiết
-              </Menu.Item>
-              {targets.length > 0 && <Menu.Divider />}
-              {targets.map((to) => (
-                <Menu.Item
-                  key={to}
-                  color={to === 'cancelled' ? 'red' : undefined}
-                  onClick={() => onTransition(order, to)}
+        {!readOnly && (
+          <Group justify="flex-end">
+            <Menu position="bottom-end" withinPortal>
+              <Menu.Target>
+                <ActionIcon
+                  variant="subtle"
+                  color="gray"
+                  loading={busy}
+                  aria-label={`Thao tác cho đơn ${order.code}`}
                 >
-                  {ORDER_ACTIONS[to].label}
+                  <IconDots size={18} />
+                </ActionIcon>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Item
+                  component={Link}
+                  to={orderDetailPath(order.id)}
+                  leftSection={<IconEye size={16} />}
+                >
+                  Xem chi tiết
                 </Menu.Item>
-              ))}
-            </Menu.Dropdown>
-          </Menu>
-        </Group>
+                {targets.length > 0 && <Menu.Divider />}
+                {targets.map((to) => (
+                  <Menu.Item
+                    key={to}
+                    color={to === 'cancelled' ? 'red' : undefined}
+                    onClick={() => onTransition(order, to)}
+                  >
+                    {ORDER_ACTIONS[to].label}
+                  </Menu.Item>
+                ))}
+              </Menu.Dropdown>
+            </Menu>
+          </Group>
+        )}
       </Table.Td>
     </Table.Tr>
   )

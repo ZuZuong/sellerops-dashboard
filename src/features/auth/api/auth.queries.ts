@@ -31,6 +31,8 @@ export function useAccount() {
     },
     enabled: user !== null,
     staleTime: 5 * 60_000,
+    // Dự phòng khi Realtime mất kết nối: quay lại tab là kiểm tra lại trạng thái tài khoản.
+    refetchOnWindowFocus: true,
     retry: false,
   })
 }
@@ -70,6 +72,14 @@ export function useSignOut() {
       })
     },
   })
+}
+
+/**
+ * Đăng xuất do hệ thống (tài khoản bị xóa): không hiện toast "Hẹn gặp lại" — trang đăng nhập
+ * hiển thị lý do. Lỗi mạng khi đăng xuất vẫn xóa phiên cục bộ (Supabase luôn xóa local session).
+ */
+export function useForceSignOut() {
+  return useMutation({ mutationFn: signOut })
 }
 
 export function useSignUp() {

@@ -17,6 +17,7 @@ import { ErrorState } from '@/shared/components/ErrorState'
 import { orderDetailPath, purchaseDetailPath } from '@/shared/constants/routes'
 import { getErrorMessage } from '@/shared/lib/errors'
 import { formatCurrency, formatDateTime, formatNumber } from '@/shared/lib/formatters'
+import { useSellerScope } from '@/shared/hooks/useSellerScope'
 import { useStockMovements } from '../api/inventory.queries'
 import { getMovementReasonLabel } from '../lib/inventoryLib'
 import type { InventoryItem, StockMovement } from '../types'
@@ -129,7 +130,19 @@ function MovementHistory({ item }: { item: InventoryItem }) {
 }
 
 function MovementRow({ movement }: { movement: StockMovement }) {
+  // Chỉ đọc (admin): mã chứng từ hiển thị dạng chữ, không dẫn tới trang của seller.
+  const { readOnly } = useSellerScope()
   const increase = movement.delta > 0
+  const docLink = (to: string, code: string) =>
+    readOnly ? (
+      <Text size="sm" ff="monospace">
+        {code}
+      </Text>
+    ) : (
+      <Anchor component={Link} to={to} size="sm" ff="monospace">
+        {code}
+      </Anchor>
+    )
   return (
     <Table.Tr>
       <Table.Td style={{ whiteSpace: 'nowrap' }}>
@@ -141,26 +154,9 @@ function MovementRow({ movement }: { movement: StockMovement }) {
         <Stack gap={0}>
           <Group gap={6}>
             <Text size="sm">{getMovementReasonLabel(movement.reason)}</Text>
-            {movement.order && (
-              <Anchor
-                component={Link}
-                to={orderDetailPath(movement.order.id)}
-                size="sm"
-                ff="monospace"
-              >
-                {movement.order.code}
-              </Anchor>
-            )}
-            {movement.receipt && (
-              <Anchor
-                component={Link}
-                to={purchaseDetailPath(movement.receipt.id)}
-                size="sm"
-                ff="monospace"
-              >
-                {movement.receipt.code}
-              </Anchor>
-            )}
+            {movement.order && docLink(orderDetailPath(movement.order.id), movement.order.code)}
+            {movement.receipt &&
+              docLink(purchaseDetailPath(movement.receipt.id), movement.receipt.code)}
           </Group>
           {(movement.note || movement.unit_cost !== null) && (
             <Text size="xs" c="dimmed">
