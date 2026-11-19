@@ -108,6 +108,10 @@ export function DeleteAccountForm({ target, loading, onCancel, onSubmit }: Delet
               Tài khoản chuyển vào thùng rác (mục "Chờ xóa") và khôi phục được cho tới khi admin xác
               nhận xóa vĩnh viễn.
             </List.Item>
+            <List.Item>
+              Email <strong>vẫn bị giữ</strong> (chưa đăng ký lại được) cho tới khi admin bấm "Xóa
+              vĩnh viễn" ở mục "Chờ xóa".
+            </List.Item>
           </List>
         </Alert>
 

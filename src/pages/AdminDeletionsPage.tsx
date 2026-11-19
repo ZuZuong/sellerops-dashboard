@@ -5,7 +5,7 @@ export default function AdminDeletionsPage() {
     <>
       <AdminPageHeader
         title="Chờ xóa"
-        description="Tài khoản bị xóa đang chờ xác nhận. Dữ liệu luôn được lưu giữ và có thể khôi phục."
+        description="Thùng rác tài khoản: khôi phục được bất cứ lúc nào. Email chỉ được giải phóng (đăng ký lại thành tài khoản mới) sau khi bấm Xóa vĩnh viễn; dữ liệu shop luôn được lưu giữ."
         crumbs={[{ label: 'Chờ xóa' }]}
       />
       <DeletionsView />

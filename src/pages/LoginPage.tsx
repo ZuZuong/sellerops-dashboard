@@ -35,8 +35,9 @@ export default function LoginPage() {
           role="alert"
           title="Tài khoản đã bị xóa"
         >
-          Tài khoản của bạn đã bị quản trị viên xóa khỏi nền tảng. Lý do và hướng dẫn khiếu nại đã
-          được gửi tới email đăng ký của bạn.
+          Tài khoản này đã bị quản trị viên xóa và đang chờ xử lý. Lý do và hướng dẫn khiếu nại đã
+          được gửi tới email đăng ký. Trong thời gian xử lý, email này chưa thể dùng để đăng ký tài
+          khoản mới.
         </Alert>
       )}
       {redirectError && (
