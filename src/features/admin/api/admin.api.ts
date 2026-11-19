@@ -1,4 +1,4 @@
-import { FunctionsHttpError } from '@supabase/supabase-js'
+import { FunctionsFetchError, FunctionsHttpError, FunctionsRelayError } from '@supabase/supabase-js'
 import { sanitizeFileName } from '@/shared/lib/fileName'
 import { supabase } from '@/shared/lib/supabase'
 import type {
@@ -267,15 +267,27 @@ export async function notifyAccountDeletion(deletionId: string): Promise<void> {
     body: { deletion_id: deletionId },
   })
   if (!error) return
+
+  let code = 'EMAIL_SEND_FAILED'
   if (error instanceof FunctionsHttpError) {
-    const body: unknown = await error.context.json().catch(() => null)
-    const code =
+    const response = error.context as Response
+    const body: unknown = await response.json().catch(() => null)
+    code =
       typeof body === 'object' && body !== null && 'error' in body && typeof body.error === 'string'
         ? body.error
-        : 'EMAIL_SEND_FAILED'
-    throw new Error(code, { cause: error })
+        : response.status === 404
+          ? 'EMAIL_FUNCTION_NOT_DEPLOYED'
+          : 'EMAIL_SEND_FAILED'
+  } else if (error instanceof FunctionsFetchError || error instanceof FunctionsRelayError) {
+    code = 'EMAIL_FUNCTION_UNREACHABLE'
   }
-  throw error
+
+  // Function không chạy tới bước ghi kết quả (chưa deploy, mạng, CORS…) → tự ghi lỗi vào hồ sơ
+  // để trang "Chờ xóa" hiện "Gửi lỗi" kèm lý do. Không ghi đè lỗi function đã ghi.
+  if (code === 'EMAIL_FUNCTION_NOT_DEPLOYED' || code === 'EMAIL_FUNCTION_UNREACHABLE') {
+    await supabase.rpc('mark_deletion_notified', { p_deletion_id: deletionId, p_error: code })
+  }
+  throw new Error(code, { cause: error })
 }
 
 export async function confirmAccountDeletion(deletionId: string): Promise<void> {

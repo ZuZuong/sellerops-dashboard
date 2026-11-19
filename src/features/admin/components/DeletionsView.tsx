@@ -39,6 +39,7 @@ import {
   useRestoreAccount,
 } from '../api/admin.queries'
 import { DELETION_STATUS_META } from '../domain/labels'
+import { ADMIN_ERROR_MESSAGES } from '../lib/adminErrors'
 import { deletionFiltersSchema, type DeletionFilters } from '../schemas/adminFilters.schema'
 import type { AccountDeletion } from '../types'
 import { AdminPagination, SearchField } from './common'
@@ -133,9 +134,19 @@ export function DeletionsView() {
               </Tooltip>
             ) : (
               <Group gap={4} wrap="nowrap">
-                <Badge color={deletion.notify_error ? 'red' : 'gray'} variant="dot">
-                  {deletion.notify_error ? 'Gửi lỗi' : 'Chưa gửi'}
-                </Badge>
+                <Tooltip
+                  label={
+                    deletion.notify_error
+                      ? (ADMIN_ERROR_MESSAGES[deletion.notify_error] ?? deletion.notify_error)
+                      : 'Chưa có kết quả gửi email'
+                  }
+                  multiline
+                  w={280}
+                >
+                  <Badge color={deletion.notify_error ? 'red' : 'gray'} variant="dot">
+                    {deletion.notify_error ? 'Gửi lỗi' : 'Chưa gửi'}
+                  </Badge>
+                </Tooltip>
                 <Tooltip label="Gửi lại email thông báo">
                   <ActionIcon
                     variant="subtle"

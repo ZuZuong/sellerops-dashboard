@@ -22,8 +22,15 @@ export const ADMIN_ERROR_MESSAGES: Readonly<Record<string, string>> = {
   DELETION_NOT_FOUND: 'Không tìm thấy hồ sơ xóa tài khoản.',
   DELETION_NOT_PENDING: 'Hồ sơ không còn ở trạng thái chờ xác nhận.',
   DELETION_NOT_RESTORABLE: 'Tài khoản này đã được khôi phục trước đó.',
-  EMAIL_NOT_CONFIGURED: 'Máy chủ chưa cấu hình gửi email (RESEND_API_KEY / EMAIL_FROM).',
+  EMAIL_NOT_CONFIGURED:
+    'Máy chủ chưa cấu hình gửi email: thiếu secret RESEND_API_KEY hoặc EMAIL_FROM trên Supabase.',
   EMAIL_SEND_FAILED: 'Dịch vụ email từ chối gửi thư. Kiểm tra cấu hình Resend rồi gửi lại.',
+  EMAIL_SENDER_NOT_ALLOWED:
+    'Resend từ chối người gửi / người nhận. Khi dùng onboarding@resend.dev chỉ gửi được tới email chủ tài khoản Resend; muốn gửi cho seller phải xác minh domain.',
+  EMAIL_FUNCTION_NOT_DEPLOYED:
+    'Chức năng gửi email (Edge Function notify-account-deletion) chưa được deploy lên Supabase.',
+  EMAIL_FUNCTION_UNREACHABLE:
+    'Không gọi được chức năng gửi email (mạng hoặc cấu hình ALLOWED_ORIGINS). Thử gửi lại sau.',
 }
 
 export function getAdminErrorMessage(error: unknown): string {

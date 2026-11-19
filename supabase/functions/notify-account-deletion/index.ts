@@ -111,7 +111,6 @@ Deno.serve(async (req) => {
 
   const authorization = req.headers.get('Authorization')
   if (!authorization) return json(req, { error: 'NOT_AUTHENTICATED' }, 401)
-  if (!RESEND_API_KEY || !EMAIL_FROM) return json(req, { error: 'EMAIL_NOT_CONFIGURED' }, 500)
 
   let deletionId: unknown
   try {
@@ -137,6 +136,16 @@ Deno.serve(async (req) => {
     return json(req, { error: code }, code === 'NOT_ADMIN' ? 403 : 400)
   }
 
+  // Kiểm tra cấu hình SAU khi xác nhận người gọi là admin, và ghi lỗi vào hồ sơ để trang
+  // "Chờ xóa" hiển thị lý do (thay vì mãi "Chưa gửi").
+  if (!RESEND_API_KEY || !EMAIL_FROM) {
+    await supabase.rpc('mark_deletion_notified', {
+      p_deletion_id: deletionId,
+      p_error: 'EMAIL_NOT_CONFIGURED',
+    })
+    return json(req, { error: 'EMAIL_NOT_CONFIGURED' }, 500)
+  }
+
   const { subject, html } = buildEmail(data)
   const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -152,7 +161,8 @@ Deno.serve(async (req) => {
 
   if (!response.ok) {
     // Không trả chi tiết của Resend về client; lưu tóm tắt để admin biết cần gửi lại.
-    const detail = `Resend ${response.status}`
+    // Mã gọn để giao diện map sang tiếng Việt; chi tiết xem ở Resend → Logs.
+    const detail = response.status === 403 ? 'EMAIL_SENDER_NOT_ALLOWED' : 'EMAIL_SEND_FAILED'
     await supabase.rpc('mark_deletion_notified', { p_deletion_id: deletionId, p_error: detail })
     return json(req, { error: 'EMAIL_SEND_FAILED' }, 502)
   }
