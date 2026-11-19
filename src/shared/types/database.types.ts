@@ -14,6 +14,124 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_deletion_evidence: {
+        Row: {
+          created_at: string
+          deletion_id: string
+          file_name: string
+          file_size: number
+          id: string
+          mime_type: string
+          storage_path: string
+        }
+        Insert: {
+          created_at?: string
+          deletion_id: string
+          file_name: string
+          file_size: number
+          id?: string
+          mime_type: string
+          storage_path: string
+        }
+        Update: {
+          created_at?: string
+          deletion_id?: string
+          file_name?: string
+          file_size?: number
+          id?: string
+          mime_type?: string
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "account_deletion_evidence_deletion_id_fkey"
+            columns: ["deletion_id"]
+            isOneToOne: false
+            referencedRelation: "account_deletions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      account_deletions: {
+        Row: {
+          confirmed_at: string | null
+          confirmed_by: string | null
+          email: string | null
+          former_user_id: string
+          full_name: string | null
+          id: string
+          notified_at: string | null
+          notify_error: string | null
+          previous_locked: boolean
+          previous_locked_at: string | null
+          previous_locked_reason: string | null
+          reason: string
+          requested_at: string
+          requested_by: string | null
+          restore_note: string | null
+          restored_at: string | null
+          restored_by: string | null
+          seller_id: string | null
+          shop_name: string | null
+          status: Database["public"]["Enums"]["account_deletion_status"]
+          user_id: string | null
+        }
+        Insert: {
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          email?: string | null
+          former_user_id: string
+          full_name?: string | null
+          id?: string
+          notified_at?: string | null
+          notify_error?: string | null
+          previous_locked: boolean
+          previous_locked_at?: string | null
+          previous_locked_reason?: string | null
+          reason: string
+          requested_at?: string
+          requested_by?: string | null
+          restore_note?: string | null
+          restored_at?: string | null
+          restored_by?: string | null
+          seller_id?: string | null
+          shop_name?: string | null
+          status?: Database["public"]["Enums"]["account_deletion_status"]
+          user_id?: string | null
+        }
+        Update: {
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          email?: string | null
+          former_user_id?: string
+          full_name?: string | null
+          id?: string
+          notified_at?: string | null
+          notify_error?: string | null
+          previous_locked?: boolean
+          previous_locked_at?: string | null
+          previous_locked_reason?: string | null
+          reason?: string
+          requested_at?: string
+          requested_by?: string | null
+          restore_note?: string | null
+          restored_at?: string | null
+          restored_by?: string | null
+          seller_id?: string | null
+          shop_name?: string | null
+          status?: Database["public"]["Enums"]["account_deletion_status"]
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "account_deletions_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "sellers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       activity_logs: {
         Row: {
           changes: Json
@@ -623,6 +741,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          account_status: Database["public"]["Enums"]["account_status"]
           created_at: string
           full_name: string | null
           id: string
@@ -633,6 +752,7 @@ export type Database = {
           role: Database["public"]["Enums"]["user_role"]
         }
         Insert: {
+          account_status?: Database["public"]["Enums"]["account_status"]
           created_at?: string
           full_name?: string | null
           id: string
@@ -643,6 +763,7 @@ export type Database = {
           role?: Database["public"]["Enums"]["user_role"]
         }
         Update: {
+          account_status?: Database["public"]["Enums"]["account_status"]
           created_at?: string
           full_name?: string | null
           id?: string
@@ -836,10 +957,14 @@ export type Database = {
           contact_email: string | null
           created_at: string
           current_step: number
+          former_owner_email: string | null
+          former_owner_id: string | null
+          former_owner_name: string | null
           id: string
           license_number: string | null
           main_category: string | null
-          owner_id: string
+          owner_id: string | null
+          owner_removed_at: string | null
           rejection_reason: string | null
           representative_name: string | null
           representative_phone: string | null
@@ -862,10 +987,14 @@ export type Database = {
           contact_email?: string | null
           created_at?: string
           current_step?: number
+          former_owner_email?: string | null
+          former_owner_id?: string | null
+          former_owner_name?: string | null
           id?: string
           license_number?: string | null
           main_category?: string | null
-          owner_id: string
+          owner_id?: string | null
+          owner_removed_at?: string | null
           rejection_reason?: string | null
           representative_name?: string | null
           representative_phone?: string | null
@@ -888,10 +1017,14 @@ export type Database = {
           contact_email?: string | null
           created_at?: string
           current_step?: number
+          former_owner_email?: string | null
+          former_owner_id?: string | null
+          former_owner_name?: string | null
           id?: string
           license_number?: string | null
           main_category?: string | null
-          owner_id?: string
+          owner_id?: string | null
+          owner_removed_at?: string | null
           rejection_reason?: string | null
           representative_name?: string | null
           representative_phone?: string | null
@@ -918,8 +1051,80 @@ export type Database = {
         Args: { p_delta: number; p_note?: string; p_product_id: string }
         Returns: number
       }
+      admin_deletion_notice: {
+        Args: { p_deletion_id: string }
+        Returns: {
+          email: string
+          evidence_count: number
+          full_name: string
+          reason: string
+          requested_at: string
+          shop_name: string
+        }[]
+      }
+      admin_get_seller: {
+        Args: { p_seller_id: string }
+        Returns: {
+          account_status: Database["public"]["Enums"]["account_status"]
+          address: string
+          business_name: string
+          business_type: Database["public"]["Enums"]["business_type"]
+          contact_email: string
+          created_at: string
+          id: string
+          is_locked: boolean
+          license_number: string
+          locked_reason: string
+          main_category: string
+          owner_email: string
+          owner_full_name: string
+          owner_id: string
+          rejection_reason: string
+          representative_name: string
+          representative_phone: string
+          reviewed_at: string
+          reviewer_email: string
+          shop_name: string
+          slug: string
+          status: Database["public"]["Enums"]["seller_status"]
+          submitted_at: string
+          suspended_reason: string
+          tax_code: string
+          terms_accepted_at: string
+          terms_version: string
+        }[]
+      }
+      admin_list_account_deletions: {
+        Args: {
+          p_page?: number
+          p_page_size?: number
+          p_q?: string
+          p_status?: Database["public"]["Enums"]["account_deletion_status"]
+        }
+        Returns: {
+          confirmed_at: string
+          email: string
+          evidence_count: number
+          full_name: string
+          id: string
+          notified_at: string
+          notify_error: string
+          reason: string
+          requested_at: string
+          requested_by_email: string
+          restore_note: string
+          restored_at: string
+          role: Database["public"]["Enums"]["user_role"]
+          seller_id: string
+          shop_name: string
+          status: Database["public"]["Enums"]["account_deletion_status"]
+          total_count: number
+          user_id: string
+        }[]
+      }
       admin_list_accounts: {
         Args: {
+          p_account_status?: Database["public"]["Enums"]["account_status"]
           p_locked?: boolean
           p_page?: number
           p_page_size?: number
@@ -928,6 +1133,7 @@ export type Database = {
           p_seller_status?: Database["public"]["Enums"]["seller_status"]
         }
         Returns: {
+          account_status: Database["public"]["Enums"]["account_status"]
           created_at: string
           email: string
           email_confirmed: boolean
@@ -944,6 +1150,54 @@ export type Database = {
           total_count: number
         }[]
       }
+      admin_list_audit_logs: {
+        Args: {
+          p_action?: string
+          p_actor_id?: string
+          p_from?: string
+          p_page?: number
+          p_page_size?: number
+          p_target_ids?: string[]
+          p_to?: string
+        }
+        Returns: {
+          action: string
+          actor_email: string
+          actor_id: string
+          created_at: string
+          id: string
+          metadata: Json
+          target_id: string
+          target_label: string
+          target_type: string
+          total_count: number
+        }[]
+      }
+      admin_list_sellers: {
+        Args: {
+          p_page?: number
+          p_page_size?: number
+          p_q?: string
+          p_status?: Database["public"]["Enums"]["seller_status"]
+        }
+        Returns: {
+          account_status: Database["public"]["Enums"]["account_status"]
+          business_name: string
+          created_at: string
+          id: string
+          is_locked: boolean
+          order_count: number
+          owner_email: string
+          owner_id: string
+          product_count: number
+          revenue: number
+          reviewed_at: string
+          shop_name: string
+          status: Database["public"]["Enums"]["seller_status"]
+          submitted_at: string
+          total_count: number
+        }[]
+      }
       admin_platform_stats: {
         Args: { p_days?: number }
         Returns: {
@@ -952,6 +1206,7 @@ export type Database = {
           locked_accounts: number
           new_accounts: number
           pending_count: number
+          pending_deletion_count: number
           period_orders: number
           period_revenue: number
           rejected_count: number
@@ -961,8 +1216,20 @@ export type Database = {
           total_revenue: number
         }[]
       }
+      admin_revenue_series: {
+        Args: { p_days?: number }
+        Returns: {
+          day: string
+          orders: number
+          revenue: number
+        }[]
+      }
       cancel_order: { Args: { p_order_id: string }; Returns: undefined }
       clean_category_name: { Args: { p_name: string }; Returns: string }
+      confirm_account_deletion: {
+        Args: { p_deletion_id: string }
+        Returns: undefined
+      }
       confirm_order: { Args: { p_order_id: string }; Returns: undefined }
       create_category: { Args: { p_name: string }; Returns: string }
       create_order: {
@@ -1202,6 +1469,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      mark_deletion_notified: {
+        Args: { p_deletion_id: string; p_error?: string }
+        Returns: undefined
+      }
       next_order_code: { Args: { p_seller_id: string }; Returns: string }
       next_receipt_code: { Args: { p_seller_id: string }; Returns: string }
       normalize_product_name: { Args: { p_name: string }; Returns: string }
@@ -1226,11 +1497,19 @@ export type Database = {
           range_start: string
         }[]
       }
+      request_account_deletion: {
+        Args: { p_evidence?: Json; p_reason: string; p_user_id: string }
+        Returns: string
+      }
       require_admin: { Args: never; Returns: undefined }
       require_approved_seller: { Args: never; Returns: string }
       require_category_editor: { Args: never; Returns: string }
       require_reason: { Args: { p_reason: string }; Returns: string }
       resolve_report_seller: { Args: { p_seller_id: string }; Returns: string }
+      restore_account: {
+        Args: { p_deletion_id: string; p_note?: string }
+        Returns: undefined
+      }
       restore_products: { Args: { p_ids: string[] }; Returns: Json }
       review_seller: {
         Args: { p_decision: string; p_reason?: string; p_seller_id: string }
@@ -1282,6 +1561,8 @@ export type Database = {
       }
     }
     Enums: {
+      account_deletion_status: "pending" | "confirmed" | "restored"
+      account_status: "active" | "pending_deletion" | "deleted"
       business_type: "household" | "company" | "individual"
       order_status:
         | "pending"
@@ -1421,6 +1702,8 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      account_deletion_status: ["pending", "confirmed", "restored"],
+      account_status: ["active", "pending_deletion", "deleted"],
       business_type: ["household", "company", "individual"],
       order_status: [
         "pending",

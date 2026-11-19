@@ -34,7 +34,8 @@ React 19, TypeScript (strict), Vite, Mantine UI, TanStack Query, Zustand, React 
 - RLS: seller đọc / ghi khi `seller_id = current_approved_seller_id()` (shop `approved`, tài khoản không khóa); admin **chỉ đọc**. Guard / modal ở UI chỉ phục vụ UX.
 - RPC ghi dữ liệu kinh doanh mở đầu bằng `require_approved_seller()`; hành động admin chỉ qua RPC, luôn ghi `audit_logs`.
 - Hàm báo cáo nhận `p_seller_id` (bỏ trống = shop của người gọi); query key luôn chứa `sellerId`.
-- Xem shop của seller từ admin: `SellerScopeProvider` cung cấp `sellerId` + `readOnly` (không impersonation); khi `readOnly` ẩn mọi nút ghi.
+- Xem shop của seller từ admin: `SellerScopeProvider` cung cấp `sellerId` + `readOnly` (không impersonation); khi `readOnly` ẩn mọi nút ghi (component đọc qua `useSellerScope()`). Xem ADR 008.
+- Xóa tài khoản: bước 1 đưa vào thùng rác (`profiles.account_status = pending_deletion`, khóa ngay, giữ vô thời hạn, khôi phục được); bước 2 admin "xóa vĩnh viễn" = xóa tài khoản đăng nhập (giải phóng email), **giữ shop + mọi dữ liệu kinh doanh** (`sellers.owner_id = null`, lưu `former_owner_*` dạng chữ). Bằng chứng ở bucket riêng tư `violation-evidence`. Realtime chỉ dùng cho trạng thái tài khoản / shop của chính người dùng (đá ra khi bị khóa / xóa). Email thông báo chỉ qua Edge Function tự dựng nội dung (client không gửi HTML / người nhận). Xem ADR 009, 010.
 - Bảng `customers` = **khách do seller lưu** khi tạo đơn (danh bạ của shop), KHÁC role `customer` (tài khoản người mua).
 - State machine `seller_status` (`draft → pending → approved ⇄ suspended`, `pending → rejected → pending`): SQL `seller_status_can_transition` + `features/sellers/domain/sellerStatus.ts`, test đối chiếu hai nơi.
 - Migration mới: chạy `supabase/tests/rls_checks.sql` trong SQL Editor; Claude Code **không** chạy `db:push`.
@@ -73,4 +74,4 @@ Chạy đúng happy path + edge case · đủ loading/empty/error · validate Zo
 
 ## Ngoài phạm vi
 
-Thanh toán thật, đa kho, realtime, tích hợp sàn TMĐT, i18n, impersonation (đăng nhập thay seller), nhiều nhân viên trong một shop, KYC tự động, email khi duyệt hồ sơ, admin sửa nội dung cam kết trên giao diện, storefront.
+Thanh toán thật, đa kho, realtime cho dữ liệu kinh doanh (chỉ dùng cho trạng thái tài khoản / shop), tích hợp sàn TMĐT, i18n, impersonation (đăng nhập thay seller), nhiều nhân viên trong một shop, KYC tự động, email khi duyệt / từ chối hồ sơ (chỉ gửi email khi xóa tài khoản), xóa dữ liệu kinh doanh khi xóa tài khoản, admin sửa nội dung cam kết trên giao diện, storefront.

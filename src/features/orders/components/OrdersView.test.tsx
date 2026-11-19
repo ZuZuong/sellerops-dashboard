@@ -289,3 +289,21 @@ describe('CreateOrderForm', () => {
     expect(screen.queryByRole('option', { name: /Áo thun basic/ })).not.toBeInTheDocument()
   })
 })
+
+describe('OrdersView — admin xem chỉ đọc', () => {
+  it('mã đơn không dẫn tới trang của seller, không có thao tác chuyển trạng thái', async () => {
+    api.fetchOrders.mockResolvedValue(page([makeOrder()]))
+    renderWithProviders(<OrdersView />, { route: '/admin', sellerScope: { readOnly: true } })
+
+    expect(await screen.findByText('DH-000001')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'DH-000001' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Thao tác cho đơn/ })).not.toBeInTheDocument()
+  })
+
+  it('không có đơn: không có nút tạo đơn', async () => {
+    api.fetchOrders.mockResolvedValue(page([]))
+    renderWithProviders(<OrdersView />, { route: '/admin', sellerScope: { readOnly: true } })
+    await screen.findByText(/Chưa có đơn hàng/)
+    expect(screen.queryByRole('button', { name: /Tạo đơn/ })).not.toBeInTheDocument()
+  })
+})

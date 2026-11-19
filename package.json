@@ -24,6 +24,7 @@
     "@mantine/dropzone": "^9.7.5",
     "@mantine/hooks": "^9.7.5",
     "@mantine/notifications": "^9.7.5",
+    "@mantine/spotlight": "^9.7.5",
     "@supabase/supabase-js": "^2.119.0",
     "@tabler/icons-react": "^3.50.0",
     "@tanstack/react-query": "^5.106.1",

@@ -6,6 +6,7 @@ import { EmptyState } from '@/shared/components/EmptyState'
 import { ErrorState } from '@/shared/components/ErrorState'
 import { getErrorMessage } from '@/shared/lib/errors'
 import { formatNumber } from '@/shared/lib/formatters'
+import { useSellerScope } from '@/shared/hooks/useSellerScope'
 import {
   useProducts,
   useQuickUpdateCost,
@@ -32,6 +33,7 @@ const PAGE_SIZE_OPTIONS = PRODUCT_PAGE_SIZES.map((size) => ({
 
 /** Danh sách sản phẩm: filter + bảng + phân trang + các hộp thoại sửa / xác nhận. */
 export function ProductsView() {
+  const { readOnly } = useSellerScope()
   const productFilters = useProductFilters()
   const { filters, setFilters, setPage, setSort, toggleSort, resetFilters, hasActiveFilters } =
     productFilters
@@ -142,7 +144,7 @@ export function ProductsView() {
           icon={<IconPackage size={24} stroke={1.5} />}
           title="Chưa có sản phẩm nào"
           description="Thêm sản phẩm đầu tiên để bắt đầu tạo đơn hàng và theo dõi tồn kho."
-          action={<CreateProductButton size="xs" variant="light" />}
+          action={readOnly ? undefined : <CreateProductButton size="xs" variant="light" />}
         />
       ) : null // đang lùi về trang hợp lệ (effect ở trên)
     }
@@ -187,7 +189,7 @@ export function ProductsView() {
         hasActiveFilters={hasActiveFilters}
       />
 
-      {selected.size > 0 && (
+      {selected.size > 0 && !readOnly && (
         <Group
           justify="space-between"
           gap="sm"

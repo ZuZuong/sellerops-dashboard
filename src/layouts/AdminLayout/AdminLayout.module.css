@@ -1,0 +1,40 @@
+/* Thanh bên Admin Console: navy đậm cố định ở cả giao diện sáng và tối, nhấn bằng vàng đồng. */
+.navbar {
+  background-color: #0b1736;
+  border-inline-end-color: #16244a;
+}
+
+.muted {
+  color: #93a1c4;
+}
+
+.link {
+  border-radius: var(--mantine-radius-md);
+  color: #c9d3ec;
+  font-weight: 500;
+
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.06);
+    color: #ffffff;
+  }
+
+  &[data-active] {
+    background-color: rgba(250, 176, 5, 0.14);
+    color: #ffd43b;
+    box-shadow: inset 3px 0 0 #fab005;
+  }
+
+  &[data-active]:hover {
+    background-color: rgba(250, 176, 5, 0.2);
+  }
+
+  &:focus-visible {
+    outline: 2px solid #ffd43b;
+    outline-offset: 2px;
+  }
+}
+
+.count {
+  color: #0b1736;
+  font-variant-numeric: tabular-nums;
+}

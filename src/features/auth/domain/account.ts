@@ -2,6 +2,7 @@ import { ROUTES } from '@/shared/constants/routes'
 import type { Enums } from '@/shared/types/database.types'
 
 export type UserRole = Enums<'user_role'>
+export type AccountStatus = Enums<'account_status'>
 
 /**
  * Tài khoản đang đăng nhập — đọc từ bảng `profiles` (KHÔNG từ user_metadata / app_metadata:
@@ -12,6 +13,8 @@ export interface Account {
   email: string
   role: UserRole
   fullName: string | null
+  /** `pending_deletion` / `deleted`: admin đã xóa (mềm) tài khoản → đăng xuất ngay. */
+  status: AccountStatus
   isLocked: boolean
   lockedReason: string | null
 }
@@ -30,12 +33,17 @@ export function homePathForRole(role: UserRole): string {
 
 export type RoleAccess = { kind: 'allowed' } | { kind: 'locked' } | { kind: 'redirect'; to: string }
 
+/** Tài khoản bị admin xóa (chờ xác nhận hoặc đã xóa) → không được ở lại trong app. */
+export function isAccountRemoved(account: Pick<Account, 'status'>): boolean {
+  return account.status !== 'active'
+}
+
 /**
  * Quyết định vào route của nhóm `allowed`: tài khoản khóa → màn hình khóa; sai vai trò →
  * chuyển về trang chủ của vai trò đó. Chỉ phục vụ UX — RLS / RPC mới là lớp chặn thật.
  */
 export function resolveRoleAccess(account: Account, allowed: readonly UserRole[]): RoleAccess {
-  if (account.isLocked) return { kind: 'locked' }
+  if (account.isLocked || isAccountRemoved(account)) return { kind: 'locked' }
   if (allowed.includes(account.role)) return { kind: 'allowed' }
   return { kind: 'redirect', to: homePathForRole(account.role) }
 }

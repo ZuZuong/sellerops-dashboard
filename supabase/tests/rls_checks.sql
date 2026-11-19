@@ -442,6 +442,169 @@ begin
   raise notice 'PASS [11] hồ sơ nháp: tạo danh mục được, gửi hồ sơ thiếu bị chặn';
 end $$;
 
+-- -----------------------------------------------------------------------------
+-- 12. RPC Admin Console: seller / customer không gọi được
+-- -----------------------------------------------------------------------------
+do $$
+declare
+  v_call text;
+begin
+  perform set_config('request.jwt.claims', pg_temp.claims('b0000000-0000-4000-8000-00000000000b'), true);
+  foreach v_call in array array[
+    'select * from public.admin_list_sellers()',
+    'select * from public.admin_get_seller(''5a000000-0000-4000-8000-00000000000a'')',
+    'select * from public.admin_list_audit_logs()',
+    'select * from public.admin_list_account_deletions()',
+    'select * from public.admin_revenue_series()',
+    'select public.request_account_deletion(''d0000000-0000-4000-8000-00000000000d'', ''x'')'
+  ] loop
+    begin
+      perform set_config('role', 'authenticated', true);
+      execute v_call;
+      perform set_config('role', 'none', true);
+      raise exception 'FAIL [12] seller gọi được: %', v_call;
+    exception when raise_exception then
+      if sqlerrm <> 'NOT_ADMIN' then raise; end if;
+    end;
+  end loop;
+
+  -- Customer không đọc được hồ sơ xóa / bằng chứng (RLS trả về rỗng).
+  perform set_config('request.jwt.claims', pg_temp.claims('d0000000-0000-4000-8000-00000000000d'), true);
+  perform set_config('role', 'authenticated', true);
+  if exists (select 1 from public.account_deletions) or exists (select 1 from public.account_deletion_evidence) then
+    raise exception 'FAIL [12.2] customer đọc được hồ sơ xóa tài khoản';
+  end if;
+  perform set_config('role', 'none', true);
+
+  raise notice 'PASS [12] seller / customer không gọi được RPC Admin Console';
+end $$;
+
+-- -----------------------------------------------------------------------------
+-- 13. Xóa mềm tài khoản: mất quyền ngay, không khóa / mở khóa tắt ngang, khôi phục đúng như cũ
+-- -----------------------------------------------------------------------------
+-- File bằng chứng giả (như admin vừa tải lên bucket).
+insert into storage.objects (bucket_id, name)
+values ('violation-evidence', 'b0000000-0000-4000-8000-00000000000b/1-anh-vi-pham.png');
+
+do $$
+declare
+  v_deletion uuid;
+  v_count    int;
+  v_status   public.account_status;
+  v_locked   boolean;
+begin
+  perform set_config('request.jwt.claims', pg_temp.claims('e0000000-0000-4000-8000-00000000000e'), true);
+  perform set_config('role', 'authenticated', true);
+
+  -- 13.1 Bằng chứng ngoài thư mục của tài khoản bị xóa → bị từ chối
+  begin
+    perform public.request_account_deletion(
+      'b0000000-0000-4000-8000-00000000000b', 'Bán hàng giả',
+      '[{"storage_path": "d0000000-0000-4000-8000-00000000000d/x.png", "file_name": "x.png", "mime_type": "image/png", "file_size": 10}]'
+    );
+    raise exception 'FAIL [13.1] nhận bằng chứng nằm ngoài thư mục của tài khoản';
+  exception when raise_exception then
+    if sqlerrm <> 'INVALID_EVIDENCE' then raise; end if;
+  end;
+
+  -- 13.2 Không xóa được chính mình
+  begin
+    perform public.request_account_deletion('e0000000-0000-4000-8000-00000000000e', 'test');
+    raise exception 'FAIL [13.2] admin tự xóa được chính mình';
+  exception when raise_exception then
+    if sqlerrm <> 'CANNOT_DELETE_SELF' then raise; end if;
+  end;
+
+  v_deletion := public.request_account_deletion(
+    'b0000000-0000-4000-8000-00000000000b', 'Bán hàng giả',
+    '[{"storage_path": "b0000000-0000-4000-8000-00000000000b/1-anh-vi-pham.png", "file_name": "ảnh vi phạm.png", "mime_type": "image/png", "file_size": 2048}]'
+  );
+
+  -- 13.3 Không khóa / mở khóa tài khoản đang chờ xóa (phải khôi phục)
+  begin
+    perform public.set_account_locked('b0000000-0000-4000-8000-00000000000b', false);
+    raise exception 'FAIL [13.3] mở khóa được tài khoản đang chờ xóa';
+  exception when raise_exception then
+    if sqlerrm <> 'ACCOUNT_PENDING_DELETION' then raise; end if;
+  end;
+
+  select count(*) into v_count from public.account_deletion_evidence where deletion_id = v_deletion;
+  if v_count <> 1 then raise exception 'FAIL [13.4] phải lưu 1 bằng chứng, có %', v_count; end if;
+  perform set_config('role', 'none', true);
+
+  -- 13.5 Seller B mất quyền ngay
+  perform set_config('request.jwt.claims', pg_temp.claims('b0000000-0000-4000-8000-00000000000b'), true);
+  perform set_config('role', 'authenticated', true);
+  select count(*) into v_count from public.products;
+  select account_status into v_status from public.profiles where id = 'b0000000-0000-4000-8000-00000000000b';
+  perform set_config('role', 'none', true);
+  if v_count <> 0 then raise exception 'FAIL [13.5] tài khoản chờ xóa vẫn đọc được % sản phẩm', v_count; end if;
+  if v_status <> 'pending_deletion' then raise exception 'FAIL [13.6] trạng thái tài khoản: %', v_status; end if;
+
+  -- 13.7 Còn trong thùng rác → khôi phục đúng trạng thái trước khi xóa
+  perform set_config('request.jwt.claims', pg_temp.claims('e0000000-0000-4000-8000-00000000000e'), true);
+  perform set_config('role', 'authenticated', true);
+  perform public.restore_account(v_deletion, 'Khiếu nại hợp lệ');
+  perform set_config('role', 'none', true);
+
+  select account_status, is_locked into v_status, v_locked
+  from public.profiles where id = 'b0000000-0000-4000-8000-00000000000b';
+  if v_status <> 'active' or v_locked then
+    raise exception 'FAIL [13.7] khôi phục sai: % / khóa = %', v_status, v_locked;
+  end if;
+
+  -- 13.8 Xóa lại rồi XÁC NHẬN → tài khoản đăng nhập bị xóa hẳn (email giải phóng),
+  --      shop + dữ liệu kinh doanh + thông tin dạng chữ giữ nguyên
+  perform set_config('request.jwt.claims', pg_temp.claims('e0000000-0000-4000-8000-00000000000e'), true);
+  perform set_config('role', 'authenticated', true);
+  v_deletion := public.request_account_deletion('b0000000-0000-4000-8000-00000000000b', 'Tái phạm');
+  perform public.confirm_account_deletion(v_deletion);
+  perform set_config('role', 'none', true);
+
+  if exists (select 1 from auth.users where id = 'b0000000-0000-4000-8000-00000000000b') then
+    raise exception 'FAIL [13.8] tài khoản đăng nhập chưa bị xóa';
+  end if;
+  if exists (select 1 from auth.users where email = 'seller-b@rls-check.test') then
+    raise exception 'FAIL [13.9] email chưa được giải phóng';
+  end if;
+  select count(*) into v_count from public.products where seller_id = '5b000000-0000-4000-8000-00000000000b';
+  if v_count <> 1 then raise exception 'FAIL [13.10] xóa tài khoản làm mất dữ liệu shop'; end if;
+  if not exists (
+    select 1 from public.sellers
+    where id = '5b000000-0000-4000-8000-00000000000b' and owner_id is null
+      and shop_name = 'Shop B' and former_owner_email = 'seller-b@rls-check.test'
+  ) then
+    raise exception 'FAIL [13.11] shop không giữ tên / email chủ cũ dạng chữ';
+  end if;
+  if not exists (
+    select 1 from public.account_deletions
+    where id = v_deletion and status = 'confirmed' and user_id is null
+      and email = 'seller-b@rls-check.test' and shop_name = 'Shop B'
+  ) then
+    raise exception 'FAIL [13.12] hồ sơ xóa không giữ email / tên shop';
+  end if;
+
+  -- 13.13 Đã xóa hẳn → không khôi phục được; admin vẫn xem được shop không chủ
+  perform set_config('request.jwt.claims', pg_temp.claims('e0000000-0000-4000-8000-00000000000e'), true);
+  perform set_config('role', 'authenticated', true);
+  begin
+    perform public.restore_account(v_deletion, 'x');
+    raise exception 'FAIL [13.13] khôi phục được tài khoản đã xóa hẳn';
+  exception when raise_exception then
+    if sqlerrm <> 'DELETION_NOT_RESTORABLE' then raise; end if;
+  end;
+  select count(*) into v_count from public.admin_get_seller('5b000000-0000-4000-8000-00000000000b');
+  if v_count <> 1 then raise exception 'FAIL [13.14] admin không xem được shop đã mất chủ'; end if;
+  select count(*) into v_count from public.audit_logs
+  where target_id = 'b0000000-0000-4000-8000-00000000000b' and action like 'account.deletion_%';
+  perform set_config('role', 'none', true);
+  if v_count <> 4 then
+    raise exception 'FAIL [13.15] phải có 4 dòng audit (xóa, khôi phục, xóa, xác nhận), có %', v_count;
+  end if;
+
+  raise notice 'PASS [13] xóa tài khoản: thùng rác khôi phục được; xác nhận xóa hẳn tài khoản, giữ shop + dữ liệu';
+end $$;
+
 select 'ALL RLS CHECKS PASSED' as result;
 
 rollback;

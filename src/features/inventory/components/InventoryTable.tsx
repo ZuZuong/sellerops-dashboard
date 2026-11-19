@@ -5,6 +5,7 @@ import { ProductStock } from '@/features/products'
 import { SortableTh } from '@/shared/components/SortableTh'
 import { formatCurrency, formatNumber } from '@/shared/lib/formatters'
 import type { SortOrder } from '@/shared/types/sort'
+import { useSellerScope } from '@/shared/hooks/useSellerScope'
 import type { InventorySortField } from '../schemas/inventoryFilters.schema'
 import type { InventoryItem } from '../types'
 
@@ -53,6 +54,8 @@ interface InventoryTableProps extends Omit<InventoryTableShellProps, 'children'>
 }
 
 export function InventoryTable({ items, onAdjust, onHistory, ...shell }: InventoryTableProps) {
+  // Admin xem shop (chỉ đọc): ẩn "Điều chỉnh", vẫn xem được lịch sử kho.
+  const { readOnly } = useSellerScope()
   return (
     <InventoryTableShell {...shell}>
       {items.map((item) => (
@@ -98,15 +101,17 @@ export function InventoryTable({ items, onAdjust, onHistory, ...shell }: Invento
           </Table.Td>
           <Table.Td>
             <Group justify="flex-end" gap="xs" wrap="nowrap">
-              <Button
-                size="xs"
-                variant="light"
-                leftSection={<IconAdjustments size={14} aria-hidden />}
-                onClick={() => onAdjust(item)}
-                aria-label={`Điều chỉnh kho ${item.name}`}
-              >
-                Điều chỉnh
-              </Button>
+              {!readOnly && (
+                <Button
+                  size="xs"
+                  variant="light"
+                  leftSection={<IconAdjustments size={14} aria-hidden />}
+                  onClick={() => onAdjust(item)}
+                  aria-label={`Điều chỉnh kho ${item.name}`}
+                >
+                  Điều chỉnh
+                </Button>
+              )}
               <Button
                 size="xs"
                 variant="subtle"

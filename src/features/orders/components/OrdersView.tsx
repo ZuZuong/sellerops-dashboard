@@ -5,6 +5,7 @@ import { EmptyState } from '@/shared/components/EmptyState'
 import { ErrorState } from '@/shared/components/ErrorState'
 import { getErrorMessage } from '@/shared/lib/errors'
 import { formatNumber } from '@/shared/lib/formatters'
+import { useSellerScope } from '@/shared/hooks/useSellerScope'
 import { useOrders } from '../api/orders.queries'
 import { useOrderFilters } from '../hooks/useOrderFilters'
 import { useOrderTransitionFlow } from '../hooks/useOrderTransitionFlow'
@@ -21,6 +22,7 @@ const PAGE_SIZE_OPTIONS = ORDER_PAGE_SIZES.map((size) => ({
 
 /** Danh sách đơn hàng: lọc theo trạng thái + tìm kiếm (trên URL), bảng, phân trang, thao tác nhanh. */
 export function OrdersView() {
+  const { readOnly } = useSellerScope()
   const { filters, setFilters, setPage, toggleSort, resetFilters, hasActiveFilters } =
     useOrderFilters()
   const orders = useOrders(filters)
@@ -80,7 +82,7 @@ export function OrdersView() {
           icon={<IconReceipt size={24} stroke={1.5} />}
           title="Chưa có đơn hàng nào"
           description="Tạo đơn hàng đầu tiên: chọn sản phẩm, số lượng và thông tin khách."
-          action={<CreateOrderButton size="xs" variant="light" />}
+          action={readOnly ? undefined : <CreateOrderButton size="xs" variant="light" />}
         />
       ) : null // đang lùi về trang hợp lệ (effect ở trên)
     }

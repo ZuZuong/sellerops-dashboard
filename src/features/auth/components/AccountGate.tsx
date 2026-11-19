@@ -1,21 +1,40 @@
 import { Center } from '@mantine/core'
 import { IconLock } from '@tabler/icons-react'
+import { useEffect } from 'react'
 import { Outlet } from 'react-router'
 import { ErrorState } from '@/shared/components/ErrorState'
 import { PageLoader } from '@/shared/components/PageLoader'
-import { useAccount } from '../api/auth.queries'
+import { useAccount, useForceSignOut } from '../api/auth.queries'
+import { isAccountRemoved } from '../domain/account'
+import { useAccountRealtime } from '../hooks/useAccountRealtime'
+import { useAuthStore, useCurrentUser } from '../hooks/useAuth'
 import { getAuthErrorMessage } from '../lib/authErrors'
 import { BlockedScreen } from './BlockedScreen'
 import { SignOutButton } from './SignOutButton'
 
 /**
- * Lớp đầu tiên sau đăng nhập: đọc tài khoản (role, khóa) từ `profiles`. Tài khoản bị khóa
- * không vào được bất kỳ trang nào — DB cũng đã chặn mọi quyền của tài khoản khóa.
+ * Lớp đầu tiên sau đăng nhập: đọc tài khoản (role, khóa, trạng thái) từ `profiles` và nghe thay
+ * đổi qua Realtime.
+ *  - Tài khoản bị admin xóa → đăng xuất NGAY, về /login kèm thông báo.
+ *  - Tài khoản bị khóa → màn hình khóa.
+ * Database đã tước mọi quyền của tài khoản khóa / xóa — lớp này chỉ phục vụ trải nghiệm.
  */
 export function AccountGate() {
+  const user = useCurrentUser()
   const account = useAccount()
+  const forceSignOut = useForceSignOut()
+  useAccountRealtime(user?.id)
 
-  if (account.isPending) return <PageLoader />
+  const removed = account.data ? isAccountRemoved(account.data) : false
+  const { mutate: signOut } = forceSignOut
+
+  useEffect(() => {
+    if (!removed) return
+    useAuthStore.getState().setSignOutReason('account_removed')
+    signOut()
+  }, [removed, signOut])
+
+  if (account.isPending || removed) return <PageLoader />
 
   if (account.isError) {
     return (

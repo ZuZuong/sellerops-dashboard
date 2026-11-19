@@ -43,7 +43,13 @@ export function SellerGateModal({ seller }: SellerGateModalProps) {
 
   let body: ReactNode
   if (showStepper) {
-    body = <OnboardingStepper seller={seller} accountEmail={account.data?.email ?? ''} />
+    body = (
+      <OnboardingStepper
+        seller={seller}
+        accountId={account.data?.id ?? seller.owner_id ?? ''}
+        accountEmail={account.data?.email ?? ''}
+      />
+    )
   } else if (gate === 'rejected') {
     body = <RejectedNotice seller={seller} onEdit={() => setEditingRejected(true)} />
   } else if (gate === 'pending') {

@@ -43,3 +43,35 @@ where id = (select id from auth.users where email = '<email-admin>');
 - Không gán admin bằng `user_metadata` / `app_metadata`: database không dùng hai trường này để phân quyền.
 - Admin không thể khóa chính mình hay admin khác (`set_account_locked` chặn), nên luôn giữ ít nhất **một** admin không bị khóa.
 - Mọi hành động của admin (duyệt, từ chối, khóa / mở khóa) được ghi vào `audit_logs`.
+
+## Admin Console (Phase 3)
+
+### 1. Chạy migration và kiểm tra quyền
+
+1. Đọc `supabase/migrations/20261126000000_admin_console.sql`, rồi `npm run db:push` và `npm run db:types`.
+2. Chạy `supabase/tests/rls_checks.sql` trong SQL Editor: dòng cuối phải là `ALL RLS CHECKS PASSED` (gồm kiểm tra [12] RPC admin và [13] xóa mềm tài khoản).
+
+### 2. Realtime
+
+Migration tự thêm `profiles` và `sellers` vào publication `supabase_realtime`. Kiểm tra tại **Database → Publications → supabase_realtime**: hai bảng này phải được bật. Nhờ đó seller bị đăng xuất ngay khi tài khoản bị xóa / khóa, và dashboard mở khóa ngay khi hồ sơ được duyệt.
+
+### 3. Email thông báo xóa tài khoản (Edge Function + Resend)
+
+Secrets (**Edge Functions → Secrets**, hoặc `supabase secrets set …`). Không đưa vào repo hay `.env` của frontend:
+
+| Secret            | Ví dụ                                            | Ghi chú                                                     |
+| ----------------- | ------------------------------------------------ | ----------------------------------------------------------- |
+| `RESEND_API_KEY`  | `re_…`                                           | API key Resend                                              |
+| `EMAIL_FROM`      | `SellerOps <onboarding@resend.dev>`              | Chưa có domain: chỉ gửi được tới email chủ tài khoản Resend |
+| `SUPPORT_EMAIL`   | `<email-tiep-nhan-khieu-nai>`                    | Đặt làm Reply-To, seller trả lời thư để khiếu nại           |
+| `ALLOWED_ORIGINS` | `http://localhost:5173,https://<app>.vercel.app` | Tùy chọn, giới hạn origin gọi function                      |
+
+Deploy:
+
+```bash
+npx supabase functions deploy notify-account-deletion
+```
+
+Khi đã xác minh domain trên Resend, chỉ cần đổi `EMAIL_FROM` (vd. `SellerOps <no-reply@ten-mien.vn>`), không sửa code.
+
+Function chỉ nhận `deletion_id`, tự đọc người nhận và lý do từ database bằng JWT của admin. Người không phải admin gọi sẽ nhận `NOT_ADMIN`.

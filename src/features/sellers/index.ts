@@ -1,4 +1,4 @@
-export { sellerKeys, useCurrentSeller } from './api/sellers.queries'
+export { prefetchOwnSeller, sellerKeys, useCurrentSeller } from './api/sellers.queries'
 export {
   canTransitionSeller,
   isApplicationEditable,

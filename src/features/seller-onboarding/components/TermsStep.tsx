@@ -2,7 +2,7 @@ import { Badge, Box, Checkbox, Group, List, Paper, Stack, Text, Title } from '@m
 import { useEffect, useRef, useState } from 'react'
 import { isScrolledToBottom } from '../lib/scroll'
 import { canConfirmTerms } from '../schemas/application.schema'
-import { TERMS_SECTIONS, TERMS_VERSION } from '../terms'
+import { TERMS_INTRO, TERMS_SECTIONS, TERMS_TITLE, TERMS_VERSION } from '../terms'
 import { StepFooter } from './StepFooter'
 
 interface TermsStepProps {
@@ -34,7 +34,7 @@ export function TermsStep({ submitting, onBack, onSubmit }: TermsStepProps) {
     <Stack gap="md">
       <Group justify="space-between" gap="xs">
         <Text size="sm" c="dimmed">
-          Vui lòng đọc kỹ toàn bộ cam kết và nội quy trước khi gửi hồ sơ.
+          Vui lòng đọc kỹ toàn bộ văn bản trước khi xác nhận và gửi hồ sơ.
         </Text>
         <Badge variant="light" color="gray">
           Phiên bản {TERMS_VERSION}
@@ -53,12 +53,17 @@ export function TermsStep({ submitting, onBack, onSubmit }: TermsStepProps) {
           style={{ overflowY: 'auto' }}
         >
           <Stack gap="md">
-            <Text size="xs" c="orange" fw={600}>
-              Nội dung demo cho dự án portfolio, không phải văn bản pháp lý thật.
-            </Text>
+            <Stack gap={4}>
+              <Title order={3} size="h4" ta="center">
+                {TERMS_TITLE}
+              </Title>
+              <Text size="sm" c="dimmed">
+                {TERMS_INTRO}
+              </Text>
+            </Stack>
             {TERMS_SECTIONS.map((section) => (
               <Stack key={section.title} gap={6}>
-                <Title order={3} size="h5">
+                <Title order={4} size="h5">
                   {section.title}
                 </Title>
                 <List size="sm" spacing={4}>
@@ -80,7 +85,7 @@ export function TermsStep({ submitting, onBack, onSubmit }: TermsStepProps) {
         </Text>
       )}
       <Checkbox
-        label="Tôi đã đọc, hiểu và đồng ý tuân thủ cam kết và nội quy dành cho người bán."
+        label="Tôi đã đọc, hiểu và đồng ý tuân thủ Cam kết và Nội quy dành cho Người bán."
         checked={accepted}
         onChange={(event) => setAccepted(event.currentTarget.checked)}
       />

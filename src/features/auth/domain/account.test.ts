@@ -6,6 +6,7 @@ const account = (overrides: Partial<Account> = {}): Account => ({
   email: 'a@example.com',
   role: 'seller',
   fullName: null,
+  status: 'active',
   isLocked: false,
   lockedReason: null,
   ...overrides,

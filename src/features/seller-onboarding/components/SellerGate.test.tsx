@@ -14,6 +14,7 @@ vi.mock('@/features/auth/api/auth.api', () => ({
     email: 'shop@example.com',
     role: 'seller',
     fullName: null,
+    status: 'active',
     isLocked: false,
     lockedReason: null,
   })),
@@ -71,6 +72,10 @@ const seller = (overrides: Partial<Seller> = {}): Seller => ({
   suspended_reason: null,
   created_at: '2026-11-19T00:00:00Z',
   updated_at: '2026-11-19T00:00:00Z',
+  former_owner_id: null,
+  former_owner_email: null,
+  former_owner_name: null,
+  owner_removed_at: null,
   ...overrides,
 })
 
@@ -156,7 +161,11 @@ describe('SellerStatusGuard + SellerGateModal', () => {
 describe('OnboardingStepper', () => {
   it('khôi phục đúng bước đang làm từ current_step', async () => {
     renderWithProviders(
-      <OnboardingStepper seller={seller({ current_step: 3 })} accountEmail="shop@example.com" />,
+      <OnboardingStepper
+        seller={seller({ current_step: 3 })}
+        accountId="owner-1"
+        accountEmail="shop@example.com"
+      />,
       { route: '/seller' },
     )
     expect(await screen.findByText('Chưa có danh mục nào')).toBeInTheDocument()
@@ -165,7 +174,11 @@ describe('OnboardingStepper', () => {
 
   it('bước 2: chưa có giấy phép thì không sang bước 3', async () => {
     renderWithProviders(
-      <OnboardingStepper seller={seller({ current_step: 2 })} accountEmail="shop@example.com" />,
+      <OnboardingStepper
+        seller={seller({ current_step: 2 })}
+        accountId="owner-1"
+        accountEmail="shop@example.com"
+      />,
       { route: '/seller' },
     )
     await userEvent.click(await screen.findByRole('button', { name: 'Lưu và tiếp tục' }))
@@ -186,6 +199,7 @@ describe('OnboardingStepper', () => {
           representative_phone: '0912345678',
           main_category: 'Khác',
         })}
+        accountId="owner-1"
         accountEmail="shop@example.com"
       />,
       { route: '/seller' },

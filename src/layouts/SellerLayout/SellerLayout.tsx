@@ -40,17 +40,20 @@ export function SellerLayout() {
     )
   }
 
+  // Shop đã đặt tên (bước 1 hồ sơ) → header hiển thị tên shop thay cho tên nền tảng.
+  const brand = seller.data.shop_name ?? undefined
+
   return (
     <SellerScopeProvider sellerId={seller.data.id}>
       <SellerStatusGuard
         seller={seller.data}
         lockedView={
-          <DashboardLayout>
+          <DashboardLayout brand={brand}>
             <LockedDashboardPreview />
           </DashboardLayout>
         }
       >
-        <DashboardLayout />
+        <DashboardLayout brand={brand} />
       </SellerStatusGuard>
     </SellerScopeProvider>
   )

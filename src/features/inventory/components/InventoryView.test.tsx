@@ -258,3 +258,14 @@ describe('InventoryView', () => {
     expect(csv).toContain('DN-AOTHUN-001,Áo thun basic,Áo thun,Cái,90000,150000,3')
   })
 })
+
+describe('InventoryView — admin xem chỉ đọc', () => {
+  it('ẩn "Điều chỉnh", vẫn xem được lịch sử kho', async () => {
+    api.fetchInventory.mockResolvedValue(page([makeItem()]))
+    renderWithProviders(<InventoryView />, { route: '/admin', sellerScope: { readOnly: true } })
+
+    expect(await screen.findByText('Áo thun basic')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Điều chỉnh kho/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Lịch sử kho Áo thun basic' })).toBeInTheDocument()
+  })
+})

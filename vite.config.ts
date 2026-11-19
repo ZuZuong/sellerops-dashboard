@@ -10,6 +10,17 @@ export default defineConfig({
     // Tự mở trình duyệt khi chạy `npm run dev`.
     open: true,
   },
+  build: {
+    rolldownOptions: {
+      output: {
+        // Thư viện biểu đồ nặng → chunk riêng, chỉ tải khi mở trang có biểu đồ (dashboard, phân
+        // tích, tổng quan admin); các trang khác không phải tải kèm.
+        codeSplitting: {
+          groups: [{ name: 'recharts', test: /node_modules[\\/](recharts|d3-|victory-vendor)/ }],
+        },
+      },
+    },
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

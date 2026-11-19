@@ -3,7 +3,7 @@ import { screen } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider, useLocation } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithProviders } from '@/test/render'
-import { fetchAccount } from '../api/auth.api'
+import { fetchAccount, signOut, subscribeToOwnProfile } from '../api/auth.api'
 import type { Account } from '../domain/account'
 import { useAuthStore } from '../hooks/useAuth'
 import { AccountGate } from './AccountGate'
@@ -13,11 +13,14 @@ import { HomeRedirect, RoleGuard } from './RoleGuard'
 
 vi.mock('../api/auth.api', () => ({
   fetchAccount: vi.fn(),
+  subscribeToOwnProfile: vi.fn(() => () => {}),
   signOut: vi.fn(),
   subscribeToAuthChanges: vi.fn(),
 }))
 
 const fetchAccountMock = vi.mocked(fetchAccount)
+const signOutMock = vi.mocked(signOut)
+const subscribeMock = vi.mocked(subscribeToOwnProfile)
 
 const fakeSession = { user: { id: 'user-1', email: 'shop@example.com' } } as Session
 
@@ -26,6 +29,7 @@ const account = (overrides: Partial<Account> = {}): Account => ({
   email: 'shop@example.com',
   role: 'seller',
   fullName: null,
+  status: 'active',
   isLocked: false,
   lockedReason: null,
   ...overrides,
@@ -77,6 +81,7 @@ describe('route guards', () => {
   beforeEach(() => {
     useAuthStore.setState({ status: 'loading', session: null, recovery: false })
     fetchAccountMock.mockReset().mockResolvedValue(account())
+    signOutMock.mockReset().mockResolvedValue()
   })
 
   it('hiện loader trong lúc chờ phiên đăng nhập', () => {
@@ -150,5 +155,28 @@ describe('route guards', () => {
     renderAt('/seller')
     expect(await screen.findByText('Không tải được thông tin tài khoản')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Thử lại' })).toBeInTheDocument()
+  })
+
+  it('tài khoản bị admin xóa → đăng xuất ngay, ghi lý do để trang đăng nhập thông báo', async () => {
+    fetchAccountMock.mockResolvedValue(account({ status: 'pending_deletion', isLocked: true }))
+    useAuthStore.getState().setSession(fakeSession)
+    renderAt('/seller/orders')
+
+    await vi.waitFor(() => expect(signOutMock).toHaveBeenCalledTimes(1))
+    expect(useAuthStore.getState().signOutReason).toBe('account_removed')
+    expect(screen.queryByText(/orders/)).not.toBeInTheDocument()
+  })
+
+  it('đang dùng app mà bị xóa (Realtime báo thay đổi) → đọc lại tài khoản và đăng xuất', async () => {
+    useAuthStore.getState().setSession(fakeSession)
+    renderAt('/seller/orders')
+    expect(await screen.findByText('orders /seller/orders')).toBeInTheDocument()
+    expect(subscribeMock).toHaveBeenCalledWith('user-1', expect.any(Function))
+
+    fetchAccountMock.mockResolvedValue(account({ status: 'pending_deletion', isLocked: true }))
+    const onChange = subscribeMock.mock.calls.at(-1)?.[1]
+    onChange?.()
+
+    await vi.waitFor(() => expect(signOutMock).toHaveBeenCalledTimes(1))
   })
 })
