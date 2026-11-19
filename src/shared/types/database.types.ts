@@ -56,6 +56,9 @@ export type Database = {
         Row: {
           confirmed_at: string | null
           confirmed_by: string | null
+          email: string | null
+          former_user_id: string
+          full_name: string | null
           id: string
           notified_at: string | null
           notify_error: string | null
@@ -69,12 +72,16 @@ export type Database = {
           restored_at: string | null
           restored_by: string | null
           seller_id: string | null
+          shop_name: string | null
           status: Database["public"]["Enums"]["account_deletion_status"]
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           confirmed_at?: string | null
           confirmed_by?: string | null
+          email?: string | null
+          former_user_id: string
+          full_name?: string | null
           id?: string
           notified_at?: string | null
           notify_error?: string | null
@@ -88,12 +95,16 @@ export type Database = {
           restored_at?: string | null
           restored_by?: string | null
           seller_id?: string | null
+          shop_name?: string | null
           status?: Database["public"]["Enums"]["account_deletion_status"]
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           confirmed_at?: string | null
           confirmed_by?: string | null
+          email?: string | null
+          former_user_id?: string
+          full_name?: string | null
           id?: string
           notified_at?: string | null
           notify_error?: string | null
@@ -107,8 +118,9 @@ export type Database = {
           restored_at?: string | null
           restored_by?: string | null
           seller_id?: string | null
+          shop_name?: string | null
           status?: Database["public"]["Enums"]["account_deletion_status"]
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -945,10 +957,14 @@ export type Database = {
           contact_email: string | null
           created_at: string
           current_step: number
+          former_owner_email: string | null
+          former_owner_id: string | null
+          former_owner_name: string | null
           id: string
           license_number: string | null
           main_category: string | null
-          owner_id: string
+          owner_id: string | null
+          owner_removed_at: string | null
           rejection_reason: string | null
           representative_name: string | null
           representative_phone: string | null
@@ -971,10 +987,14 @@ export type Database = {
           contact_email?: string | null
           created_at?: string
           current_step?: number
+          former_owner_email?: string | null
+          former_owner_id?: string | null
+          former_owner_name?: string | null
           id?: string
           license_number?: string | null
           main_category?: string | null
-          owner_id: string
+          owner_id?: string | null
+          owner_removed_at?: string | null
           rejection_reason?: string | null
           representative_name?: string | null
           representative_phone?: string | null
@@ -997,10 +1017,14 @@ export type Database = {
           contact_email?: string | null
           created_at?: string
           current_step?: number
+          former_owner_email?: string | null
+          former_owner_id?: string | null
+          former_owner_name?: string | null
           id?: string
           license_number?: string | null
           main_category?: string | null
-          owner_id?: string
+          owner_id?: string | null
+          owner_removed_at?: string | null
           rejection_reason?: string | null
           representative_name?: string | null
           representative_phone?: string | null

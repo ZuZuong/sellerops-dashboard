@@ -51,8 +51,7 @@ const STATE_OPTIONS = [
   { value: 'all', label: 'Mọi trạng thái' },
   { value: 'active', label: 'Hoạt động' },
   { value: 'locked', label: 'Bị khóa' },
-  { value: 'pending_deletion', label: 'Chờ xác nhận xóa' },
-  { value: 'deleted', label: 'Đã xóa' },
+  { value: 'pending_deletion', label: 'Trong thùng rác' },
 ]
 
 const COLUMNS = 7

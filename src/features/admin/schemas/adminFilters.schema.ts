@@ -18,7 +18,7 @@ export const accountFiltersSchema = z.object({
   q,
   role: z.enum(['all', 'admin', 'seller', 'customer']).catch('all'),
   /** Trạng thái: hoạt động / bị khóa / chờ xóa / đã xóa. */
-  state: z.enum(['all', 'active', 'locked', 'pending_deletion', 'deleted']).catch('all'),
+  state: z.enum(['all', 'active', 'locked', 'pending_deletion']).catch('all'),
   page,
   pageSize,
 })

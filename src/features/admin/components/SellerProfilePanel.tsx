@@ -219,9 +219,9 @@ function StatusNotice({ seller }: { seller: AdminSellerDetail }) {
   if (seller.account_status !== 'active') {
     return (
       <Alert color="dark" variant="light" icon={<IconAlertTriangle size={18} aria-hidden />}>
-        Tài khoản chủ shop đã bị xóa (
-        {seller.account_status === 'deleted' ? 'đã xác nhận' : 'chờ xác nhận'}). Lý do:{' '}
-        {seller.locked_reason ?? '—'}
+        {seller.account_status === 'deleted'
+          ? `${seller.locked_reason ?? 'Tài khoản chủ shop đã bị xóa vĩnh viễn.'}. Shop và dữ liệu kinh doanh được lưu giữ để tra cứu.`
+          : `Tài khoản chủ shop đang trong thùng rác (chờ xác nhận xóa). Lý do: ${seller.locked_reason ?? '—'}`}
       </Alert>
     )
   }

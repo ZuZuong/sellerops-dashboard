@@ -100,7 +100,8 @@ describe('nhãn hiển thị', () => {
   })
 
   it('hành động audit log và lý do trong metadata', () => {
-    expect(auditActionLabel('account.deletion_requested')).toBe('Xóa tài khoản')
+    expect(auditActionLabel('account.deletion_requested')).toBe('Đưa tài khoản vào thùng rác')
+    expect(auditActionLabel('account.deletion_confirmed')).toBe('Xóa vĩnh viễn tài khoản')
     expect(auditActionLabel('seller.unknown')).toBe('seller.unknown')
     expect(auditReason({ reason: 'Hàng giả' })).toBe('Hàng giả')
     expect(auditReason({ note: 'Khiếu nại hợp lệ' })).toBe('Khiếu nại hợp lệ')

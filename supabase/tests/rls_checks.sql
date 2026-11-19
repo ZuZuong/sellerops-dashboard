@@ -541,25 +541,68 @@ begin
   if v_count <> 0 then raise exception 'FAIL [13.5] tài khoản chờ xóa vẫn đọc được % sản phẩm', v_count; end if;
   if v_status <> 'pending_deletion' then raise exception 'FAIL [13.6] trạng thái tài khoản: %', v_status; end if;
 
-  -- 13.7 Xác nhận xóa → deleted, dữ liệu shop còn nguyên; khôi phục → mở khóa như trước khi xóa
+  -- 13.7 Còn trong thùng rác → khôi phục đúng trạng thái trước khi xóa
   perform set_config('request.jwt.claims', pg_temp.claims('e0000000-0000-4000-8000-00000000000e'), true);
   perform set_config('role', 'authenticated', true);
-  perform public.confirm_account_deletion(v_deletion);
-  select count(*) into v_count from public.products where seller_id = '5b000000-0000-4000-8000-00000000000b';
-  if v_count <> 1 then raise exception 'FAIL [13.7] xóa mềm làm mất dữ liệu shop'; end if;
   perform public.restore_account(v_deletion, 'Khiếu nại hợp lệ');
-  select count(*) into v_count from public.audit_logs
-  where target_id = 'b0000000-0000-4000-8000-00000000000b' and action like 'account.deletion_%';
   perform set_config('role', 'none', true);
-  if v_count <> 3 then raise exception 'FAIL [13.8] phải có 3 dòng audit_logs xóa / xác nhận / khôi phục, có %', v_count; end if;
 
   select account_status, is_locked into v_status, v_locked
   from public.profiles where id = 'b0000000-0000-4000-8000-00000000000b';
   if v_status <> 'active' or v_locked then
-    raise exception 'FAIL [13.9] khôi phục sai: % / khóa = %', v_status, v_locked;
+    raise exception 'FAIL [13.7] khôi phục sai: % / khóa = %', v_status, v_locked;
   end if;
 
-  raise notice 'PASS [13] xóa mềm tài khoản: mất quyền ngay, giữ dữ liệu, khôi phục đúng, có audit';
+  -- 13.8 Xóa lại rồi XÁC NHẬN → tài khoản đăng nhập bị xóa hẳn (email giải phóng),
+  --      shop + dữ liệu kinh doanh + thông tin dạng chữ giữ nguyên
+  perform set_config('request.jwt.claims', pg_temp.claims('e0000000-0000-4000-8000-00000000000e'), true);
+  perform set_config('role', 'authenticated', true);
+  v_deletion := public.request_account_deletion('b0000000-0000-4000-8000-00000000000b', 'Tái phạm');
+  perform public.confirm_account_deletion(v_deletion);
+  perform set_config('role', 'none', true);
+
+  if exists (select 1 from auth.users where id = 'b0000000-0000-4000-8000-00000000000b') then
+    raise exception 'FAIL [13.8] tài khoản đăng nhập chưa bị xóa';
+  end if;
+  if exists (select 1 from auth.users where email = 'seller-b@rls-check.test') then
+    raise exception 'FAIL [13.9] email chưa được giải phóng';
+  end if;
+  select count(*) into v_count from public.products where seller_id = '5b000000-0000-4000-8000-00000000000b';
+  if v_count <> 1 then raise exception 'FAIL [13.10] xóa tài khoản làm mất dữ liệu shop'; end if;
+  if not exists (
+    select 1 from public.sellers
+    where id = '5b000000-0000-4000-8000-00000000000b' and owner_id is null
+      and shop_name = 'Shop B' and former_owner_email = 'seller-b@rls-check.test'
+  ) then
+    raise exception 'FAIL [13.11] shop không giữ tên / email chủ cũ dạng chữ';
+  end if;
+  if not exists (
+    select 1 from public.account_deletions
+    where id = v_deletion and status = 'confirmed' and user_id is null
+      and email = 'seller-b@rls-check.test' and shop_name = 'Shop B'
+  ) then
+    raise exception 'FAIL [13.12] hồ sơ xóa không giữ email / tên shop';
+  end if;
+
+  -- 13.13 Đã xóa hẳn → không khôi phục được; admin vẫn xem được shop không chủ
+  perform set_config('request.jwt.claims', pg_temp.claims('e0000000-0000-4000-8000-00000000000e'), true);
+  perform set_config('role', 'authenticated', true);
+  begin
+    perform public.restore_account(v_deletion, 'x');
+    raise exception 'FAIL [13.13] khôi phục được tài khoản đã xóa hẳn';
+  exception when raise_exception then
+    if sqlerrm <> 'DELETION_NOT_RESTORABLE' then raise; end if;
+  end;
+  select count(*) into v_count from public.admin_get_seller('5b000000-0000-4000-8000-00000000000b');
+  if v_count <> 1 then raise exception 'FAIL [13.14] admin không xem được shop đã mất chủ'; end if;
+  select count(*) into v_count from public.audit_logs
+  where target_id = 'b0000000-0000-4000-8000-00000000000b' and action like 'account.deletion_%';
+  perform set_config('role', 'none', true);
+  if v_count <> 4 then
+    raise exception 'FAIL [13.15] phải có 4 dòng audit (xóa, khôi phục, xóa, xác nhận), có %', v_count;
+  end if;
+
+  raise notice 'PASS [13] xóa tài khoản: thùng rác khôi phục được; xác nhận xóa hẳn tài khoản, giữ shop + dữ liệu';
 end $$;
 
 select 'ALL RLS CHECKS PASSED' as result;

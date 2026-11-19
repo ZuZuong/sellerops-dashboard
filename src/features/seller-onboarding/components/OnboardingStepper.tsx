@@ -13,6 +13,8 @@ import { TermsStep } from './TermsStep'
 
 interface OnboardingStepperProps {
   seller: Seller
+  /** Tài khoản đang đăng nhập (chủ shop) — thư mục Storage của giấy tờ là `{id}/…`. */
+  accountId: string
   accountEmail: string
 }
 
@@ -29,7 +31,7 @@ const toStep = (index: number) => (index + 1) as ApplicationStep
  * Hồ sơ đăng ký kinh doanh 4 bước. Mỗi lần chuyển bước đều lưu nháp + ghi nhớ bước
  * (`sellers.current_step`) → tải lại trang vẫn giữ dữ liệu và quay về đúng bước đang làm.
  */
-export function OnboardingStepper({ seller, accountEmail }: OnboardingStepperProps) {
+export function OnboardingStepper({ seller, accountId, accountEmail }: OnboardingStepperProps) {
   const isMobile = useMediaQuery('(max-width: 36em)')
   const [active, setActive] = useState(() => stepIndexFromCurrentStep(seller.current_step))
   const save = useSaveApplication()
@@ -76,7 +78,7 @@ export function OnboardingStepper({ seller, accountEmail }: OnboardingStepperPro
           {index === 1 && (
             <DocumentsStep
               sellerId={seller.id}
-              ownerId={seller.owner_id}
+              ownerId={accountId}
               saving={save.isPending}
               onBack={back}
               onNext={next}

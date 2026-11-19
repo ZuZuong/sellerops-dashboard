@@ -4,6 +4,7 @@ import {
   Button,
   Drawer,
   Group,
+  List,
   Menu,
   Paper,
   SegmentedControl,
@@ -47,7 +48,7 @@ import { ReasonDialog } from './ReasonDialog'
 
 const STATUS_OPTIONS = [
   { value: 'pending', label: 'Chờ xác nhận' },
-  { value: 'confirmed', label: 'Đã xóa' },
+  { value: 'confirmed', label: 'Đã xóa vĩnh viễn' },
   { value: 'restored', label: 'Đã khôi phục' },
   { value: 'all', label: 'Tất cả' },
 ]
@@ -55,8 +56,9 @@ const STATUS_OPTIONS = [
 const COLUMNS = 6
 
 /**
- * Tài khoản bị xóa (xóa mềm): chờ xác nhận → xác nhận xóa / khôi phục. Không bao giờ xóa vĩnh
- * viễn: "Xác nhận xóa" chỉ chuyển sang trạng thái đã xóa, dữ liệu được lưu giữ.
+ * Thùng rác tài khoản: tài khoản bị xóa nằm ở đây VÔ THỜI HẠN và khôi phục được. Khi mọi việc
+ * (khiếu nại…) đã giải quyết xong, admin "Xác nhận xóa" → xóa vĩnh viễn tài khoản đăng nhập
+ * (giải phóng email); shop và mọi dữ liệu kinh doanh vẫn được lưu giữ.
  */
 export function DeletionsView() {
   const { state: filters, setState } = useUrlState(deletionFiltersSchema)
@@ -164,7 +166,7 @@ export function DeletionsView() {
             )}
           </Table.Td>
           <Table.Td>
-            {deletion.status !== 'restored' && (
+            {deletion.status === 'pending' && (
               <Group justify="flex-end">
                 <Menu position="bottom-end" withinPortal>
                   <Menu.Target>
@@ -183,18 +185,14 @@ export function DeletionsView() {
                     >
                       Khôi phục tài khoản
                     </Menu.Item>
-                    {deletion.status === 'pending' && (
-                      <>
-                        <Menu.Divider />
-                        <Menu.Item
-                          color="red"
-                          leftSection={<IconTrashX size={16} />}
-                          onClick={() => setConfirming(deletion)}
-                        >
-                          Xác nhận xóa
-                        </Menu.Item>
-                      </>
-                    )}
+                    <Menu.Divider />
+                    <Menu.Item
+                      color="red"
+                      leftSection={<IconTrashX size={16} />}
+                      onClick={() => setConfirming(deletion)}
+                    >
+                      Xóa vĩnh viễn
+                    </Menu.Item>
                   </Menu.Dropdown>
                 </Menu>
               </Group>
@@ -235,7 +233,7 @@ export function DeletionsView() {
       ) : deletions.data && deletions.data.items.length === 0 ? (
         <EmptyState
           icon={<IconTrashX size={24} stroke={1.5} />}
-          title={filters.status === 'pending' ? 'Không có tài khoản chờ xóa' : 'Không có dữ liệu'}
+          title={filters.status === 'pending' ? 'Thùng rác trống' : 'Không có dữ liệu'}
           description="Tài khoản bị xóa từ trang Tài khoản hoặc Shop sẽ xuất hiện ở đây."
         />
       ) : (
@@ -269,9 +267,27 @@ export function DeletionsView() {
 
       <ConfirmDialog
         opened={confirming !== null}
-        title="Xác nhận xóa tài khoản?"
-        message={`${confirming?.email ?? ''} chuyển sang "Đã xóa": tài khoản bị khóa vĩnh viễn, không đăng nhập được. Dữ liệu shop vẫn được lưu giữ và có thể khôi phục nếu khiếu nại được chấp nhận.`}
-        confirmLabel="Xác nhận xóa"
+        title="Xóa vĩnh viễn tài khoản?"
+        message={
+          <Stack gap="xs">
+            <Text size="sm">
+              Tài khoản đăng nhập <strong>{confirming?.email}</strong> sẽ bị xóa khỏi hệ thống:
+            </Text>
+            <List size="sm" spacing={2}>
+              <List.Item>Không đăng nhập được nữa, mọi phiên đăng nhập bị hủy.</List.Item>
+              <List.Item>
+                Email được giải phóng, người dùng có thể đăng ký lại tài khoản mới.
+              </List.Item>
+              <List.Item>
+                Shop, sản phẩm, đơn hàng, giấy tờ và hồ sơ vi phạm vẫn được lưu giữ để tra cứu.
+              </List.Item>
+            </List>
+            <Text size="sm" c="red" fw={500}>
+              Không thể hoàn tác. Chỉ thực hiện khi mọi khiếu nại đã được giải quyết.
+            </Text>
+          </Stack>
+        }
+        confirmLabel="Xóa vĩnh viễn"
         loading={confirm.isPending}
         onConfirm={() => {
           if (!confirming) return
@@ -285,7 +301,7 @@ export function DeletionsView() {
       <ReasonDialog
         opened={restoring !== null}
         title="Khôi phục tài khoản"
-        description={`Khôi phục ${restoring?.email ?? ''} về trạng thái trước khi bị xóa (vd. sau khi khiếu nại được chấp nhận).`}
+        description={`Khôi phục ${restoring?.email ?? ''} từ thùng rác về trạng thái trước khi bị xóa (vd. sau khi khiếu nại được chấp nhận).`}
         confirmLabel="Khôi phục"
         color="green"
         reasonRequired={false}

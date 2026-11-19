@@ -20,8 +20,9 @@ export const ADMIN_ERROR_MESSAGES: Readonly<Record<string, string>> = {
   TOO_MANY_EVIDENCE: 'Tối đa 10 file bằng chứng cho mỗi lần xóa.',
   EVIDENCE_UPLOAD_FAILED: 'Không tải được file bằng chứng lên. Vui lòng kiểm tra mạng và thử lại.',
   DELETION_NOT_FOUND: 'Không tìm thấy hồ sơ xóa tài khoản.',
-  DELETION_NOT_PENDING: 'Hồ sơ không còn ở trạng thái chờ xác nhận.',
-  DELETION_NOT_RESTORABLE: 'Tài khoản này đã được khôi phục trước đó.',
+  DELETION_NOT_PENDING: 'Tài khoản không còn trong thùng rác (đã khôi phục hoặc đã xóa vĩnh viễn).',
+  DELETION_NOT_RESTORABLE:
+    'Chỉ khôi phục được tài khoản còn trong thùng rác (đã khôi phục hoặc đã xóa vĩnh viễn thì không).',
   EMAIL_NOT_CONFIGURED:
     'Máy chủ chưa cấu hình gửi email: thiếu secret RESEND_API_KEY hoặc EMAIL_FROM trên Supabase.',
   EMAIL_SEND_FAILED: 'Dịch vụ email từ chối gửi thư. Kiểm tra cấu hình Resend rồi gửi lại.',

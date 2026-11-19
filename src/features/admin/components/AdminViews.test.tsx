@@ -5,17 +5,22 @@ import { Route, Routes, useLocation } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithProviders } from '@/test/render'
 import {
+  confirmAccountDeletion,
+  fetchDeletions,
   fetchSellers,
   notifyAccountDeletion,
   requestAccountDeletion,
   setSellerSuspended,
 } from '../api/admin.api'
-import type { AdminSeller } from '../types'
+import type { AccountDeletion, AdminSeller } from '../types'
 import { DeleteAccountDialog } from './DeleteAccountDialog'
+import { DeletionsView } from './DeletionsView'
 import { SellersView } from './SellersView'
 
 vi.mock('../api/admin.api', () => ({
   fetchSellers: vi.fn(),
+  fetchDeletions: vi.fn(),
+  confirmAccountDeletion: vi.fn(),
   setSellerSuspended: vi.fn(),
   requestAccountDeletion: vi.fn(),
   notifyAccountDeletion: vi.fn(),
@@ -25,6 +30,8 @@ vi.mock('../api/admin.api', () => ({
 
 const api = {
   fetchSellers: vi.mocked(fetchSellers),
+  fetchDeletions: vi.mocked(fetchDeletions),
+  confirmAccountDeletion: vi.mocked(confirmAccountDeletion),
   setSellerSuspended: vi.mocked(setSellerSuspended),
   requestAccountDeletion: vi.mocked(requestAccountDeletion),
   notifyAccountDeletion: vi.mocked(notifyAccountDeletion),
@@ -178,5 +185,72 @@ describe('DeleteAccountDialog', () => {
 
     expect(await screen.findByText('Chưa gửi được email thông báo')).toBeInTheDocument()
     expect(screen.getByText(/Máy chủ chưa cấu hình gửi email/)).toBeInTheDocument()
+  })
+})
+
+describe('DeletionsView (thùng rác tài khoản)', () => {
+  const deletion = (overrides: Partial<AccountDeletion> = {}): AccountDeletion => ({
+    id: 'd1',
+    user_id: 'u1',
+    email: 'an@example.com',
+    full_name: 'Nguyễn An',
+    role: 'seller',
+    seller_id: 's1',
+    shop_name: 'Shop An Nhiên',
+    status: 'pending',
+    reason: 'Bán hàng giả',
+    requested_at: '2026-11-20T01:00:00Z',
+    requested_by_email: 'admin@example.com',
+    confirmed_at: '',
+    restored_at: '',
+    restore_note: '',
+    notified_at: '2026-11-20T01:01:00Z',
+    notify_error: '',
+    evidence_count: 0,
+    total_count: 1,
+    ...overrides,
+  })
+
+  const renderView = (route = '/admin/deletions') =>
+    renderWithProviders(
+      <>
+        <Notifications />
+        <Routes>
+          <Route path="/admin/deletions" element={<DeletionsView />} />
+        </Routes>
+      </>,
+      { route },
+    )
+
+  it('trong thùng rác: "Xóa vĩnh viễn" phải xác nhận, nói rõ không hoàn tác và dữ liệu shop được giữ', async () => {
+    api.fetchDeletions.mockResolvedValue({ items: [deletion()], total: 1 })
+    api.confirmAccountDeletion.mockResolvedValue()
+    renderView()
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Thao tác cho an@example.com' }),
+    )
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Xóa vĩnh viễn' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Xóa vĩnh viễn tài khoản?' })
+    expect(dialog).toHaveTextContent('Email được giải phóng')
+    expect(dialog).toHaveTextContent('vẫn được lưu giữ')
+    expect(dialog).toHaveTextContent('Không thể hoàn tác')
+    expect(api.confirmAccountDeletion).not.toHaveBeenCalled()
+
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Xóa vĩnh viễn' }))
+    await waitFor(() => expect(api.confirmAccountDeletion).toHaveBeenCalledWith('d1'))
+  })
+
+  it('đã xóa vĩnh viễn: không còn thao tác khôi phục / xóa', async () => {
+    api.fetchDeletions.mockResolvedValue({
+      items: [deletion({ status: 'confirmed', user_id: '', confirmed_at: '2026-11-21T00:00:00Z' })],
+      total: 1,
+    })
+    renderView('/admin/deletions?status=confirmed')
+    expect(await screen.findByText('an@example.com')).toBeInTheDocument()
+    expect(screen.getAllByText('Đã xóa vĩnh viễn').length).toBeGreaterThan(0)
+    expect(
+      screen.queryByRole('button', { name: 'Thao tác cho an@example.com' }),
+    ).not.toBeInTheDocument()
   })
 })

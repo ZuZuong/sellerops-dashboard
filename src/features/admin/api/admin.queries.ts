@@ -274,12 +274,12 @@ export function useConfirmDeletion() {
     onSuccess: (_data, { email }) => {
       notifications.show({
         color: 'green',
-        title: 'Đã xác nhận xóa tài khoản',
-        message: `${email} đã chuyển sang "Đã xóa". Dữ liệu được lưu giữ, có thể khôi phục khi cần.`,
+        title: 'Đã xóa vĩnh viễn tài khoản',
+        message: `${email} đã bị xóa khỏi hệ thống, email được giải phóng. Dữ liệu shop vẫn được lưu giữ.`,
       })
       return refreshAdmin(queryClient)
     },
-    onError: (error) => notifyError('Không xác nhận xóa được', error),
+    onError: (error) => notifyError('Không xóa vĩnh viễn được tài khoản', error),
   })
 }
 

@@ -1,4 +1,4 @@
-# ADR 010: Xóa tài khoản là xóa mềm, đá người dùng ra bằng Realtime, thông báo qua Edge Function
+# ADR 010: Xóa tài khoản hai bước (thùng rác → xóa vĩnh viễn tài khoản, giữ dữ liệu shop), đá người dùng ra bằng Realtime, thông báo qua Edge Function
 
 - Trạng thái: Đã chấp nhận
 - Ngày: 2026-11-26
@@ -36,3 +36,13 @@ Admin cần xóa tài khoản seller vi phạm, kèm lý do và bằng chứng. 
 - Bỏ "realtime" khỏi danh sách ngoài phạm vi, nhưng chỉ dùng cho trạng thái tài khoản / shop của chính người dùng, không dùng cho dữ liệu kinh doanh.
 - Tài khoản "đã xóa" vẫn chiếm email trong `auth.users`: người đó không đăng ký lại được bằng email cũ.
 - Email phụ thuộc cấu hình Resend: chưa xác minh domain thì chỉ gửi được tới email chủ tài khoản Resend.
+
+## Cập nhật 2026-11-27: "Xác nhận xóa" xóa hẳn tài khoản đăng nhập
+
+Quyết định của chủ dự án: thùng rác giữ tài khoản **vô thời hạn**; chỉ khi mọi việc đã giải quyết xong, admin mới "Xóa vĩnh viễn". Khi đó:
+
+- `confirm_account_deletion` xóa dòng `auth.users` trong cùng transaction: email được giải phóng, phiên đăng nhập bị hủy, `profiles` bị xóa theo. Không khôi phục được (`DELETION_NOT_RESTORABLE`).
+- Shop và **mọi dữ liệu kinh doanh được giữ**: `sellers.owner_id` chuyển `null` (khóa ngoại `on delete set null` thay cho `cascade`), lưu `former_owner_id / email / name`, `owner_removed_at` dạng chữ. Tên shop giữ nguyên. Không ai đăng nhập vào shop đó được nữa; admin vẫn xem (chỉ đọc).
+- `account_deletions` lưu `former_user_id`, `email`, `full_name`, `shop_name` dạng chữ; `audit_logs` vẫn hiển thị email của tài khoản đã xóa.
+- Người dùng đăng ký lại bằng email cũ sẽ là tài khoản **mới**, không liên quan tới shop cũ.
+- Hồ sơ đã "xác nhận" theo cách cũ (chỉ đổi trạng thái) được migration đưa về thùng rác để admin xác nhận lại.

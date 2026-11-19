@@ -105,7 +105,8 @@ export function DeleteAccountForm({ target, loading, onCancel, onSubmit }: Delet
               Email thông báo lý do và hướng dẫn khiếu nại được gửi tới chủ tài khoản.
             </List.Item>
             <List.Item>
-              Tài khoản chuyển vào mục "Chờ xóa". Dữ liệu được giữ nguyên và có thể khôi phục.
+              Tài khoản chuyển vào thùng rác (mục "Chờ xóa") và khôi phục được cho tới khi admin xác
+              nhận xóa vĩnh viễn.
             </List.Item>
           </List>
         </Alert>

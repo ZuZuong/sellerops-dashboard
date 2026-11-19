@@ -11,14 +11,14 @@ export const ACCOUNT_STATUS_META: Readonly<
 > = {
   active: { label: 'Hoạt động', color: 'green' },
   pending_deletion: { label: 'Chờ xác nhận xóa', color: 'orange' },
-  deleted: { label: 'Đã xóa', color: 'dark' },
+  deleted: { label: 'Đã xóa vĩnh viễn', color: 'dark' },
 }
 
 export const DELETION_STATUS_META: Readonly<
   Record<DeletionStatus, { label: string; color: string }>
 > = {
   pending: { label: 'Chờ xác nhận', color: 'orange' },
-  confirmed: { label: 'Đã xóa', color: 'dark' },
+  confirmed: { label: 'Đã xóa vĩnh viễn', color: 'dark' },
   restored: { label: 'Đã khôi phục', color: 'green' },
 }
 
@@ -31,8 +31,8 @@ export const AUDIT_ACTION_LABELS: Readonly<Record<string, string>> = {
   'seller.unsuspended': 'Mở khóa shop',
   'account.locked': 'Khóa tài khoản',
   'account.unlocked': 'Mở khóa tài khoản',
-  'account.deletion_requested': 'Xóa tài khoản',
-  'account.deletion_confirmed': 'Xác nhận xóa tài khoản',
+  'account.deletion_requested': 'Đưa tài khoản vào thùng rác',
+  'account.deletion_confirmed': 'Xóa vĩnh viễn tài khoản',
   'account.deletion_restored': 'Khôi phục tài khoản',
 }
 
