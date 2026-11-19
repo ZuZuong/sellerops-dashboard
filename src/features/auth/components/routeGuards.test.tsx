@@ -3,11 +3,33 @@ import { screen } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider, useLocation } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithProviders } from '@/test/render'
+import { fetchAccount } from '../api/auth.api'
+import type { Account } from '../domain/account'
 import { useAuthStore } from '../hooks/useAuth'
+import { AccountGate } from './AccountGate'
 import { GuestRoute } from './GuestRoute'
 import { ProtectedRoute } from './ProtectedRoute'
+import { HomeRedirect, RoleGuard } from './RoleGuard'
+
+vi.mock('../api/auth.api', () => ({
+  fetchAccount: vi.fn(),
+  signOut: vi.fn(),
+  subscribeToAuthChanges: vi.fn(),
+}))
+
+const fetchAccountMock = vi.mocked(fetchAccount)
 
 const fakeSession = { user: { id: 'user-1', email: 'shop@example.com' } } as Session
+
+const account = (overrides: Partial<Account> = {}): Account => ({
+  id: 'user-1',
+  email: 'shop@example.com',
+  role: 'seller',
+  fullName: null,
+  isLocked: false,
+  lockedReason: null,
+  ...overrides,
+})
 
 function LocationProbe({ name }: { name: string }) {
   const { pathname, search } = useLocation()
@@ -19,7 +41,26 @@ function renderAt(initialPath: string) {
     [
       {
         Component: ProtectedRoute,
-        children: [{ path: '/orders', element: <LocationProbe name="orders" /> }],
+        children: [
+          {
+            Component: AccountGate,
+            children: [
+              { path: '/', Component: HomeRedirect },
+              { path: '/no-access', element: <LocationProbe name="no-access" /> },
+              {
+                element: <RoleGuard allow={['seller']} />,
+                children: [
+                  { path: '/seller/orders', element: <LocationProbe name="orders" /> },
+                  { path: '/seller', element: <LocationProbe name="seller" /> },
+                ],
+              },
+              {
+                element: <RoleGuard allow={['admin']} />,
+                children: [{ path: '/admin', element: <LocationProbe name="admin" /> }],
+              },
+            ],
+          },
+        ],
       },
       {
         Component: GuestRoute,
@@ -34,38 +75,80 @@ function renderAt(initialPath: string) {
 
 describe('route guards', () => {
   beforeEach(() => {
-    useAuthStore.setState({ status: 'loading', session: null })
+    useAuthStore.setState({ status: 'loading', session: null, recovery: false })
+    fetchAccountMock.mockReset().mockResolvedValue(account())
   })
 
   it('hiện loader trong lúc chờ phiên đăng nhập', () => {
-    renderAt('/orders')
+    renderAt('/seller/orders')
     expect(screen.getByRole('status', { name: 'Đang tải trang' })).toBeInTheDocument()
   })
 
   it('chưa đăng nhập → chuyển sang /login', async () => {
     useAuthStore.getState().setSession(null)
-    renderAt('/orders?status=pending')
+    renderAt('/seller/orders?status=pending')
     expect(await screen.findByText('login /login')).toBeInTheDocument()
   })
 
-  it('đã đăng nhập → vào được trang được bảo vệ', async () => {
+  it('seller đã đăng nhập → vào được trang seller', async () => {
     useAuthStore.getState().setSession(fakeSession)
-    renderAt('/orders')
-    expect(await screen.findByText('orders /orders')).toBeInTheDocument()
-  })
-
-  it('đã đăng nhập mà mở /login → về dashboard', async () => {
-    useAuthStore.getState().setSession(fakeSession)
-    const router = renderAt('/login')
-    await vi.waitFor(() => expect(router.state.location.pathname).toBe('/'))
+    renderAt('/seller/orders')
+    expect(await screen.findByText('orders /seller/orders')).toBeInTheDocument()
   })
 
   it('đăng nhập xong → quay lại đúng trang ban đầu kèm query string', async () => {
     useAuthStore.getState().setSession(null)
-    renderAt('/orders?status=pending')
+    renderAt('/seller/orders?status=pending')
     await screen.findByText('login /login')
 
     useAuthStore.getState().setSession(fakeSession)
-    expect(await screen.findByText('orders /orders?status=pending')).toBeInTheDocument()
+    expect(await screen.findByText('orders /seller/orders?status=pending')).toBeInTheDocument()
+  })
+
+  it.each([
+    ['admin', 'admin /admin'],
+    ['seller', 'seller /seller'],
+    ['customer', 'no-access /no-access'],
+  ] as const)(
+    'mở / hoặc /login khi đã đăng nhập: role %s → trang chủ của role',
+    async (role, text) => {
+      fetchAccountMock.mockResolvedValue(account({ role }))
+      useAuthStore.getState().setSession(fakeSession)
+      renderAt('/login')
+      expect(await screen.findByText(text)).toBeInTheDocument()
+    },
+  )
+
+  it('sai vai trò: seller mở /admin → về /seller', async () => {
+    useAuthStore.getState().setSession(fakeSession)
+    const router = renderAt('/admin')
+    expect(await screen.findByText('seller /seller')).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/seller')
+  })
+
+  it('admin mở trang seller → về /admin', async () => {
+    fetchAccountMock.mockResolvedValue(account({ role: 'admin' }))
+    useAuthStore.getState().setSession(fakeSession)
+    renderAt('/seller/orders')
+    expect(await screen.findByText('admin /admin')).toBeInTheDocument()
+  })
+
+  it('tài khoản bị khóa: màn hình khóa kèm lý do và nút đăng xuất, không vào được trang nào', async () => {
+    fetchAccountMock.mockResolvedValue(account({ isLocked: true, lockedReason: 'Vi phạm nội quy' }))
+    useAuthStore.getState().setSession(fakeSession)
+    renderAt('/seller/orders')
+
+    expect(await screen.findByRole('heading', { name: 'Tài khoản đã bị khóa' })).toBeInTheDocument()
+    expect(screen.getByText(/Vi phạm nội quy/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Đăng xuất' })).toBeInTheDocument()
+    expect(screen.queryByText(/orders/)).not.toBeInTheDocument()
+  })
+
+  it('không tải được tài khoản → báo lỗi, có nút thử lại', async () => {
+    fetchAccountMock.mockRejectedValue(new Error('boom'))
+    useAuthStore.getState().setSession(fakeSession)
+    renderAt('/seller')
+    expect(await screen.findByText('Không tải được thông tin tài khoản')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Thử lại' })).toBeInTheDocument()
   })
 })

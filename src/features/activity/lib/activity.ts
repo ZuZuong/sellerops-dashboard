@@ -85,7 +85,7 @@ const PAGE_LABELS: ReadonlyArray<readonly [string, string]> = [
   [ROUTES.analyticsRevenueReport, 'Bảng kê doanh thu'],
   [ROUTES.productImports, 'Lịch sử nhập Excel'],
   [ROUTES.productTrash, 'Thùng rác sản phẩm'],
-  [ROUTES.productCategories, 'Danh mục sản phẩm'],
+  [ROUTES.categories, 'Danh mục sản phẩm'],
   [ROUTES.products, 'Sản phẩm'],
   [ROUTES.orders, 'Đơn hàng'],
   [ROUTES.purchases, 'Nhập hàng'],

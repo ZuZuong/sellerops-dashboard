@@ -16,8 +16,12 @@ const ORDER_DETAIL_COLUMNS = `${ORDER_COLUMNS},
 /** PostgREST trả lỗi này khi offset vượt quá tổng số dòng (vd. trang cũ sau khi lọc). */
 const RANGE_NOT_SATISFIABLE = 'PGRST103'
 
-function buildListQuery(filters: OrderFilters, head = false) {
-  let query = supabase.from('orders').select(ORDER_COLUMNS, { count: 'exact', head })
+/** Lọc tường minh theo shop (admin đọc được mọi shop, không chỉ dựa vào RLS). */
+function buildListQuery(sellerId: string, filters: OrderFilters, head = false) {
+  let query = supabase
+    .from('orders')
+    .select(ORDER_COLUMNS, { count: 'exact', head })
+    .eq('seller_id', sellerId)
 
   const term = toSearchTerm(filters.q)
   if (term) {
@@ -31,9 +35,9 @@ function buildListQuery(filters: OrderFilters, head = false) {
 }
 
 /** Danh sách đơn có phân trang, lọc theo trạng thái, tìm theo mã / tên / SĐT khách phía server. */
-export async function fetchOrders(filters: OrderFilters): Promise<OrderPage> {
+export async function fetchOrders(sellerId: string, filters: OrderFilters): Promise<OrderPage> {
   const from = (filters.page - 1) * filters.pageSize
-  const { data, error, count } = await buildListQuery(filters)
+  const { data, error, count } = await buildListQuery(sellerId, filters)
     .order(filters.sort, { ascending: filters.order === 'asc' })
     // Khóa phụ để thứ tự ổn định giữa các trang khi giá trị sắp xếp trùng nhau.
     .order('id', { ascending: true })
@@ -42,7 +46,7 @@ export async function fetchOrders(filters: OrderFilters): Promise<OrderPage> {
   if (error) {
     if (getDbErrorInfo(error).code !== RANGE_NOT_SATISFIABLE) throw error
     // Trang vượt quá dữ liệu: trả về tổng để UI tự lùi về trang cuối.
-    const head = await buildListQuery(filters, true)
+    const head = await buildListQuery(sellerId, filters, true)
     if (head.error) throw head.error
     return { items: [], total: head.count ?? 0 }
   }
@@ -51,10 +55,14 @@ export async function fetchOrders(filters: OrderFilters): Promise<OrderPage> {
 }
 
 /** Chi tiết đơn: thông tin, dòng hàng (kèm sản phẩm) và lịch sử trạng thái. `null` nếu không có. */
-export async function fetchOrderDetail(orderId: string): Promise<OrderDetail | null> {
+export async function fetchOrderDetail(
+  sellerId: string,
+  orderId: string,
+): Promise<OrderDetail | null> {
   const { data, error } = await supabase
     .from('orders')
     .select(ORDER_DETAIL_COLUMNS)
+    .eq('seller_id', sellerId)
     .eq('id', orderId)
     .order('created_at', { referencedTable: 'order_status_events', ascending: true })
     .maybeSingle()
@@ -66,8 +74,16 @@ export async function fetchOrderDetail(orderId: string): Promise<OrderDetail | n
  * Sản phẩm đang bán để thêm vào đơn, tìm theo tên / SKU. Giới hạn số dòng: ô chọn sản phẩm
  * tìm phía server khi gõ, không tải toàn bộ danh mục.
  */
-export async function searchOrderableProducts(q: string, limit = 20): Promise<OrderableProduct[]> {
-  let query = supabase.from('products').select('id, name, sku, price, stock').eq('is_active', true)
+export async function searchOrderableProducts(
+  sellerId: string,
+  q: string,
+  limit = 20,
+): Promise<OrderableProduct[]> {
+  let query = supabase
+    .from('products')
+    .select('id, name, sku, price, stock')
+    .eq('seller_id', sellerId)
+    .eq('is_active', true)
   const term = toSearchTerm(q)
   if (term) query = query.or(`name.ilike.%${term}%,sku.ilike.%${term}%`)
   const { data, error } = await query.order('name').limit(limit)
@@ -79,8 +95,15 @@ export async function searchOrderableProducts(q: string, limit = 20): Promise<Or
  * Khách đã lưu, tìm theo tên / SĐT; khách đặt gần nhất lên đầu. Giới hạn số dòng: ô chọn khách
  * tìm phía server khi gõ.
  */
-export async function searchSavedCustomers(q: string, limit = 20): Promise<SavedCustomer[]> {
-  let query = supabase.from('customers').select('id, name, phone, address, payment_method')
+export async function searchSavedCustomers(
+  sellerId: string,
+  q: string,
+  limit = 20,
+): Promise<SavedCustomer[]> {
+  let query = supabase
+    .from('customers')
+    .select('id, name, phone, address, payment_method')
+    .eq('seller_id', sellerId)
   const term = toSearchTerm(q)
   if (term) query = query.or(`name.ilike.%${term}%,phone.ilike.%${term}%`)
   const { data, error } = await query

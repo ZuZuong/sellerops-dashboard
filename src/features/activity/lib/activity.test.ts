@@ -27,13 +27,13 @@ describe('activity log helpers', () => {
     expect(
       toActivityInput(
         { color: 'green', title: 'Đã tạo đơn hàng', message: 'Đơn của An đang chờ xác nhận' },
-        '/orders',
+        '/seller/orders',
       ),
     ).toEqual({
       level: 'success',
       title: 'Đã tạo đơn hàng',
       message: 'Đơn của An đang chờ xác nhận',
-      path: '/orders',
+      path: '/seller/orders',
       changes: [],
     })
     expect(
@@ -52,10 +52,10 @@ describe('activity log helpers', () => {
   })
 
   it('describePath: khớp tiền tố dài nhất', () => {
-    expect(describePath('/')).toBe('Tổng quan')
-    expect(describePath('/orders/7f3c')).toBe('Đơn hàng')
-    expect(describePath('/inventory/stocktake')).toBe('Biên bản kiểm kê')
-    expect(describePath('/products/trash')).toBe('Thùng rác sản phẩm')
+    expect(describePath('/seller')).toBe('Tổng quan')
+    expect(describePath('/seller/orders/7f3c')).toBe('Đơn hàng')
+    expect(describePath('/seller/inventory/stocktake')).toBe('Biên bản kiểm kê')
+    expect(describePath('/seller/products/trash')).toBe('Thùng rác sản phẩm')
     expect(describePath('/unknown')).toBeNull()
     expect(describePath(null)).toBeNull()
   })

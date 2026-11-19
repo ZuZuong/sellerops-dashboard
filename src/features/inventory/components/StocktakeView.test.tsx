@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type * as XlsxModule from '@/shared/lib/xlsxExport'
 import { downloadXlsx } from '@/shared/lib/xlsxExport'
-import { renderWithProviders } from '@/test/render'
+import { renderWithProviders, TEST_SELLER_ID } from '@/test/render'
 import { fetchStocktakeItems } from '../api/inventory.api'
 import type { InventoryItem } from '../types'
 import { StocktakeView } from './StocktakeView'
@@ -13,8 +13,8 @@ vi.mock('../api/inventory.api', () => ({
   fetchStocktakeItems: vi.fn(),
 }))
 
-vi.mock('@/features/products/api/productCategories.api', () => ({
-  fetchProductCategories: vi.fn(() => Promise.resolve([])),
+vi.mock('@/features/categories/api/categories.api', () => ({
+  fetchCategories: vi.fn(() => Promise.resolve([])),
 }))
 
 vi.mock('@/shared/lib/xlsxExport', async (importOriginal) => ({
@@ -47,7 +47,7 @@ beforeEach(() => {
 describe('StocktakeView', () => {
   it('hiện skeleton khi đang tải', () => {
     fetchItems.mockReturnValue(new Promise(() => {}))
-    renderWithProviders(<StocktakeView />, { route: '/inventory/stocktake' })
+    renderWithProviders(<StocktakeView />, { route: '/seller/inventory/stocktake' })
     expect(screen.getByTestId('stocktake-skeleton')).toBeInTheDocument()
   })
 
@@ -56,7 +56,7 @@ describe('StocktakeView', () => {
       items: [makeItem(), makeItem({ id: 'p2', name: 'Đầm maxi', category: 'Đầm', stock: 0 })],
       truncated: false,
     })
-    renderWithProviders(<StocktakeView />, { route: '/inventory/stocktake' })
+    renderWithProviders(<StocktakeView />, { route: '/seller/inventory/stocktake' })
 
     expect(
       await screen.findByRole('heading', {
@@ -66,12 +66,12 @@ describe('StocktakeView', () => {
     expect(screen.getByText('Mẫu số 05-VT')).toBeInTheDocument()
     expect(screen.getByText('Áo thun basic').closest('tr')).toHaveTextContent(/270\.000/)
     expect(screen.getByText('Đầm maxi')).toBeInTheDocument()
-    expect(fetchItems).toHaveBeenCalledWith({ status: 'all', category: '' })
+    expect(fetchItems).toHaveBeenCalledWith(TEST_SELLER_ID, { status: 'all', category: '' })
   })
 
   it('tải Excel gửi biên bản đã dựng', async () => {
     fetchItems.mockResolvedValue({ items: [makeItem()], truncated: false })
-    renderWithProviders(<StocktakeView />, { route: '/inventory/stocktake' })
+    renderWithProviders(<StocktakeView />, { route: '/seller/inventory/stocktake' })
 
     await userEvent.click(await screen.findByRole('button', { name: 'Tải Excel' }))
     await waitFor(() => expect(downloadXlsx).toHaveBeenCalledTimes(1))
@@ -82,7 +82,7 @@ describe('StocktakeView', () => {
 
   it('empty state khi phạm vi không có sản phẩm; nút in bị vô hiệu', async () => {
     fetchItems.mockResolvedValue({ items: [], truncated: false })
-    renderWithProviders(<StocktakeView />, { route: '/inventory/stocktake?status=active' })
+    renderWithProviders(<StocktakeView />, { route: '/seller/inventory/stocktake?status=active' })
 
     expect(await screen.findByText('Không có sản phẩm để kiểm kê')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'In / Lưu PDF' })).toBeDisabled()
@@ -91,7 +91,7 @@ describe('StocktakeView', () => {
   it('error state có nút thử lại', async () => {
     fetchItems.mockRejectedValueOnce(new Error('boom'))
     fetchItems.mockResolvedValueOnce({ items: [makeItem()], truncated: false })
-    renderWithProviders(<StocktakeView />, { route: '/inventory/stocktake' })
+    renderWithProviders(<StocktakeView />, { route: '/seller/inventory/stocktake' })
 
     await userEvent.click(await screen.findByRole('button', { name: 'Thử lại' }))
     expect(await screen.findByText('Áo thun basic')).toBeInTheDocument()

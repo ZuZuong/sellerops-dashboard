@@ -23,7 +23,7 @@ afterEach(() => {
 
 describe('useActivityCapture', () => {
   it('ghi mỗi toast mới một lần, kèm trang hiện tại; bỏ qua toast có cờ skip', async () => {
-    renderWithProviders(<Capture />, { route: '/orders/abc' })
+    renderWithProviders(<Capture />, { route: '/seller/orders/abc' })
 
     act(() => {
       notifications.show({
@@ -40,7 +40,7 @@ describe('useActivityCapture', () => {
       level: 'success',
       title: 'Đã tạo đơn hàng',
       message: 'Đơn của An',
-      path: '/orders/abc',
+      path: '/seller/orders/abc',
       changes: [{ field: 'Khách hàng', from: null, to: 'An' }],
     })
   })

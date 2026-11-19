@@ -8,11 +8,10 @@ const storage = {
 }
 
 vi.mock('@/shared/lib/supabase', () => ({
-  supabase: {
-    auth: { getSession: vi.fn(async () => ({ data: { session: { user: { id: 'user-1' } } } })) },
-    storage: { from: () => storage },
-  },
+  supabase: { storage: { from: () => storage } },
 }))
+
+const SELLER = 'seller-1'
 
 const { uploadProductMedia, IMAGE_UPLOAD_FAILED } = await import('./productImages.api')
 
@@ -35,24 +34,27 @@ beforeEach(() => {
 })
 
 describe('uploadProductMedia', () => {
-  it('chỉ tải ảnh mới vào thư mục của user, giữ ảnh cũ và thứ tự', async () => {
-    const result = await uploadProductMedia({
+  it('chỉ tải ảnh mới vào thư mục của shop, giữ ảnh cũ và thứ tự', async () => {
+    const result = await uploadProductMedia(SELLER, {
       hero: newImage('hero.png'),
-      gallery: [savedImage('user-1/old.jpg'), newImage('side.png')],
+      gallery: [savedImage('seller-1/old.jpg'), newImage('side.png')],
     })
 
     expect(storage.upload).toHaveBeenCalledTimes(2)
     for (const [path] of storage.upload.mock.calls) {
-      expect(path).toMatch(/^user-1\/[0-9a-f-]{36}\.png$/)
+      expect(path).toMatch(/^seller-1\/[0-9a-f-]{36}\.png$/)
     }
     expect(result.hero_image_path).toBe(result.uploaded[0])
-    expect(result.image_paths).toEqual(['user-1/old.jpg', result.uploaded[1]])
+    expect(result.image_paths).toEqual(['seller-1/old.jpg', result.uploaded[1]])
   })
 
   it('không có ảnh mới → không gọi Storage', async () => {
-    const result = await uploadProductMedia({ hero: null, gallery: [savedImage('user-1/a.jpg')] })
+    const result = await uploadProductMedia(SELLER, {
+      hero: null,
+      gallery: [savedImage('seller-1/a.jpg')],
+    })
     expect(storage.upload).not.toHaveBeenCalled()
-    expect(result).toEqual({ hero_image_path: null, image_paths: ['user-1/a.jpg'], uploaded: [] })
+    expect(result).toEqual({ hero_image_path: null, image_paths: ['seller-1/a.jpg'], uploaded: [] })
   })
 
   it('một ảnh lỗi → xóa các ảnh đã tải lên trong lần này và báo IMAGE_UPLOAD_FAILED', async () => {
@@ -61,7 +63,7 @@ describe('uploadProductMedia', () => {
       .mockResolvedValueOnce({ error: { message: 'Payload too large' } })
 
     await expect(
-      uploadProductMedia({ hero: newImage('a.png'), gallery: [newImage('b.png')] }),
+      uploadProductMedia(SELLER, { hero: newImage('a.png'), gallery: [newImage('b.png')] }),
     ).rejects.toThrow(IMAGE_UPLOAD_FAILED)
 
     const firstPath = storage.upload.mock.calls[0]?.[0]

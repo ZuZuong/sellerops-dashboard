@@ -37,7 +37,10 @@ describe('Sidebar', () => {
 
     expect(useUiStore.getState().desktopNavCollapsed).toBe(true)
     expect(screen.queryByText('Sản phẩm')).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Sản phẩm' })).toHaveAttribute('href', '/products')
+    expect(screen.getByRole('link', { name: 'Sản phẩm' })).toHaveAttribute(
+      'href',
+      '/seller/products',
+    )
 
     await userEvent.click(screen.getByRole('button', { name: 'Mở rộng thanh bên' }))
     expect(screen.getByText('Sản phẩm')).toBeInTheDocument()

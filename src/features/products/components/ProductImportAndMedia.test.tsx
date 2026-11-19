@@ -2,7 +2,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { TEST_CATEGORIES, testCategoryOverview } from '../test/fixtures'
-import { renderWithProviders } from '@/test/render'
+import { renderWithProviders, TEST_SELLER_ID } from '@/test/render'
 import { importProductsFromFile } from '../api/productImports.api'
 import { createProduct } from '../api/products.api'
 import { parseProductImport } from '../lib/importProducts'
@@ -14,8 +14,8 @@ vi.mock('../api/products.api', () => ({
   updateProduct: vi.fn(),
 }))
 
-vi.mock('../api/productCategories.api', () => ({
-  fetchProductCategories: vi.fn(() => Promise.resolve(testCategoryOverview())),
+vi.mock('@/features/categories/api/categories.api', () => ({
+  fetchCategories: vi.fn(() => Promise.resolve(testCategoryOverview())),
 }))
 
 vi.mock('../api/productImports.api', () => ({
@@ -87,7 +87,7 @@ describe('ProductImportModal', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Đăng tất cả' }))
 
     await waitFor(() => expect(importMock).toHaveBeenCalledTimes(1))
-    expect(importMock).toHaveBeenCalledWith({
+    expect(importMock).toHaveBeenCalledWith(TEST_SELLER_ID, {
       file: FILE,
       sheetName: 'Sản phẩm',
       rowCount: 1,
@@ -120,7 +120,7 @@ describe('ProductImportModal', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Đăng tất cả' }))
 
     await waitFor(() => expect(importMock).toHaveBeenCalledTimes(1))
-    expect(importMock.mock.calls[0]?.[0].products).toEqual([
+    expect(importMock.mock.calls[0]?.[1].products).toEqual([
       expect.objectContaining({ name: 'Áo polo', publish: true }),
       expect.objectContaining({ name: 'Đầm maxi', publish: false }),
     ])
@@ -156,7 +156,7 @@ describe('ProductImportModal', () => {
     await userEvent.click(all)
     await userEvent.click(screen.getByRole('button', { name: 'Đăng tất cả' }))
     await waitFor(() => expect(importMock).toHaveBeenCalledTimes(1))
-    expect(importMock.mock.calls[0]?.[0].products).toEqual([
+    expect(importMock.mock.calls[0]?.[1].products).toEqual([
       expect.objectContaining({ name: 'Áo polo', publish: false }),
       expect.objectContaining({ name: 'Đầm maxi', publish: false }),
     ])
@@ -198,7 +198,7 @@ describe('ProductImportModal', () => {
 
     await userEvent.click(within(dialog).getByRole('button', { name: 'Thêm 1 sản phẩm mới' }))
     await waitFor(() => expect(importMock).toHaveBeenCalledTimes(1))
-    expect(importMock.mock.calls[0]?.[0]).toMatchObject({
+    expect(importMock.mock.calls[0]?.[1]).toMatchObject({
       rowCount: 2,
       products: [expect.objectContaining({ name: 'Đầm maxi' })],
     })
@@ -283,7 +283,7 @@ describe('ProductForm – mô tả & ảnh', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Đăng sản phẩm' }))
     await waitFor(() => expect(createProductMock).toHaveBeenCalledTimes(1))
 
-    const [values, media] = createProductMock.mock.calls[0] ?? []
+    const [, values, media] = createProductMock.mock.calls[0] ?? []
     expect(values).toMatchObject({ description: 'Chống nước', is_active: true })
     expect(media?.hero?.file?.name).toBe('chup-man-hinh.png')
     expect(media?.gallery.map((image) => image.file?.name)).toEqual(['mat-sau.png', 'chi-tiet.png'])

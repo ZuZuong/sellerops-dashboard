@@ -7,30 +7,51 @@ import type { ProductFilters } from '../schemas/productFilters.schema'
 import type { Product, ProductInsight, ProductPage } from '../types'
 import { removeProductImages, uploadProductMedia } from './productImages.api'
 
+/**
+ * Tên danh mục lấy qua khóa ngoại kép (seller_id, category_id) → categories. Ghi rõ tên khóa
+ * ngoại vì products còn quan hệ khác; kết quả được làm phẳng thành `category` (xem `toProduct`).
+ */
 const PRODUCT_COLUMNS =
-  'id, sku, name, category, category_missing, unit, price, cost_price, stock, low_stock_threshold, is_low_stock, is_active, description, hero_image_path, image_paths, created_at'
+  'id, sku, name, category_id, category:categories!products_category_same_seller_fkey(name), unit, price, cost_price, stock, low_stock_threshold, is_low_stock, is_active, description, hero_image_path, image_paths, created_at'
+
+/** Dòng trả về từ PostgREST: danh mục là object lồng (hoặc null nếu chưa có danh mục). */
+type ProductRow = Omit<Product, 'category'> & { category: { name: string } | null }
+
+export function toProduct(row: ProductRow): Product {
+  return { ...row, category: row.category?.name ?? null }
+}
 
 /** PostgREST trả lỗi này khi offset vượt quá tổng số dòng (vd. trang cũ sau khi xóa / lọc). */
 const RANGE_NOT_SATISFIABLE = 'PGRST103'
 
-function buildListQuery(filters: ProductFilters, head = false) {
-  let query = supabase.from('products').select(PRODUCT_COLUMNS, { count: 'exact', head })
+/**
+ * Lọc tường minh theo shop: seller chỉ thấy shop mình nhờ RLS, nhưng admin đọc được MỌI shop —
+ * thiếu điều kiện này thì màn hình admin xem một shop sẽ lẫn dữ liệu shop khác.
+ */
+function buildListQuery(sellerId: string, filters: ProductFilters, head = false) {
+  let query = supabase
+    .from('products')
+    .select(PRODUCT_COLUMNS, { count: 'exact', head })
+    .eq('seller_id', sellerId)
 
   const term = toSearchTerm(filters.q)
   if (term) query = query.or(`name.ilike.%${term}%,sku.ilike.%${term}%`)
-  if (filters.category) query = query.eq('category', filters.category)
+  if (filters.category) query = query.eq('category_id', filters.category)
   if (filters.status === 'active' || filters.status === 'inactive') {
     query = query.eq('is_active', filters.status === 'active')
   }
-  if (filters.status === 'needs_category') query = query.eq('category_missing', true)
+  if (filters.status === 'needs_category') query = query.is('category_id', null)
 
   return query
 }
 
 /** Danh sách sản phẩm có phân trang, lọc và sắp xếp phía server. */
-export async function fetchProducts(filters: ProductFilters): Promise<ProductPage> {
+export async function fetchProducts(
+  sellerId: string,
+  filters: ProductFilters,
+): Promise<ProductPage> {
   const from = (filters.page - 1) * filters.pageSize
-  const { data, error, count } = await buildListQuery(filters)
+  const { data, error, count } = await buildListQuery(sellerId, filters)
     .order(filters.sort, { ascending: filters.order === 'asc' })
     // Khóa phụ để thứ tự ổn định giữa các trang khi giá trị sắp xếp trùng nhau.
     .order('id', { ascending: true })
@@ -39,12 +60,12 @@ export async function fetchProducts(filters: ProductFilters): Promise<ProductPag
   if (error) {
     if (getDbErrorInfo(error).code !== RANGE_NOT_SATISFIABLE) throw error
     // Trang vượt quá dữ liệu: trả về tổng để UI tự lùi về trang cuối.
-    const head = await buildListQuery(filters, true)
+    const head = await buildListQuery(sellerId, filters, true)
     if (head.error) throw head.error
     return { items: [], total: head.count ?? 0 }
   }
 
-  return { items: data, total: count ?? data.length }
+  return { items: data.map(toProduct), total: count ?? data.length }
 }
 
 /**
@@ -52,10 +73,11 @@ export async function fetchProducts(filters: ProductFilters): Promise<ProductPag
  * để lại file rác. SKU do trigger DB tự sinh (DN-TENSANPHAM-STT) và trả về trong kết quả.
  */
 export async function createProduct(
+  sellerId: string,
   values: ProductFormValues,
   media: ProductMedia,
 ): Promise<Product> {
-  const { uploaded, ...paths } = await uploadProductMedia(media)
+  const { uploaded, ...paths } = await uploadProductMedia(sellerId, media)
   const { data, error } = await supabase
     .from('products')
     .insert({ ...values, ...paths })
@@ -65,7 +87,7 @@ export async function createProduct(
     await removeProductImages(uploaded)
     throw error
   }
-  return data
+  return toProduct(data)
 }
 
 /**
@@ -73,19 +95,28 @@ export async function createProduct(
  * Ảnh bị gỡ chỉ bị xóa khỏi Storage SAU khi lưu thành công.
  */
 export async function updateProduct(
+  sellerId: string,
   product: Product,
   values: ProductFormValues,
   media: ProductMedia,
 ): Promise<Product> {
-  const { uploaded, ...paths } = await uploadProductMedia(media)
+  const { uploaded, ...paths } = await uploadProductMedia(sellerId, media)
   // Liệt kê tường minh đúng các cột được GRANT UPDATE; SKU cố định sau khi tạo.
-  const { name, category, unit, price, cost_price, low_stock_threshold, is_active, description } =
-    values
+  const {
+    name,
+    category_id,
+    unit,
+    price,
+    cost_price,
+    low_stock_threshold,
+    is_active,
+    description,
+  } = values
   const { data, error } = await supabase
     .from('products')
     .update({
       name,
-      category,
+      category_id,
       unit,
       price,
       cost_price,
@@ -104,7 +135,7 @@ export async function updateProduct(
 
   const kept = new Set(mediaPaths(media))
   await removeProductImages(productImagePaths(product).filter((path) => !kept.has(path)))
-  return data
+  return toProduct(data)
 }
 
 /** Mọi đường dẫn ảnh đang gắn với sản phẩm. */

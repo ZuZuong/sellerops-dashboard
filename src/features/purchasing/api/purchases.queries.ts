@@ -8,6 +8,7 @@ import {
 } from '@tanstack/react-query'
 import { dashboardKeys } from '@/features/dashboard'
 import { productKeys } from '@/features/products'
+import { useSellerScope } from '@/shared/hooks/useSellerScope'
 import { change, withChanges, type ActivityChange } from '@/shared/lib/activityChanges'
 import { formatCurrency, formatNumber } from '@/shared/lib/formatters'
 import { receiptTotals } from '../domain/costing'
@@ -25,28 +26,38 @@ import {
 
 export const purchaseKeys = {
   all: ['purchases'] as const,
-  lists: () => [...purchaseKeys.all, 'list'] as const,
-  list: (filters: ReceiptFilters) => [...purchaseKeys.lists(), filters] as const,
-  detail: (id: string) => [...purchaseKeys.all, 'detail', id] as const,
-  products: (q: string) => [...purchaseKeys.all, 'products', q] as const,
+  seller: (sellerId: string) => [...purchaseKeys.all, sellerId] as const,
+  lists: (sellerId: string) => [...purchaseKeys.seller(sellerId), 'list'] as const,
+  list: (sellerId: string, filters: ReceiptFilters) =>
+    [...purchaseKeys.lists(sellerId), filters] as const,
+  detail: (sellerId: string, id: string) =>
+    [...purchaseKeys.seller(sellerId), 'detail', id] as const,
+  products: (sellerId: string, q: string) =>
+    [...purchaseKeys.seller(sellerId), 'products', q] as const,
 }
 
 export function useReceipts(filters: ReceiptFilters) {
+  const { sellerId } = useSellerScope()
   return useQuery({
-    queryKey: purchaseKeys.list(filters),
-    queryFn: () => fetchReceipts(filters),
+    queryKey: purchaseKeys.list(sellerId, filters),
+    queryFn: () => fetchReceipts(sellerId, filters),
     placeholderData: keepPreviousData,
   })
 }
 
 export function useReceipt(id: string) {
-  return useQuery({ queryKey: purchaseKeys.detail(id), queryFn: () => fetchReceipt(id) })
+  const { sellerId } = useSellerScope()
+  return useQuery({
+    queryKey: purchaseKeys.detail(sellerId, id),
+    queryFn: () => fetchReceipt(sellerId, id),
+  })
 }
 
 export function useReceiptProducts(q: string, enabled: boolean) {
+  const { sellerId } = useSellerScope()
   return useQuery({
-    queryKey: purchaseKeys.products(q),
-    queryFn: () => searchReceiptProducts(q),
+    queryKey: purchaseKeys.products(sellerId, q),
+    queryFn: () => searchReceiptProducts(sellerId, q),
     enabled,
     placeholderData: keepPreviousData,
     staleTime: 30_000,

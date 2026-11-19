@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { MAX_PRICE, productSchema } from './product.schema'
+import { importProductSchema, MAX_PRICE, productSchema } from './product.schema'
+
+const CATEGORY_ID = 'c0000000-0000-4000-8000-000000000001'
 
 const valid = {
   name: '  Áo thun basic  ',
-  category: 'Áo thun',
+  category_id: CATEGORY_ID,
   unit: 'Cái',
   cost_price: 90_000,
   price: 150_000,
@@ -39,11 +41,26 @@ describe('productSchema', () => {
     expect(errorsOf({ name: '   ' })).toEqual({ name: 'Vui lòng nhập tên sản phẩm' })
   })
 
-  it('danh mục bắt buộc (danh sách hợp lệ do seller quản lý, DB kiểm tra lại)', () => {
-    expect(errorsOf({ category: undefined }).category).toBe('Vui lòng chọn danh mục')
-    expect(errorsOf({ category: '   ' }).category).toBe('Vui lòng chọn danh mục')
-    expect(errorsOf({ category: 'x'.repeat(51) }).category).toBe('Tên danh mục tối đa 50 ký tự')
-    expect(errorsOf({ category: 'Đầm' })).toEqual({})
+  it('danh mục bắt buộc, là id danh mục của shop (khóa ngoại kiểm tra lại ở DB)', () => {
+    expect(errorsOf({ category_id: undefined }).category_id).toBe('Vui lòng chọn danh mục')
+    expect(errorsOf({ category_id: 'Áo thun' }).category_id).toBe('Vui lòng chọn danh mục')
+    expect(errorsOf({ category_id: CATEGORY_ID })).toEqual({})
+  })
+
+  it('dòng Excel: danh mục ghi bằng tên, bắt buộc, tối đa 50 ký tự', () => {
+    const row = {
+      name: valid.name,
+      unit: valid.unit,
+      cost_price: valid.cost_price,
+      price: valid.price,
+      stock: valid.stock,
+      low_stock_threshold: valid.low_stock_threshold,
+      description: valid.description,
+    }
+    const parse = (category: unknown) => importProductSchema.safeParse({ ...row, category })
+    expect(parse('  Đầm ').data?.category).toBe('Đầm')
+    expect(parse('   ').error?.issues[0]?.message).toBe('Vui lòng nhập danh mục')
+    expect(parse('x'.repeat(51)).error?.issues[0]?.message).toBe('Tên danh mục tối đa 50 ký tự')
   })
 
   it('giá bắt buộc; bỏ trống tồn kho ban đầu = 0', () => {

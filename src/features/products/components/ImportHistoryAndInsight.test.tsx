@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderWithProviders } from '@/test/render'
+import { renderWithProviders, TEST_SELLER_ID } from '@/test/render'
 import {
   fetchImportedProducts,
   fetchProductImports,
@@ -64,7 +64,7 @@ describe('ProductImportHistory', () => {
     expect(row).toHaveTextContent('24 KB · sheet "Sản phẩm"')
     expect(row).toHaveTextContent('Đăng tất cả')
     expect(row).toHaveTextContent('Thành công')
-    expect(api.fetchProductImports).toHaveBeenCalledWith(1, 10)
+    expect(api.fetchProductImports).toHaveBeenCalledWith(TEST_SELLER_ID, 1, 10)
   })
 
   it('tải file gốc qua signed URL', async () => {
@@ -103,7 +103,7 @@ describe('ProductImportHistory', () => {
     const row = (await within(drawer).findByText('Áo thun')).closest('tr')
     expect(row).toHaveTextContent(/90\.000\s₫/)
     expect(row).toHaveTextContent('20 Cái')
-    expect(api.fetchImportedProducts).toHaveBeenCalledWith('imp-1')
+    expect(api.fetchImportedProducts).toHaveBeenCalledWith(TEST_SELLER_ID, 'imp-1')
   })
 
   it('chưa có lần nhập nào → empty state', async () => {
@@ -118,8 +118,8 @@ describe('ProductInsightDrawer', () => {
     id: 'p1',
     sku: 'DN-AOTHUN-001',
     name: 'Áo thun basic',
+    category_id: 'c0000000-0000-4000-8000-000000000001',
     category: 'Áo thun',
-    category_missing: false,
     unit: 'Cái',
     cost_price: 99_642.86,
     price: 150_000,

@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type * as CsvModule from '@/shared/lib/csv'
 import { downloadCsv } from '@/shared/lib/csv'
-import { renderWithProviders } from '@/test/render'
+import { renderWithProviders, TEST_SELLER_ID } from '@/test/render'
 import {
   fetchRevenueByCategory,
   fetchRevenueByDay,
@@ -105,7 +105,7 @@ afterEach(() => {
 
 describe('AnalyticsView', () => {
   it('mặc định 30 ngày gần nhất; KPI so sánh với kỳ trước', async () => {
-    renderWithProviders(<AnalyticsView />, { route: '/analytics' })
+    renderWithProviders(<AnalyticsView />, { route: '/seller/analytics' })
 
     // Doanh thu 3tr vs 2tr và giá trị TB/đơn 300k vs 200k đều +50%.
     expect(await screen.findAllByText('+50%')).toHaveLength(2)
@@ -115,7 +115,10 @@ describe('AnalyticsView', () => {
     expect(screen.getByText('40%')).toBeInTheDocument()
     expect(screen.getByText('Kỳ trước 30%')).toBeInTheDocument()
     expect(screen.getByText(/^5\.000\.000\s₫$/)).toBeInTheDocument()
-    expect(api.fetchSalesSummary).toHaveBeenCalledWith({ from: '2026-10-13', to: '2026-11-11' })
+    expect(api.fetchSalesSummary).toHaveBeenCalledWith(TEST_SELLER_ID, {
+      from: '2026-10-13',
+      to: '2026-11-11',
+    })
     expect(screen.getByText(/2 đơn bị hủy trong kỳ/)).toBeInTheDocument()
     // Giá trị TB/đơn: 300.000 ₫ (3tr / 10 đơn)
     expect(screen.getByText(/^300\.000\s₫$/)).toBeInTheDocument()
@@ -126,27 +129,27 @@ describe('AnalyticsView', () => {
 
   it('đọc khoảng tùy chọn từ URL và gửi đúng cho mọi widget', async () => {
     renderWithProviders(<AnalyticsView />, {
-      route: '/analytics?range=custom&from=2026-09-01&to=2026-09-15',
+      route: '/seller/analytics?range=custom&from=2026-09-01&to=2026-09-15',
     })
     const range = { from: '2026-09-01', to: '2026-09-15' }
 
     await screen.findByText('Áo thun basic')
-    expect(api.fetchSalesSummary).toHaveBeenCalledWith(range)
-    expect(api.fetchRevenueByDay).toHaveBeenCalledWith(range)
-    expect(api.fetchRevenueByCategory).toHaveBeenCalledWith(range)
-    expect(api.fetchTopProductsByRange).toHaveBeenCalledWith(range, 10)
-    expect(api.fetchStockLedger).toHaveBeenCalledWith(range)
+    expect(api.fetchSalesSummary).toHaveBeenCalledWith(TEST_SELLER_ID, range)
+    expect(api.fetchRevenueByDay).toHaveBeenCalledWith(TEST_SELLER_ID, range)
+    expect(api.fetchRevenueByCategory).toHaveBeenCalledWith(TEST_SELLER_ID, range)
+    expect(api.fetchTopProductsByRange).toHaveBeenCalledWith(TEST_SELLER_ID, range, 10)
+    expect(api.fetchStockLedger).toHaveBeenCalledWith(TEST_SELLER_ID, range)
     expect(screen.getByLabelText('Từ ngày')).toHaveValue('2026-09-01')
     expect(screen.getByText(/15 ngày/)).toBeInTheDocument()
   })
 
   it('chọn preset "7 ngày" gọi lại API với khoảng mới', async () => {
-    renderWithProviders(<AnalyticsView />, { route: '/analytics' })
+    renderWithProviders(<AnalyticsView />, { route: '/seller/analytics' })
     await screen.findByText('Áo thun basic')
 
     await userEvent.click(screen.getByRole('radio', { name: '7 ngày' }))
     await waitFor(() =>
-      expect(api.fetchSalesSummary).toHaveBeenLastCalledWith({
+      expect(api.fetchSalesSummary).toHaveBeenLastCalledWith(TEST_SELLER_ID, {
         from: '2026-11-05',
         to: '2026-11-11',
       }),
@@ -160,7 +163,7 @@ describe('AnalyticsView', () => {
     api.fetchRevenueByCategory.mockResolvedValue([])
     api.fetchTopProductsByRange.mockResolvedValue([])
     api.fetchStockLedger.mockResolvedValue([])
-    renderWithProviders(<AnalyticsView />, { route: '/analytics' })
+    renderWithProviders(<AnalyticsView />, { route: '/seller/analytics' })
 
     expect(await screen.findByText('Chưa có doanh thu trong khoảng này')).toBeInTheDocument()
     expect(screen.getByText('Chưa có doanh thu theo danh mục')).toBeInTheDocument()
@@ -170,7 +173,7 @@ describe('AnalyticsView', () => {
 
   it('một widget lỗi không ảnh hưởng widget khác; có nút thử lại', async () => {
     api.fetchRevenueByCategory.mockRejectedValueOnce(new Error('boom'))
-    renderWithProviders(<AnalyticsView />, { route: '/analytics' })
+    renderWithProviders(<AnalyticsView />, { route: '/seller/analytics' })
 
     expect(await screen.findByRole('button', { name: 'Thử lại' })).toBeInTheDocument()
     expect(await screen.findByText('Áo thun basic')).toBeInTheDocument()
@@ -180,7 +183,7 @@ describe('AnalyticsView', () => {
   })
 
   it('xuất CSV doanh thu theo ngày, tên file theo khoảng thời gian', async () => {
-    renderWithProviders(<AnalyticsView />, { route: '/analytics?range=7d' })
+    renderWithProviders(<AnalyticsView />, { route: '/seller/analytics?range=7d' })
     const widget = await screen.findByRole('region', { name: 'Doanh thu theo ngày' })
     const button = within(widget).getByRole('button', { name: 'Xuất CSV' })
     await waitFor(() => expect(button).toBeEnabled())
@@ -193,7 +196,7 @@ describe('AnalyticsView', () => {
   })
 
   it('báo cáo xuất nhập tồn: SL + giá trị từng cột, xuất CSV', async () => {
-    renderWithProviders(<AnalyticsView />, { route: '/analytics?range=7d' })
+    renderWithProviders(<AnalyticsView />, { route: '/seller/analytics?range=7d' })
     const widget = await screen.findByRole('region', { name: 'Báo cáo xuất nhập tồn' })
     const row = (await within(widget).findByText('Quần jean slim')).closest('tr')
     expect(row).toHaveTextContent(/10 Cái900\.000\s₫/)

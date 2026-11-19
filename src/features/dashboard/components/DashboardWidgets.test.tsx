@@ -1,7 +1,7 @@
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderWithProviders } from '@/test/render'
+import { renderWithProviders, TEST_SELLER_ID } from '@/test/render'
 import {
   fetchDashboardKpis,
   fetchRecentOrders,
@@ -94,9 +94,9 @@ describe('KpiCards', () => {
     expect(screen.getByText('3')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Xem đơn chờ xác nhận' })).toHaveAttribute(
       'href',
-      '/orders?status=pending',
+      '/seller/orders?status=pending',
     )
-    expect(kpisMock).toHaveBeenCalledWith(30)
+    expect(kpisMock).toHaveBeenCalledWith(TEST_SELLER_ID, 30)
   })
 
   it('hiện lỗi và cho phép thử lại', async () => {
@@ -157,7 +157,7 @@ describe('TopProducts', () => {
     expect(items).toHaveLength(2)
     expect(items[0]).toHaveTextContent('Áo thun basic')
     expect(items[0]).toHaveTextContent('30 đã bán')
-    expect(topMock).toHaveBeenCalledWith(30, 5)
+    expect(topMock).toHaveBeenCalledWith(TEST_SELLER_ID, 30, 5)
   })
 
   it('hiện empty state khi chưa bán được gì', async () => {
@@ -187,7 +187,7 @@ describe('RecentOrders', () => {
     expect(await screen.findByText('Chưa có đơn hàng nào')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Đến trang đơn hàng' })).toHaveAttribute(
       'href',
-      '/orders',
+      '/seller/orders',
     )
   })
 })
@@ -212,11 +212,11 @@ describe('DashboardOverview', () => {
     seriesMock.mockResolvedValue(series)
     topMock.mockResolvedValue(topProducts)
     recentMock.mockResolvedValue(recentOrders)
-    renderWithProviders(<DashboardOverview />, { route: '/?range=7d' })
+    renderWithProviders(<DashboardOverview />, { route: '/seller?range=7d' })
 
     expect(await screen.findByText('Doanh thu · 7 ngày qua')).toBeInTheDocument()
-    expect(kpisMock).toHaveBeenCalledWith(7)
-    expect(seriesMock).toHaveBeenCalledWith(7)
-    expect(topMock).toHaveBeenCalledWith(7, 5)
+    expect(kpisMock).toHaveBeenCalledWith(TEST_SELLER_ID, 7)
+    expect(seriesMock).toHaveBeenCalledWith(TEST_SELLER_ID, 7)
+    expect(topMock).toHaveBeenCalledWith(TEST_SELLER_ID, 7, 5)
   })
 })

@@ -3,7 +3,8 @@ import { notifications } from '@mantine/notifications'
 import { IconDownload, IconFileSpreadsheet } from '@tabler/icons-react'
 import { useState } from 'react'
 import { formatNumber } from '@/shared/lib/formatters'
-import { useFindExistingProductNames, useLoadCategoryNames } from '../api/products.queries'
+import { useLoadCategoryNames } from '@/features/categories'
+import { useFindExistingProductNames } from '../api/products.queries'
 import {
   parseProductImport,
   rowLabel,

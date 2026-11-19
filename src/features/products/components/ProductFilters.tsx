@@ -1,7 +1,7 @@
 import { Button, CloseButton, Group, Select, TextInput } from '@mantine/core'
 import { IconFilterOff, IconSearch } from '@tabler/icons-react'
 import { useSearchInput } from '@/shared/hooks/useSearchInput'
-import { useProductCategoryNames } from '../api/products.queries'
+import { useCategoryOptions } from '@/features/categories'
 import type { useProductFilters } from '../hooks/useProductFilters'
 import {
   parseSortOption,
@@ -13,7 +13,7 @@ const STATUS_OPTIONS = [
   { value: 'all', label: 'Tất cả trạng thái' },
   { value: 'active', label: 'Đang bán' },
   { value: 'inactive', label: 'Chưa đăng / ngừng bán' },
-  { value: 'needs_category', label: 'Cần cập nhật danh mục' },
+  { value: 'needs_category', label: 'Chưa có danh mục' },
 ]
 
 const STATUS_VALUES = STATUS_OPTIONS.map((option) => option.value)
@@ -33,7 +33,7 @@ export function ProductFilters({
   resetFilters,
   hasActiveFilters,
 }: ProductFiltersProps) {
-  const categories = useProductCategoryNames()
+  const categories = useCategoryOptions()
   const [search, setSearch] = useSearchInput(filters.q, (q) => setFilters({ q }, { replace: true }))
 
   return (

@@ -7,6 +7,8 @@ import {
   type QueryClient,
 } from '@tanstack/react-query'
 import { dashboardKeys } from '@/features/dashboard'
+import { QUERY_ROOTS } from '@/shared/constants/queryRoots'
+import { useSellerScope } from '@/shared/hooks/useSellerScope'
 import { change, describeChanges, withChanges } from '@/shared/lib/activityChanges'
 import { formatCurrency, formatNumber } from '@/shared/lib/formatters'
 import { activeLabel, productCreateChanges, productUpdateChanges } from '../lib/productActivity'
@@ -31,12 +33,6 @@ import {
   type ImportFromFileInput,
 } from './productImports.api'
 import {
-  createProductCategory,
-  deleteProductCategory,
-  fetchProductCategories,
-  renameProductCategory,
-} from './productCategories.api'
-import {
   countProductTrash,
   fetchProductTrash,
   findExistingProductNames,
@@ -45,31 +41,34 @@ import {
   trashProducts,
 } from './productTrash.api'
 
+/**
+ * Mọi key (trừ gốc `all`) chứa `sellerId` → cache không lẫn giữa các shop (admin xem nhiều shop).
+ * Invalidate theo `productKeys.all` vẫn làm mới toàn bộ.
+ */
 export const productKeys = {
-  all: ['products'] as const,
-  lists: () => [...productKeys.all, 'list'] as const,
-  list: (filters: ProductFilters) => [...productKeys.lists(), filters] as const,
-  insight: (id: string) => [...productKeys.all, 'insight', id] as const,
-  imports: () => [...productKeys.all, 'imports'] as const,
-  importPage: (page: number, pageSize: number) =>
-    [...productKeys.imports(), 'page', page, pageSize] as const,
-  importedProducts: (importId: string) => [...productKeys.imports(), 'products', importId] as const,
-  trash: () => [...productKeys.all, 'trash'] as const,
-  trashPage: (page: number, pageSize: number) =>
-    [...productKeys.trash(), 'page', page, pageSize] as const,
-  trashCount: () => [...productKeys.trash(), 'count'] as const,
-  categories: () => [...productKeys.all, 'categories'] as const,
-}
-
-const categoriesQuery = {
-  queryKey: productKeys.categories(),
-  queryFn: fetchProductCategories,
+  all: [QUERY_ROOTS.products] as const,
+  seller: (sellerId: string) => [...productKeys.all, sellerId] as const,
+  lists: (sellerId: string) => [...productKeys.seller(sellerId), 'list'] as const,
+  list: (sellerId: string, filters: ProductFilters) =>
+    [...productKeys.lists(sellerId), filters] as const,
+  insight: (sellerId: string, id: string) =>
+    [...productKeys.seller(sellerId), 'insight', id] as const,
+  imports: (sellerId: string) => [...productKeys.seller(sellerId), 'imports'] as const,
+  importPage: (sellerId: string, page: number, pageSize: number) =>
+    [...productKeys.imports(sellerId), 'page', page, pageSize] as const,
+  importedProducts: (sellerId: string, importId: string) =>
+    [...productKeys.imports(sellerId), 'products', importId] as const,
+  trash: (sellerId: string) => [...productKeys.seller(sellerId), 'trash'] as const,
+  trashPage: (sellerId: string, page: number, pageSize: number) =>
+    [...productKeys.trash(sellerId), 'page', page, pageSize] as const,
+  trashCount: (sellerId: string) => [...productKeys.trash(sellerId), 'count'] as const,
 }
 
 export function useProducts(filters: ProductFilters) {
+  const { sellerId } = useSellerScope()
   return useQuery({
-    queryKey: productKeys.list(filters),
-    queryFn: () => fetchProducts(filters),
+    queryKey: productKeys.list(sellerId, filters),
+    queryFn: () => fetchProducts(sellerId, filters),
     // Giữ trang cũ trong lúc tải trang mới / filter mới → bảng không nhảy về skeleton.
     placeholderData: keepPreviousData,
   })
@@ -91,10 +90,11 @@ function notifyError(title: string, error: unknown) {
 }
 
 export function useCreateProduct() {
+  const { sellerId } = useSellerScope()
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ values, media }: { values: ProductFormValues; media: ProductMedia }) =>
-      createProduct(values, media),
+      createProduct(sellerId, values, media),
     onSuccess: (product) => {
       notifications.show({
         color: 'green',
@@ -109,6 +109,7 @@ export function useCreateProduct() {
 }
 
 export function useUpdateProduct() {
+  const { sellerId } = useSellerScope()
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({
@@ -119,7 +120,7 @@ export function useUpdateProduct() {
       product: Product
       values: ProductFormValues
       media: ProductMedia
-    }) => updateProduct(product, values, media),
+    }) => updateProduct(sellerId, product, values, media),
     onSuccess: (updated, { product: before }) => {
       const changes = productUpdateChanges(before, updated)
       notifications.show({
@@ -190,15 +191,20 @@ export function useTrashProducts() {
 }
 
 export function useProductTrash(page: number, pageSize: number) {
+  const { sellerId } = useSellerScope()
   return useQuery({
-    queryKey: productKeys.trashPage(page, pageSize),
-    queryFn: () => fetchProductTrash(page, pageSize),
+    queryKey: productKeys.trashPage(sellerId, page, pageSize),
+    queryFn: () => fetchProductTrash(sellerId, page, pageSize),
     placeholderData: keepPreviousData,
   })
 }
 
 export function useProductTrashCount() {
-  return useQuery({ queryKey: productKeys.trashCount(), queryFn: countProductTrash })
+  const { sellerId } = useSellerScope()
+  return useQuery({
+    queryKey: productKeys.trashCount(sellerId),
+    queryFn: () => countProductTrash(sellerId),
+  })
 }
 
 export function useRestoreProducts() {
@@ -228,6 +234,7 @@ export function useRestoreProducts() {
 }
 
 export function usePurgeTrash() {
+  const { sellerId } = useSellerScope()
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (ids: readonly string[]) => purgeTrash(ids),
@@ -237,7 +244,7 @@ export function usePurgeTrash() {
         title: 'Đã xóa vĩnh viễn',
         message: `${formatNumber(count)} sản phẩm đã bị xóa khỏi thùng rác.`,
       })
-      return queryClient.invalidateQueries({ queryKey: productKeys.trash() })
+      return queryClient.invalidateQueries({ queryKey: productKeys.trash(sellerId) })
     },
     onError: (error) => notifyError('Không xóa vĩnh viễn được', error),
   })
@@ -249,9 +256,10 @@ export function useFindExistingProductNames() {
 }
 
 export function useImportProducts() {
+  const { sellerId } = useSellerScope()
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (input: ImportFromFileInput) => importProductsFromFile(input),
+    mutationFn: (input: ImportFromFileInput) => importProductsFromFile(sellerId, input),
     onSuccess: ({ count, publishedCount }, { file }) => {
       const draftCount = count - publishedCount
       const title =
@@ -272,22 +280,28 @@ export function useImportProducts() {
 }
 
 export function useProductImports(page: number, pageSize: number) {
+  const { sellerId } = useSellerScope()
   return useQuery({
-    queryKey: productKeys.importPage(page, pageSize),
-    queryFn: () => fetchProductImports(page, pageSize),
+    queryKey: productKeys.importPage(sellerId, page, pageSize),
+    queryFn: () => fetchProductImports(sellerId, page, pageSize),
     placeholderData: keepPreviousData,
   })
 }
 
 export function useImportedProducts(importId: string) {
+  const { sellerId } = useSellerScope()
   return useQuery({
-    queryKey: productKeys.importedProducts(importId),
-    queryFn: () => fetchImportedProducts(importId),
+    queryKey: productKeys.importedProducts(sellerId, importId),
+    queryFn: () => fetchImportedProducts(sellerId, importId),
   })
 }
 
 export function useProductInsight(id: string) {
-  return useQuery({ queryKey: productKeys.insight(id), queryFn: () => fetchProductInsight(id) })
+  const { sellerId } = useSellerScope()
+  return useQuery({
+    queryKey: productKeys.insight(sellerId, id),
+    queryFn: () => fetchProductInsight(id),
+  })
 }
 
 // -----------------------------------------------------------------------------
@@ -302,12 +316,14 @@ type ListSnapshot = Array<[readonly unknown[], ProductPage | undefined]>
  */
 async function patchProductInLists(
   queryClient: QueryClient,
+  sellerId: string,
   id: string,
   patch: Partial<Product>,
 ): Promise<ListSnapshot> {
-  await queryClient.cancelQueries({ queryKey: productKeys.lists() })
-  const snapshot = queryClient.getQueriesData<ProductPage>({ queryKey: productKeys.lists() })
-  queryClient.setQueriesData<ProductPage>({ queryKey: productKeys.lists() }, (page) =>
+  const queryKey = productKeys.lists(sellerId)
+  await queryClient.cancelQueries({ queryKey })
+  const snapshot = queryClient.getQueriesData<ProductPage>({ queryKey })
+  queryClient.setQueriesData<ProductPage>({ queryKey }, (page) =>
     page ? { ...page, items: page.items.map((p) => (p.id === id ? { ...p, ...patch } : p)) } : page,
   )
   return snapshot
@@ -318,12 +334,15 @@ function rollback(queryClient: QueryClient, snapshot: ListSnapshot | undefined) 
 }
 
 export function useQuickUpdateCost() {
+  const { sellerId } = useSellerScope()
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ product, costPrice }: { product: Product; costPrice: number }) =>
       updateProductCost(product.id, costPrice),
     onMutate: async ({ product, costPrice }) => ({
-      snapshot: await patchProductInLists(queryClient, product.id, { cost_price: costPrice }),
+      snapshot: await patchProductInLists(queryClient, sellerId, product.id, {
+        cost_price: costPrice,
+      }),
     }),
     onSuccess: (_data, { product, costPrice }) => {
       notifications.show({
@@ -344,12 +363,13 @@ export function useQuickUpdateCost() {
 }
 
 export function useQuickUpdatePrice() {
+  const { sellerId } = useSellerScope()
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ product, price }: { product: Product; price: number }) =>
       updateProductPrice(product.id, price),
     onMutate: async ({ product, price }) => ({
-      snapshot: await patchProductInLists(queryClient, product.id, { price }),
+      snapshot: await patchProductInLists(queryClient, sellerId, product.id, { price }),
     }),
     onSuccess: (_data, { product, price }) => {
       notifications.show({
@@ -364,85 +384,5 @@ export function useQuickUpdatePrice() {
       notifyError('Không cập nhật được giá', error)
     },
     onSettled: () => invalidateAfterProductChange(queryClient),
-  })
-}
-
-// -----------------------------------------------------------------------------
-// Danh mục
-// -----------------------------------------------------------------------------
-
-/** Danh mục kèm số sản phẩm (trang Danh mục). */
-export function useProductCategories() {
-  return useQuery(categoriesQuery)
-}
-
-/** Chỉ tên danh mục (A → Z) — cho ô chọn ở form / bộ lọc. */
-export function useProductCategoryNames() {
-  return useQuery({ ...categoriesQuery, select: (rows) => rows.map((row) => row.name) })
-}
-
-/** Lấy tên danh mục khi cần ngay (đọc file Excel, tạo file mẫu): dùng cache nếu đã có. */
-export function useLoadCategoryNames() {
-  const queryClient = useQueryClient()
-  return () =>
-    queryClient.ensureQueryData(categoriesQuery).then((rows) => rows.map((row) => row.name))
-}
-
-export function useCreateProductCategory() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (name: string) => createProductCategory(name),
-    onSuccess: (_id, name) => {
-      notifications.show({
-        color: 'green',
-        title: 'Đã thêm danh mục',
-        message: name.trim(),
-        ...withChanges([change('Danh mục', null, name.trim())]),
-      })
-      return invalidateAfterProductChange(queryClient)
-    },
-    onError: (error) => notifyError('Không thêm được danh mục', error),
-  })
-}
-
-export function useRenameProductCategory() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: ({ id, name }: { id: string; name: string; oldName: string }) =>
-      renameProductCategory(id, name),
-    onSuccess: (_data, { name, oldName }) => {
-      notifications.show({
-        color: 'green',
-        title: 'Đã đổi tên danh mục',
-        message: `"${oldName}" → "${name.trim()}". Sản phẩm trong danh mục đã được cập nhật theo.`,
-        ...withChanges([change('Tên danh mục', oldName, name.trim())]),
-      })
-      return invalidateAfterProductChange(queryClient)
-    },
-    onError: (error) => notifyError('Không đổi tên được danh mục', error),
-  })
-}
-
-export function useDeleteProductCategory() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: ({ id }: { id: string; name: string }) => deleteProductCategory(id),
-    onSuccess: ({ products, unpublished }, { name }) => {
-      notifications.show({
-        color: products > 0 ? 'orange' : 'green',
-        title: `Đã xóa danh mục "${name}"`,
-        ...withChanges([change('Danh mục', name, null)]),
-        message:
-          products === 0
-            ? 'Không có sản phẩm nào dùng danh mục này.'
-            : `${formatNumber(products)} sản phẩm cần chọn lại danh mục` +
-              (unpublished > 0
-                ? `; ${formatNumber(unpublished)} sản phẩm đang bán đã chuyển về lưu chưa đăng.`
-                : '.'),
-        autoClose: products > 0 ? 10_000 : undefined,
-      })
-      return invalidateAfterProductChange(queryClient)
-    },
-    onError: (error) => notifyError('Không xóa được danh mục', error),
   })
 }

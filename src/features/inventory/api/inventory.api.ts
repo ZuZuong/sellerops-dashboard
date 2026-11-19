@@ -6,7 +6,14 @@ import type { StocktakeScope } from '../schemas/stocktakeScope.schema'
 import type { InventoryItem, InventoryPage, InventorySummary, MovementPage } from '../types'
 
 const INVENTORY_COLUMNS =
-  'id, sku, name, category, unit, price, cost_price, stock, low_stock_threshold, is_low_stock, is_active'
+  'id, sku, name, category:categories!products_category_same_seller_fkey(name), unit, price, cost_price, stock, low_stock_threshold, is_low_stock, is_active'
+
+type InventoryRow = Omit<InventoryItem, 'category'> & { category: { name: string } | null }
+
+const toItem = (row: InventoryRow): InventoryItem => ({
+  ...row,
+  category: row.category?.name ?? null,
+})
 
 /** PostgREST trả lỗi này khi offset vượt quá tổng số dòng. */
 const RANGE_NOT_SATISFIABLE = 'PGRST103'
@@ -14,8 +21,12 @@ const RANGE_NOT_SATISFIABLE = 'PGRST103'
 /** Giới hạn số dòng khi xuất CSV (đủ cho shop nhỏ/vừa, tránh kéo bảng quá lớn về trình duyệt). */
 export const EXPORT_LIMIT = 5000
 
-function buildListQuery(filters: InventoryFilters, head = false) {
-  let query = supabase.from('products').select(INVENTORY_COLUMNS, { count: 'exact', head })
+/** Lọc tường minh theo shop (admin đọc được mọi shop, không chỉ dựa vào RLS). */
+function buildListQuery(sellerId: string, filters: InventoryFilters, head = false) {
+  let query = supabase
+    .from('products')
+    .select(INVENTORY_COLUMNS, { count: 'exact', head })
+    .eq('seller_id', sellerId)
 
   const term = toSearchTerm(filters.q)
   if (term) query = query.or(`name.ilike.%${term}%,sku.ilike.%${term}%`)
@@ -27,9 +38,9 @@ function buildListQuery(filters: InventoryFilters, head = false) {
   return query
 }
 
-function ordered(filters: InventoryFilters, head = false) {
+function ordered(sellerId: string, filters: InventoryFilters, head = false) {
   return (
-    buildListQuery(filters, head)
+    buildListQuery(sellerId, filters, head)
       .order(filters.sort, { ascending: filters.order === 'asc' })
       // Khóa phụ để thứ tự ổn định giữa các trang khi giá trị sắp xếp trùng nhau.
       .order('id', { ascending: true })
@@ -37,25 +48,34 @@ function ordered(filters: InventoryFilters, head = false) {
 }
 
 /** Danh sách tồn kho có phân trang / lọc / sắp xếp phía server. */
-export async function fetchInventory(filters: InventoryFilters): Promise<InventoryPage> {
+export async function fetchInventory(
+  sellerId: string,
+  filters: InventoryFilters,
+): Promise<InventoryPage> {
   const from = (filters.page - 1) * filters.pageSize
-  const { data, error, count } = await ordered(filters).range(from, from + filters.pageSize - 1)
+  const { data, error, count } = await ordered(sellerId, filters).range(
+    from,
+    from + filters.pageSize - 1,
+  )
 
   if (error) {
     if (getDbErrorInfo(error).code !== RANGE_NOT_SATISFIABLE) throw error
-    const head = await buildListQuery(filters, true)
+    const head = await buildListQuery(sellerId, filters, true)
     if (head.error) throw head.error
     return { items: [], total: head.count ?? 0 }
   }
 
-  return { items: data, total: count ?? data.length }
+  return { items: data.map(toItem), total: count ?? data.length }
 }
 
 /** Toàn bộ dòng khớp bộ lọc hiện tại (bỏ phân trang) để xuất CSV. */
-export async function fetchInventoryForExport(filters: InventoryFilters): Promise<InventoryItem[]> {
-  const { data, error } = await ordered(filters).range(0, EXPORT_LIMIT - 1)
+export async function fetchInventoryForExport(
+  sellerId: string,
+  filters: InventoryFilters,
+): Promise<InventoryItem[]> {
+  const { data, error } = await ordered(sellerId, filters).range(0, EXPORT_LIMIT - 1)
   if (error) throw error
-  return data
+  return data.map(toItem)
 }
 
 /**
@@ -63,28 +83,35 @@ export async function fetchInventoryForExport(filters: InventoryFilters): Promis
  * Giới hạn như xuất CSV; `truncated` báo khi còn sản phẩm chưa lấy hết.
  */
 export async function fetchStocktakeItems(
+  sellerId: string,
   scope: StocktakeScope,
 ): Promise<{ items: InventoryItem[]; truncated: boolean }> {
-  let query = supabase.from('products').select(INVENTORY_COLUMNS, { count: 'exact' })
+  let query = supabase
+    .from('products')
+    .select(INVENTORY_COLUMNS, { count: 'exact' })
+    .eq('seller_id', sellerId)
   if (scope.status === 'active') query = query.eq('is_active', true)
-  if (scope.category) query = query.eq('category', scope.category)
+  if (scope.category) query = query.eq('category_id', scope.category)
   const { data, error, count } = await query
     .order('name', { ascending: true })
     .order('id', { ascending: true })
     .range(0, EXPORT_LIMIT - 1)
   if (error) throw error
-  return { items: data, truncated: (count ?? data.length) > data.length }
+  return { items: data.map(toItem), truncated: (count ?? data.length) > data.length }
 }
 
 /** Số liệu tổng quan kho (sản phẩm đang bán), tính ở Postgres. */
-export async function fetchInventorySummary(): Promise<InventorySummary> {
-  const { data, error } = await supabase.rpc('get_inventory_summary').single()
+export async function fetchInventorySummary(sellerId: string): Promise<InventorySummary> {
+  const { data, error } = await supabase
+    .rpc('get_inventory_summary', { p_seller_id: sellerId })
+    .single()
   if (error) throw error
   return data
 }
 
 /** Lịch sử biến động kho của một sản phẩm, mới nhất trước. */
 export async function fetchStockMovements(
+  sellerId: string,
   productId: string,
   page: number,
   pageSize: number,
@@ -96,6 +123,7 @@ export async function fetchStockMovements(
       'id, delta, reason, note, created_at, unit_cost, order:orders(id, code), receipt:purchase_receipts(id, code)',
       { count: 'exact' },
     )
+    .eq('seller_id', sellerId)
     .eq('product_id', productId)
     .order('created_at', { ascending: false })
     .order('id', { ascending: true })

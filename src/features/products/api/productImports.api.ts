@@ -1,9 +1,8 @@
 import { supabase } from '@/shared/lib/supabase'
 import type { ImportedRow } from '../lib/importProducts'
 import type { ImportedProductRow, ProductImport, ProductImportPage } from '../types'
-import { NOT_AUTHENTICATED } from './productImages.api'
 
-/** Bucket riêng tư lưu file Excel gốc của mỗi lần import: `<user_id>/<uuid>.<ext>`. */
+/** Bucket riêng tư lưu file Excel gốc của mỗi lần import: `<seller_id>/<uuid>.<ext>`. */
 export const PRODUCT_IMPORTS_BUCKET = 'product-imports'
 export const FILE_UPLOAD_FAILED = 'FILE_UPLOAD_FAILED'
 
@@ -43,22 +42,16 @@ export interface ImportFromFileResult {
 
 /**
  * Nhập sản phẩm từ file Excel:
- *  1. Lưu file gốc vào Storage (thư mục của user) để tra cứu / tải lại sau.
+ *  1. Lưu file gốc vào Storage (thư mục của shop) để tra cứu / tải lại sau.
  *  2. RPC `import_products`: ghi lịch sử + tạo toàn bộ sản phẩm trong MỘT transaction.
  * RPC lỗi → xóa file vừa tải để không để lại file mồ côi.
  */
-export async function importProductsFromFile({
-  file,
-  sheetName,
-  rowCount,
-  products,
-}: ImportFromFileInput): Promise<ImportFromFileResult> {
-  const { data: session } = await supabase.auth.getSession()
-  const userId = session.session?.user.id
-  if (!userId) throw new Error(NOT_AUTHENTICATED)
-
+export async function importProductsFromFile(
+  sellerId: string,
+  { file, sheetName, rowCount, products }: ImportFromFileInput,
+): Promise<ImportFromFileResult> {
   const { extension, contentType } = spreadsheetFileType(file.name)
-  const path = `${userId}/${crypto.randomUUID()}.${extension}`
+  const path = `${sellerId}/${crypto.randomUUID()}.${extension}`
   const upload = await supabase.storage
     .from(PRODUCT_IMPORTS_BUCKET)
     .upload(path, file, { contentType, upsert: false })
@@ -117,6 +110,7 @@ const IMPORT_COLUMNS =
 
 /** Lịch sử import, mới nhất trước, phân trang phía server. */
 export async function fetchProductImports(
+  sellerId: string,
   page: number,
   pageSize: number,
 ): Promise<ProductImportPage> {
@@ -124,6 +118,7 @@ export async function fetchProductImports(
   const { data, error, count } = await supabase
     .from('product_imports')
     .select(IMPORT_COLUMNS, { count: 'exact' })
+    .eq('seller_id', sellerId)
     .order('created_at', { ascending: false })
     .order('id', { ascending: true })
     .range(from, from + pageSize - 1)
@@ -132,15 +127,21 @@ export async function fetchProductImports(
 }
 
 /** Sản phẩm được tạo từ một lần import (kèm trạng thái hiện tại). */
-export async function fetchImportedProducts(importId: string): Promise<ImportedProductRow[]> {
+export async function fetchImportedProducts(
+  sellerId: string,
+  importId: string,
+): Promise<ImportedProductRow[]> {
   const { data, error } = await supabase
     .from('products')
-    .select('id, sku, name, category, unit, cost_price, price, stock, is_active')
+    .select(
+      'id, sku, name, category:categories!products_category_same_seller_fkey(name), unit, cost_price, price, stock, is_active',
+    )
+    .eq('seller_id', sellerId)
     .eq('import_id', importId)
     .order('created_at', { ascending: true })
     .order('sku', { ascending: true })
   if (error) throw error
-  return data
+  return data.map((row) => ({ ...row, category: row.category?.name ?? null }))
 }
 
 /** Link tải file gốc (signed URL hết hạn sau 60 giây; bucket riêng tư). */

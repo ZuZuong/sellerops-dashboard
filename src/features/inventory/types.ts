@@ -1,11 +1,11 @@
 import type { Database, Tables } from '@/shared/types/database.types'
 
+/** Dòng tồn kho; `category` là tên danh mục đã làm phẳng (null = chưa có danh mục). */
 export type InventoryItem = Pick<
   Tables<'products'>,
   | 'id'
   | 'sku'
   | 'name'
-  | 'category'
   | 'price'
   | 'cost_price'
   | 'unit'
@@ -13,7 +13,7 @@ export type InventoryItem = Pick<
   | 'low_stock_threshold'
   | 'is_low_stock'
   | 'is_active'
->
+> & { category: string | null }
 
 export interface InventoryPage {
   items: InventoryItem[]

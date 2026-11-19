@@ -9,7 +9,7 @@ import {
 } from '@tabler/icons-react'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router'
-import { useProductCategoryNames } from '@/features/products'
+import { useCategoryOptions } from '@/features/categories'
 import { EmptyState } from '@/shared/components/EmptyState'
 import { ErrorState } from '@/shared/components/ErrorState'
 import { ROUTES } from '@/shared/constants/routes'
@@ -36,7 +36,7 @@ const STATUS_OPTIONS = [
 export function StocktakeView() {
   const { state: scope, setState } = useUrlState(stocktakeScopeSchema)
   const stocktake = useStocktakeItems(scope)
-  const categories = useProductCategoryNames()
+  const categories = useCategoryOptions()
   const [exporting, setExporting] = useState(false)
 
   const sheet = useMemo(
@@ -44,7 +44,8 @@ export function StocktakeView() {
     [stocktake.data],
   )
   const bookAsOf = formatDateTime(new Date(stocktake.dataUpdatedAt))
-  const scopeLabel = describeStocktakeScope(scope)
+  const categoryName = categories.data?.find((c) => c.value === scope.category)?.label
+  const scopeLabel = describeStocktakeScope(scope, categoryName)
 
   const handleExcel = async () => {
     if (!sheet) return

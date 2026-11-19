@@ -15,8 +15,12 @@ const DETAIL_COLUMNS = `id, code, status, supplier_name, supplier_phone, invoice
 
 const RANGE_NOT_SATISFIABLE = 'PGRST103'
 
-function buildListQuery(filters: ReceiptFilters, head = false) {
-  let query = supabase.from('purchase_receipts').select(LIST_COLUMNS, { count: 'exact', head })
+/** Lọc tường minh theo shop (admin đọc được mọi shop, không chỉ dựa vào RLS). */
+function buildListQuery(sellerId: string, filters: ReceiptFilters, head = false) {
+  let query = supabase
+    .from('purchase_receipts')
+    .select(LIST_COLUMNS, { count: 'exact', head })
+    .eq('seller_id', sellerId)
   const term = toSearchTerm(filters.q)
   if (term) {
     query = query.or(
@@ -28,16 +32,19 @@ function buildListQuery(filters: ReceiptFilters, head = false) {
 }
 
 /** Danh sách phiếu nhập (mới nhất trước), lọc / tìm / phân trang phía server. */
-export async function fetchReceipts(filters: ReceiptFilters): Promise<PurchaseReceiptPage> {
+export async function fetchReceipts(
+  sellerId: string,
+  filters: ReceiptFilters,
+): Promise<PurchaseReceiptPage> {
   const from = (filters.page - 1) * filters.pageSize
-  const { data, error, count } = await buildListQuery(filters)
+  const { data, error, count } = await buildListQuery(sellerId, filters)
     .order('created_at', { ascending: false })
     .order('id', { ascending: true })
     .range(from, from + filters.pageSize - 1)
 
   if (error) {
     if (getDbErrorInfo(error).code !== RANGE_NOT_SATISFIABLE) throw error
-    const head = await buildListQuery(filters, true)
+    const head = await buildListQuery(sellerId, filters, true)
     if (head.error) throw head.error
     return { items: [], total: head.count ?? 0 }
   }
@@ -52,11 +59,12 @@ export async function fetchReceipts(filters: ReceiptFilters): Promise<PurchaseRe
   }
 }
 
-/** Chi tiết phiếu kèm dòng hàng (đúng thứ tự nhập). `null` nếu không có / không thuộc user. */
-export async function fetchReceipt(id: string): Promise<ReceiptDetail | null> {
+/** Chi tiết phiếu kèm dòng hàng (đúng thứ tự nhập). `null` nếu không có / không thuộc shop. */
+export async function fetchReceipt(sellerId: string, id: string): Promise<ReceiptDetail | null> {
   const { data, error } = await supabase
     .from('purchase_receipts')
     .select(DETAIL_COLUMNS)
+    .eq('seller_id', sellerId)
     .eq('id', id)
     .order('position', { referencedTable: 'purchase_receipt_items', ascending: true })
     .maybeSingle()
@@ -65,8 +73,15 @@ export async function fetchReceipt(id: string): Promise<ReceiptDetail | null> {
 }
 
 /** Sản phẩm để chọn trên phiếu nhập (gồm cả sản phẩm chưa đăng bán — vẫn nhập kho được). */
-export async function searchReceiptProducts(q: string, limit = 20): Promise<ReceiptProduct[]> {
-  let query = supabase.from('products').select('id, name, sku, unit, stock, cost_price')
+export async function searchReceiptProducts(
+  sellerId: string,
+  q: string,
+  limit = 20,
+): Promise<ReceiptProduct[]> {
+  let query = supabase
+    .from('products')
+    .select('id, name, sku, unit, stock, cost_price')
+    .eq('seller_id', sellerId)
   const term = toSearchTerm(q)
   if (term) query = query.or(`name.ilike.%${term}%,sku.ilike.%${term}%`)
   const { data, error } = await query.order('name').limit(limit)

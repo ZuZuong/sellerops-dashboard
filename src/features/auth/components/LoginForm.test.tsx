@@ -27,7 +27,7 @@ describe('LoginForm', () => {
   })
 
   it('hiện lỗi validate và không gọi API khi bỏ trống', async () => {
-    renderWithProviders(<LoginForm />)
+    renderWithProviders(<LoginForm />, { route: '/login' })
     await fillAndSubmit('', '')
 
     expect(await screen.findByText('Vui lòng nhập email')).toBeInTheDocument()
@@ -36,7 +36,7 @@ describe('LoginForm', () => {
   })
 
   it('báo email sai định dạng', async () => {
-    renderWithProviders(<LoginForm />)
+    renderWithProviders(<LoginForm />, { route: '/login' })
     await fillAndSubmit('not-an-email', 'secret')
 
     expect(await screen.findByText('Email không hợp lệ')).toBeInTheDocument()
@@ -45,7 +45,7 @@ describe('LoginForm', () => {
 
   it('gửi email đã cắt khoảng trắng và mật khẩu', async () => {
     signInMock.mockResolvedValue({} as Awaited<ReturnType<typeof signIn>>)
-    renderWithProviders(<LoginForm />)
+    renderWithProviders(<LoginForm />, { route: '/login' })
     await fillAndSubmit('  shop@example.com ', 'secret')
 
     await vi.waitFor(() => expect(signInMock).toHaveBeenCalledTimes(1))
@@ -54,7 +54,7 @@ describe('LoginForm', () => {
 
   it('hiện thông báo tiếng Việt khi sai thông tin đăng nhập', async () => {
     signInMock.mockRejectedValue(new AuthApiError('Invalid login', 400, 'invalid_credentials'))
-    renderWithProviders(<LoginForm />)
+    renderWithProviders(<LoginForm />, { route: '/login' })
     await fillAndSubmit('shop@example.com', 'wrong')
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Email hoặc mật khẩu không đúng.')

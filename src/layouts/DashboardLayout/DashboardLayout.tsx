@@ -1,11 +1,17 @@
 import { AppShell, Box } from '@mantine/core'
+import type { ReactNode } from 'react'
 import { Outlet, useNavigation } from 'react-router'
 import { useActivityCapture } from '@/features/activity'
 import { useUiStore } from '@/shared/stores/useUiStore'
 import { Header } from './Header'
 import { NAVBAR_COLLAPSED_WIDTH, NAVBAR_WIDTH, Sidebar } from './Sidebar'
 
-export function DashboardLayout() {
+interface DashboardLayoutProps {
+  /** Nội dung thay cho route con (vd. khung trống phía sau modal khi shop bị khóa). */
+  children?: ReactNode
+}
+
+export function DashboardLayout({ children }: DashboardLayoutProps) {
   const mobileNavOpened = useUiStore((s) => s.mobileNavOpened)
   const desktopNavCollapsed = useUiStore((s) => s.desktopNavCollapsed)
   const isNavigating = useNavigation().state === 'loading'
@@ -38,7 +44,7 @@ export function DashboardLayout() {
           aria-busy={isNavigating}
           style={{ opacity: isNavigating ? 0.6 : 1, transition: 'opacity 150ms ease' }}
         >
-          <Outlet />
+          {children ?? <Outlet />}
         </Box>
       </AppShell.Main>
     </AppShell>

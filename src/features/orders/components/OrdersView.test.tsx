@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderWithProviders } from '@/test/render'
+import { renderWithProviders, TEST_SELLER_ID } from '@/test/render'
 import {
   createOrder,
   fetchOrders,
@@ -52,7 +52,7 @@ beforeEach(() => {
 describe('OrdersView', () => {
   it('hiện skeleton khi đang tải', () => {
     api.fetchOrders.mockReturnValue(new Promise(() => {}))
-    renderWithProviders(<OrdersView />, { route: '/orders' })
+    renderWithProviders(<OrdersView />, { route: '/seller/orders' })
     expect(screen.getAllByTestId('order-row-skeleton').length).toBeGreaterThan(0)
   })
 
@@ -60,10 +60,10 @@ describe('OrdersView', () => {
     api.fetchOrders.mockResolvedValue(
       page([makeOrder(), makeOrder({ id: 'o2', code: 'DH-000002', status: 'shipping' })], 25),
     )
-    renderWithProviders(<OrdersView />, { route: '/orders' })
+    renderWithProviders(<OrdersView />, { route: '/seller/orders' })
 
     const link = await screen.findByRole('link', { name: 'DH-000001' })
-    expect(link).toHaveAttribute('href', '/orders/o1')
+    expect(link).toHaveAttribute('href', '/seller/orders/o1')
     expect(screen.getByRole('link', { name: 'DH-000002' }).closest('tr')).toHaveTextContent(
       'Đang giao',
     )
@@ -72,10 +72,11 @@ describe('OrdersView', () => {
 
   it('đọc trạng thái + từ khóa từ URL; đổi trạng thái gửi filter mới về trang 1', async () => {
     api.fetchOrders.mockResolvedValue(page([makeOrder()]))
-    renderWithProviders(<OrdersView />, { route: '/orders?status=pending&q=DH&page=2' })
+    renderWithProviders(<OrdersView />, { route: '/seller/orders?status=pending&q=DH&page=2' })
 
     await screen.findByRole('link', { name: 'DH-000001' })
     expect(api.fetchOrders).toHaveBeenCalledWith(
+      TEST_SELLER_ID,
       expect.objectContaining({ status: 'pending', q: 'DH', page: 2 }),
     )
     expect(screen.getByRole('radio', { name: 'Chờ xác nhận' })).toBeChecked()
@@ -83,6 +84,7 @@ describe('OrdersView', () => {
     await userEvent.click(screen.getByRole('radio', { name: 'Đã hủy' }))
     await waitFor(() =>
       expect(api.fetchOrders).toHaveBeenLastCalledWith(
+        TEST_SELLER_ID,
         expect.objectContaining({ status: 'cancelled', page: 1 }),
       ),
     )
@@ -90,7 +92,7 @@ describe('OrdersView', () => {
 
   it('tìm kiếm được debounce rồi mới gọi API', async () => {
     api.fetchOrders.mockResolvedValue(page([makeOrder()]))
-    renderWithProviders(<OrdersView />, { route: '/orders' })
+    renderWithProviders(<OrdersView />, { route: '/seller/orders' })
     await screen.findByRole('link', { name: 'DH-000001' })
 
     await userEvent.type(
@@ -98,26 +100,29 @@ describe('OrdersView', () => {
       'lan',
     )
     await waitFor(() =>
-      expect(api.fetchOrders).toHaveBeenLastCalledWith(expect.objectContaining({ q: 'lan' })),
+      expect(api.fetchOrders).toHaveBeenLastCalledWith(
+        TEST_SELLER_ID,
+        expect.objectContaining({ q: 'lan' }),
+      ),
     )
-    expect(api.fetchOrders.mock.calls.map(([filters]) => filters.q)).toEqual(['', 'lan'])
+    expect(api.fetchOrders.mock.calls.map(([, filters]) => filters.q)).toEqual(['', 'lan'])
   })
 
   it('empty state khi chưa có đơn và khi lọc không ra kết quả', async () => {
     api.fetchOrders.mockResolvedValue(page([]))
-    const first = renderWithProviders(<OrdersView />, { route: '/orders' })
+    const first = renderWithProviders(<OrdersView />, { route: '/seller/orders' })
     expect(await screen.findByText('Chưa có đơn hàng nào')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Tạo đơn hàng' })).toBeInTheDocument()
     first.unmount()
 
-    renderWithProviders(<OrdersView />, { route: '/orders?status=delivered' })
+    renderWithProviders(<OrdersView />, { route: '/seller/orders?status=delivered' })
     expect(await screen.findByText('Không tìm thấy đơn hàng phù hợp')).toBeInTheDocument()
   })
 
   it('error state có nút thử lại', async () => {
     api.fetchOrders.mockRejectedValueOnce(new Error('boom'))
     api.fetchOrders.mockResolvedValueOnce(page([makeOrder()]))
-    renderWithProviders(<OrdersView />, { route: '/orders' })
+    renderWithProviders(<OrdersView />, { route: '/seller/orders' })
 
     await userEvent.click(await screen.findByRole('button', { name: 'Thử lại' }))
     expect(await screen.findByRole('link', { name: 'DH-000001' })).toBeInTheDocument()
@@ -128,7 +133,7 @@ describe('OrdersView', () => {
       page([makeOrder(), makeOrder({ id: 'o2', code: 'DH-000002', status: 'delivered' })]),
     )
     api.transitionOrder.mockResolvedValue()
-    renderWithProviders(<OrdersView />, { route: '/orders' })
+    renderWithProviders(<OrdersView />, { route: '/seller/orders' })
 
     await userEvent.click(await screen.findByRole('button', { name: 'Thao tác cho đơn DH-000002' }))
     const deliveredMenu = await screen.findByRole('menu')

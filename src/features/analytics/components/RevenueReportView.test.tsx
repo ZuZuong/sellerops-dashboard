@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type * as XlsxModule from '@/shared/lib/xlsxExport'
 import { downloadXlsx } from '@/shared/lib/xlsxExport'
-import { renderWithProviders } from '@/test/render'
+import { renderWithProviders, TEST_SELLER_ID } from '@/test/render'
 import { fetchRevenueReport } from '../api/analytics.api'
 import type { RevenueReportRow } from '../types'
 import { RevenueReportView } from './RevenueReportView'
@@ -33,7 +33,7 @@ const ROWS: RevenueReportRow[] = [
   },
 ]
 
-const ROUTE = '/analytics/revenue-report?range=custom&from=2026-11-01&to=2026-11-15'
+const ROUTE = '/seller/analytics/revenue-report?range=custom&from=2026-11-01&to=2026-11-15'
 
 beforeEach(() => {
   fetchReport.mockReset()
@@ -54,7 +54,10 @@ describe('RevenueReportView', () => {
     expect(
       await screen.findByRole('heading', { name: 'BẢNG KÊ DOANH THU BÁN HÀNG HÓA' }),
     ).toBeInTheDocument()
-    expect(fetchReport).toHaveBeenCalledWith({ from: '2026-11-01', to: '2026-11-15' })
+    expect(fetchReport).toHaveBeenCalledWith(TEST_SELLER_ID, {
+      from: '2026-11-01',
+      to: '2026-11-15',
+    })
     expect(
       screen.getByText('Kỳ báo cáo: từ ngày 01/11/2026 đến ngày 15/11/2026'),
     ).toBeInTheDocument()

@@ -13,7 +13,8 @@ export type { SortOrder }
  */
 export const productFiltersSchema = z.object({
   q: z.string().trim().max(100).catch(''),
-  category: z.string().trim().max(100).catch(''),
+  /** Id danh mục (giữ được khi đổi tên danh mục); rỗng = tất cả. */
+  category: z.union([z.uuid(), z.literal('')]).catch(''),
   status: z.enum(['all', 'active', 'inactive', 'needs_category']).catch('all'),
   sort: z.enum(PRODUCT_SORT_FIELDS).catch('created_at'),
   order: z.enum(['asc', 'desc']).catch('desc'),
