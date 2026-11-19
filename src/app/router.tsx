@@ -1,32 +1,45 @@
-import type { ComponentType } from 'react'
 import { createBrowserRouter } from 'react-router'
-import { AccountGate, GuestRoute, HomeRedirect, ProtectedRoute, RoleGuard } from '@/features/auth'
-import { AdminLayout } from '@/layouts/AdminLayout'
-import { SellerLayout } from '@/layouts/SellerLayout'
+import {
+  AccountGate,
+  GuestRoute,
+  HomeRedirect,
+  prefetchAccount,
+  ProtectedRoute,
+  RoleGuard,
+} from '@/features/auth'
+import { prefetchOwnSeller } from '@/features/sellers'
 import { PageLoader } from '@/shared/components/PageLoader'
 import { ROUTES } from '@/shared/constants/routes'
+import { queryClient } from '@/shared/lib/queryClient'
+import { adminPages, page, preloadWhenIdle, sellerPages } from './pages'
 import { RouteErrorBoundary } from './RouteErrorBoundary'
 
-/** Lazy-load một page (default export) theo route để code-split. */
-const page = (load: () => Promise<{ default: ComponentType }>) => async () => ({
-  Component: (await load()).default,
-})
-
 const common = { ErrorBoundary: RouteErrorBoundary, HydrateFallback: PageLoader }
+
+/**
+ * Loader chỉ KHỞI ĐỘNG việc tải dữ liệu rồi trả về ngay (không chặn điều hướng): tài khoản, shop
+ * và code trang được tải SONG SONG thay vì nối tiếp nhau (phiên → tài khoản → shop → trang).
+ */
+const prefetch = (task: () => Promise<void>) => () => {
+  void task().catch(() => undefined)
+  return null
+}
 
 /**
  * Cây route:
  *   khách (GuestRoute)        /login /register /verify-email /forgot-password
  *   công khai                 /reset-password (phiên khôi phục từ link trong thư)
- *   đã đăng nhập (Protected → AccountGate: đọc role từ profiles, chặn tài khoản khóa)
+ *   đã đăng nhập (Protected → AccountGate: đọc role từ profiles, chặn tài khoản khóa / bị xóa)
  *     /                       chuyển hướng theo role
  *     /no-access              tài khoản người mua
  *     /seller/*  (seller)     SellerLayout: SellerScope + khóa theo trạng thái shop
  *     /admin/*   (admin)      AdminLayout: Admin Console (xem shop ở chế độ chỉ đọc)
+ * Layout của từng vai trò cũng lazy-load: seller không tải code Admin Console và ngược lại.
  */
 export const router = createBrowserRouter([
   {
     Component: ProtectedRoute,
+    loader: prefetch(() => prefetchAccount(queryClient)),
     ...common,
     children: [
       {
@@ -39,42 +52,30 @@ export const router = createBrowserRouter([
             children: [
               {
                 path: ROUTES.dashboard,
-                Component: SellerLayout,
+                loader: prefetch(async () => {
+                  preloadWhenIdle(sellerPages)
+                  await prefetchOwnSeller(queryClient)
+                }),
+                lazy: async () => ({
+                  Component: (await import('@/layouts/SellerLayout')).SellerLayout,
+                }),
                 children: [
-                  { index: true, lazy: page(() => import('@/pages/DashboardPage')) },
-                  { path: ROUTES.products, lazy: page(() => import('@/pages/ProductsPage')) },
-                  {
-                    path: ROUTES.productImports,
-                    lazy: page(() => import('@/pages/ProductImportsPage')),
-                  },
-                  {
-                    path: ROUTES.productTrash,
-                    lazy: page(() => import('@/pages/ProductTrashPage')),
-                  },
-                  { path: ROUTES.categories, lazy: page(() => import('@/pages/CategoriesPage')) },
-                  { path: ROUTES.orders, lazy: page(() => import('@/pages/OrdersPage')) },
-                  {
-                    path: ROUTES.orderDetail,
-                    lazy: page(() => import('@/pages/OrderDetailPage')),
-                  },
-                  { path: ROUTES.purchases, lazy: page(() => import('@/pages/PurchasesPage')) },
-                  {
-                    path: ROUTES.purchaseNew,
-                    lazy: page(() => import('@/pages/PurchaseNewPage')),
-                  },
-                  {
-                    path: ROUTES.purchaseDetail,
-                    lazy: page(() => import('@/pages/PurchaseDetailPage')),
-                  },
-                  { path: ROUTES.inventory, lazy: page(() => import('@/pages/InventoryPage')) },
-                  {
-                    path: ROUTES.inventoryStocktake,
-                    lazy: page(() => import('@/pages/InventoryStocktakePage')),
-                  },
-                  { path: ROUTES.analytics, lazy: page(() => import('@/pages/AnalyticsPage')) },
+                  { index: true, lazy: page(sellerPages.dashboard) },
+                  { path: ROUTES.products, lazy: page(sellerPages.products) },
+                  { path: ROUTES.productImports, lazy: page(sellerPages.productImports) },
+                  { path: ROUTES.productTrash, lazy: page(sellerPages.productTrash) },
+                  { path: ROUTES.categories, lazy: page(sellerPages.categories) },
+                  { path: ROUTES.orders, lazy: page(sellerPages.orders) },
+                  { path: ROUTES.orderDetail, lazy: page(sellerPages.orderDetail) },
+                  { path: ROUTES.purchases, lazy: page(sellerPages.purchases) },
+                  { path: ROUTES.purchaseNew, lazy: page(sellerPages.purchaseNew) },
+                  { path: ROUTES.purchaseDetail, lazy: page(sellerPages.purchaseDetail) },
+                  { path: ROUTES.inventory, lazy: page(sellerPages.inventory) },
+                  { path: ROUTES.inventoryStocktake, lazy: page(sellerPages.inventoryStocktake) },
+                  { path: ROUTES.analytics, lazy: page(sellerPages.analytics) },
                   {
                     path: ROUTES.analyticsRevenueReport,
-                    lazy: page(() => import('@/pages/RevenueReportPage')),
+                    lazy: page(sellerPages.analyticsRevenueReport),
                   },
                 ],
               },
@@ -85,33 +86,18 @@ export const router = createBrowserRouter([
             children: [
               {
                 path: ROUTES.admin,
-                Component: AdminLayout,
+                loader: prefetch(async () => preloadWhenIdle(adminPages)),
+                lazy: async () => ({
+                  Component: (await import('@/layouts/AdminLayout')).AdminLayout,
+                }),
                 children: [
-                  { index: true, lazy: page(() => import('@/pages/AdminDashboardPage')) },
-                  {
-                    path: ROUTES.adminAccounts,
-                    lazy: page(() => import('@/pages/AdminAccountsPage')),
-                  },
-                  {
-                    path: ROUTES.adminApprovals,
-                    lazy: page(() => import('@/pages/AdminApprovalsPage')),
-                  },
-                  {
-                    path: ROUTES.adminSellers,
-                    lazy: page(() => import('@/pages/AdminSellersPage')),
-                  },
-                  {
-                    path: ROUTES.adminSellerDetail,
-                    lazy: page(() => import('@/pages/AdminSellerDetailPage')),
-                  },
-                  {
-                    path: ROUTES.adminDeletions,
-                    lazy: page(() => import('@/pages/AdminDeletionsPage')),
-                  },
-                  {
-                    path: ROUTES.adminAuditLog,
-                    lazy: page(() => import('@/pages/AdminAuditLogPage')),
-                  },
+                  { index: true, lazy: page(adminPages.dashboard) },
+                  { path: ROUTES.adminAccounts, lazy: page(adminPages.accounts) },
+                  { path: ROUTES.adminApprovals, lazy: page(adminPages.approvals) },
+                  { path: ROUTES.adminSellers, lazy: page(adminPages.sellers) },
+                  { path: ROUTES.adminSellerDetail, lazy: page(adminPages.sellerDetail) },
+                  { path: ROUTES.adminDeletions, lazy: page(adminPages.deletions) },
+                  { path: ROUTES.adminAuditLog, lazy: page(adminPages.auditLog) },
                 ],
               },
             ],

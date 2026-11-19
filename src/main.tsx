@@ -1,7 +1,6 @@
 import '@mantine/core/styles.css'
 import '@mantine/notifications/styles.css'
 import '@mantine/dropzone/styles.css'
-import '@mantine/spotlight/styles.css'
 import './styles/print.css'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'

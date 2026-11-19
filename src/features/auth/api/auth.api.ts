@@ -62,6 +62,12 @@ export async function updatePassword(password: string): Promise<void> {
   if (error) throw error
 }
 
+/** User của phiên hiện tại (đọc từ storage, không gọi mạng) — dùng cho prefetch trong loader. */
+export async function getSessionUser(): Promise<User | null> {
+  const { data } = await supabase.auth.getSession()
+  return data.session?.user ?? null
+}
+
 /** Đăng ký lắng nghe thay đổi phiên; trả về hàm hủy đăng ký. */
 export function subscribeToAuthChanges(
   callback: (event: AuthChangeEvent, session: Session | null) => void,

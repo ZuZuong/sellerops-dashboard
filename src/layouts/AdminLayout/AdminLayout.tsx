@@ -1,3 +1,4 @@
+import '@mantine/spotlight/styles.css'
 import {
   AppShell,
   Badge,

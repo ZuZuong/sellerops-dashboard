@@ -34,10 +34,22 @@ export async function purgeTrash(ids: readonly string[]): Promise<number> {
   return ids.length
 }
 
-/** Dọn sản phẩm quá hạn 30 ngày. Lỗi dọn ảnh không chặn việc xem thùng rác. */
+/** Khoảng cách tối thiểu giữa hai lần dọn thùng rác (RPC có ghi DB + xóa file Storage). */
+const PURGE_INTERVAL_MS = 10 * 60_000
+let lastPurgeAt = 0
+
+/**
+ * Dọn sản phẩm quá hạn 30 ngày, tối đa mỗi 10 phút một lần (không gọi lại mỗi lần mở trang).
+ * Lỗi dọn không chặn việc xem thùng rác.
+ */
 async function purgeExpiredTrash(): Promise<void> {
+  if (Date.now() - lastPurgeAt < PURGE_INTERVAL_MS) return
+  lastPurgeAt = Date.now()
   const { data, error } = await supabase.rpc('purge_expired_trash')
-  if (error) throw error
+  if (error) {
+    lastPurgeAt = 0
+    return
+  }
   await removeProductImages(data).catch(() => undefined)
 }
 

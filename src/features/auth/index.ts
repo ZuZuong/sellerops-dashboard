@@ -1,4 +1,5 @@
-export { useAccount } from './api/auth.queries'
+export { prefetchAccount, useAccount } from './api/auth.queries'
+export { getSessionUserId } from './lib/session'
 export { AccountGate } from './components/AccountGate'
 export { AuthCard } from './components/AuthCard'
 export { ForgotPasswordForm } from './components/ForgotPasswordForm'

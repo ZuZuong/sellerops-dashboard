@@ -1,9 +1,11 @@
 import { notifications } from '@mantine/notifications'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import type { User } from '@supabase/supabase-js'
+import { queryOptions, useMutation, useQuery, type QueryClient } from '@tanstack/react-query'
 import { useCurrentUser } from '../hooks/useAuth'
 import { getAuthErrorMessage, isDisclosableResetError } from '../lib/authErrors'
 import {
   fetchAccount,
+  getSessionUser,
   requestPasswordReset,
   resendVerificationEmail,
   signIn,
@@ -21,20 +23,36 @@ export const authKeys = {
  * Tài khoản đang đăng nhập (role, khóa) từ bảng `profiles`. Mọi guard dùng chung query này.
  * Không tự retry khi lỗi: màn hình lỗi có nút "Thử lại".
  */
-export function useAccount() {
-  const user = useCurrentUser()
-  return useQuery({
-    queryKey: authKeys.account(user?.id ?? 'anonymous'),
-    queryFn: () => {
-      if (!user) throw new Error('NOT_AUTHENTICATED')
-      return fetchAccount(user)
-    },
-    enabled: user !== null,
+const accountQuery = (user: User) =>
+  queryOptions({
+    queryKey: authKeys.account(user.id),
+    queryFn: () => fetchAccount(user),
     staleTime: 5 * 60_000,
     // Dự phòng khi Realtime mất kết nối: quay lại tab là kiểm tra lại trạng thái tài khoản.
     refetchOnWindowFocus: true,
     retry: false,
   })
+
+export function useAccount() {
+  const user = useCurrentUser()
+  return useQuery({
+    ...(user
+      ? accountQuery(user)
+      : {
+          queryKey: authKeys.account('anonymous'),
+          queryFn: () => Promise.reject(new Error('NOT_AUTHENTICATED')),
+        }),
+    enabled: user !== null,
+  })
+}
+
+/**
+ * Bắt đầu tải tài khoản ngay khi điều hướng (route loader), song song với việc tải code trang,
+ * thay vì đợi component render xong mới gọi. Không chặn điều hướng; dùng cache nếu còn mới.
+ */
+export async function prefetchAccount(queryClient: QueryClient): Promise<void> {
+  const user = await getSessionUser()
+  if (user) await queryClient.prefetchQuery(accountQuery(user))
 }
 
 export function useSignIn() {

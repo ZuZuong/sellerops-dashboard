@@ -1194,7 +1194,11 @@ export type Database = {
       }
       admin_revenue_series: {
         Args: { p_days?: number }
-        Returns: { day: string; orders: number; revenue: number }[]
+        Returns: {
+          day: string
+          orders: number
+          revenue: number
+        }[]
       }
       cancel_order: { Args: { p_order_id: string }; Returns: undefined }
       clean_category_name: { Args: { p_name: string }; Returns: string }
