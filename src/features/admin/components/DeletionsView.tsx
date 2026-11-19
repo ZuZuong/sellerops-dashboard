@@ -196,7 +196,8 @@ export function DeletionsView() {
 
   return (
     <Paper withBorder radius="md" p="md">
-      <Stack gap="sm" mb="md">
+      {/* Một hàng: ô tìm kiếm co giãn, bộ lọc trạng thái bên phải; màn hình hẹp tự xuống dòng. */}
+      <Group gap="sm" mb="md" wrap="wrap" align="center">
         <SearchField
           value={filters.q}
           onCommit={(q) => setFilters({ q }, true)}
@@ -210,9 +211,9 @@ export function DeletionsView() {
             const status = deletionFiltersSchema.shape.status.safeParse(value)
             if (status.success) setFilters({ status: status.data })
           }}
-          style={{ alignSelf: 'flex-start', maxWidth: '100%', overflowX: 'auto' }}
+          style={{ maxWidth: '100%', overflowX: 'auto' }}
         />
-      </Stack>
+      </Group>
 
       {deletions.isError ? (
         <ErrorState
