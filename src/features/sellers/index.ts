@@ -1,3 +1,4 @@
+export { sellerKeys, useCurrentSeller } from './api/sellers.queries'
 export {
   canTransitionSeller,
   isApplicationEditable,
@@ -8,3 +9,4 @@ export {
   SELLER_TRANSITIONS,
   type SellerStatus,
 } from './domain/sellerStatus'
+export type { Seller } from './types'

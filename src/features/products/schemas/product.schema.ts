@@ -38,12 +38,8 @@ export const productSchema = z.object({
     .trim()
     .min(1, 'Vui lòng nhập tên sản phẩm')
     .max(200, 'Tên sản phẩm tối đa 200 ký tự'),
-  // Danh sách hợp lệ do seller quản lý (bảng product_categories); DB kiểm tra lại bằng trigger.
-  category: z
-    .string({ error: 'Vui lòng chọn danh mục' })
-    .trim()
-    .min(1, 'Vui lòng chọn danh mục')
-    .max(50, 'Tên danh mục tối đa 50 ký tự'),
+  // Danh mục của chính shop; khóa ngoại kép (seller_id, category_id) kiểm tra lại ở DB.
+  category_id: z.uuid({ error: 'Vui lòng chọn danh mục' }),
   unit: z.enum(PRODUCT_UNITS, { error: 'Vui lòng chọn đơn vị tính' }),
   /** Giá vốn 1 đơn vị (giá nhập). Khi sửa: giá vốn bình quân hiện tại, phiếu nhập kho tự cập nhật. */
   cost_price: costPriceSchema,
@@ -70,9 +66,19 @@ export const EMPTY_PRODUCT_FORM: Partial<ProductFormInput> = {
   is_active: true,
 }
 
-/** Một dòng trong file Excel nhập sản phẩm: ngưỡng cảnh báo không bắt buộc, không có ảnh. */
-export const importProductSchema = productSchema.omit({ is_active: true }).extend({
-  low_stock_threshold: thresholdSchema.default(DEFAULT_LOW_STOCK_THRESHOLD),
-})
+/**
+ * Một dòng trong file Excel nhập sản phẩm: ngưỡng cảnh báo không bắt buộc, không có ảnh.
+ * Danh mục ghi bằng TÊN (đối chiếu với danh mục của shop khi đọc file; RPC kiểm tra lại).
+ */
+export const importProductSchema = productSchema
+  .omit({ is_active: true, category_id: true })
+  .extend({
+    category: z
+      .string({ error: 'Vui lòng nhập danh mục' })
+      .trim()
+      .min(1, 'Vui lòng nhập danh mục')
+      .max(50, 'Tên danh mục tối đa 50 ký tự'),
+    low_stock_threshold: thresholdSchema.default(DEFAULT_LOW_STOCK_THRESHOLD),
+  })
 
 export type ImportedProduct = z.output<typeof importProductSchema>

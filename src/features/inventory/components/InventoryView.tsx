@@ -27,8 +27,8 @@ import { downloadCsv } from '@/shared/lib/csv'
 import { todayKey } from '@/shared/lib/dates'
 import { getErrorMessage } from '@/shared/lib/errors'
 import { formatNumber } from '@/shared/lib/formatters'
-import { EXPORT_LIMIT, fetchInventoryForExport } from '../api/inventory.api'
-import { useInventory } from '../api/inventory.queries'
+import { EXPORT_LIMIT } from '../api/inventory.api'
+import { useInventory, useInventoryExporter } from '../api/inventory.queries'
 import { useInventoryFilters } from '../hooks/useInventoryFilters'
 import { inventoryToCsv } from '../lib/inventoryCsv'
 import { INVENTORY_PAGE_SIZES, inventoryFiltersSchema } from '../schemas/inventoryFilters.schema'
@@ -59,6 +59,7 @@ const PAGE_SIZE_OPTIONS = INVENTORY_PAGE_SIZES.map((size) => ({
 export function InventoryView() {
   const { filters, setFilters, setPage, toggleSort, resetFilters, hasActiveFilters } =
     useInventoryFilters()
+  const fetchInventoryForExport = useInventoryExporter()
   const inventory = useInventory(filters)
   const [adjusting, setAdjusting] = useState<InventoryItem | null>(null)
   const [viewingHistory, setViewingHistory] = useState<InventoryItem | null>(null)

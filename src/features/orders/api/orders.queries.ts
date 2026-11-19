@@ -8,6 +8,7 @@ import {
 } from '@tanstack/react-query'
 import { dashboardKeys } from '@/features/dashboard'
 import { productKeys } from '@/features/products'
+import { useSellerScope } from '@/shared/hooks/useSellerScope'
 import { change, withChanges, type ActivityChange } from '@/shared/lib/activityChanges'
 import { formatCurrency, formatNumber } from '@/shared/lib/formatters'
 import { ORDER_STATUS_META, type OrderStatus } from '../domain/orderStatus'
@@ -28,34 +29,40 @@ import {
 
 export const orderKeys = {
   all: ['orders'] as const,
-  lists: () => [...orderKeys.all, 'list'] as const,
-  list: (filters: OrderFilters) => [...orderKeys.lists(), filters] as const,
-  details: () => [...orderKeys.all, 'detail'] as const,
-  detail: (id: string) => [...orderKeys.details(), id] as const,
-  orderableProducts: (q: string) => [...orderKeys.all, 'orderable-products', q] as const,
-  savedCustomers: (q: string) => [...orderKeys.all, 'saved-customers', q] as const,
+  seller: (sellerId: string) => [...orderKeys.all, sellerId] as const,
+  lists: (sellerId: string) => [...orderKeys.seller(sellerId), 'list'] as const,
+  list: (sellerId: string, filters: OrderFilters) =>
+    [...orderKeys.lists(sellerId), filters] as const,
+  detail: (sellerId: string, id: string) => [...orderKeys.seller(sellerId), 'detail', id] as const,
+  orderableProducts: (sellerId: string, q: string) =>
+    [...orderKeys.seller(sellerId), 'orderable-products', q] as const,
+  savedCustomers: (sellerId: string, q: string) =>
+    [...orderKeys.seller(sellerId), 'saved-customers', q] as const,
 }
 
 export function useOrders(filters: OrderFilters) {
+  const { sellerId } = useSellerScope()
   return useQuery({
-    queryKey: orderKeys.list(filters),
-    queryFn: () => fetchOrders(filters),
+    queryKey: orderKeys.list(sellerId, filters),
+    queryFn: () => fetchOrders(sellerId, filters),
     // Giữ trang cũ trong lúc tải trang / filter mới → bảng không nhảy về skeleton.
     placeholderData: keepPreviousData,
   })
 }
 
 export function useOrderDetail(orderId: string) {
+  const { sellerId } = useSellerScope()
   return useQuery({
-    queryKey: orderKeys.detail(orderId),
-    queryFn: () => fetchOrderDetail(orderId),
+    queryKey: orderKeys.detail(sellerId, orderId),
+    queryFn: () => fetchOrderDetail(sellerId, orderId),
   })
 }
 
 export function useOrderableProducts(q: string, enabled = true) {
+  const { sellerId } = useSellerScope()
   return useQuery({
-    queryKey: orderKeys.orderableProducts(q),
-    queryFn: () => searchOrderableProducts(q),
+    queryKey: orderKeys.orderableProducts(sellerId, q),
+    queryFn: () => searchOrderableProducts(sellerId, q),
     enabled,
     placeholderData: keepPreviousData,
     staleTime: 60_000,
@@ -63,9 +70,10 @@ export function useOrderableProducts(q: string, enabled = true) {
 }
 
 export function useSavedCustomers(q: string, enabled = true) {
+  const { sellerId } = useSellerScope()
   return useQuery({
-    queryKey: orderKeys.savedCustomers(q),
-    queryFn: () => searchSavedCustomers(q),
+    queryKey: orderKeys.savedCustomers(sellerId, q),
+    queryFn: () => searchSavedCustomers(sellerId, q),
     enabled,
     placeholderData: keepPreviousData,
     staleTime: 60_000,

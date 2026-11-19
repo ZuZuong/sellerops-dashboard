@@ -5,23 +5,18 @@ export const PRODUCT_IMAGES_BUCKET = 'product-images'
 
 /** Lỗi nghiệp vụ phía client, map sang tiếng Việt trong `productErrors`. */
 export const IMAGE_UPLOAD_FAILED = 'IMAGE_UPLOAD_FAILED'
-export const NOT_AUTHENTICATED = 'NOT_AUTHENTICATED'
 
 /** URL public của ảnh (bucket public, không gọi mạng — chỉ ghép URL). */
 export function getProductImageUrl(path: string): string {
   return supabase.storage.from(PRODUCT_IMAGES_BUCKET).getPublicUrl(path).data.publicUrl
 }
 
-async function currentUserId(): Promise<string> {
-  const { data } = await supabase.auth.getSession()
-  const userId = data.session?.user.id
-  if (!userId) throw new Error(NOT_AUTHENTICATED)
-  return userId
-}
-
-/** Tải một file lên `<user_id>/<uuid>.<ext>` (RLS Storage chỉ cho ghi vào thư mục của mình). */
-async function uploadImage(userId: string, file: File): Promise<string> {
-  const path = `${userId}/${crypto.randomUUID()}.${imageExtension(file)}`
+/**
+ * Tải một file lên `<seller_id>/<uuid>.<ext>`: RLS Storage chỉ cho shop đã duyệt ghi vào thư mục
+ * của chính shop, CHECK `paths_owned_by` trên products bảo đảm sản phẩm chỉ trỏ tới ảnh của shop.
+ */
+async function uploadImage(sellerId: string, file: File): Promise<string> {
+  const path = `${sellerId}/${crypto.randomUUID()}.${imageExtension(file)}`
   const { error } = await supabase.storage
     .from(PRODUCT_IMAGES_BUCKET)
     .upload(path, file, { contentType: file.type, cacheControl: '31536000', upsert: false })
@@ -46,13 +41,15 @@ export interface UploadedMedia {
  * Tải các ảnh mới (song song) và trả về đường dẫn cuối cùng cho sản phẩm.
  * Nếu một ảnh lỗi, các ảnh đã lên trong lần này bị xóa để không để lại file rác.
  */
-export async function uploadProductMedia(media: ProductMedia): Promise<UploadedMedia> {
+export async function uploadProductMedia(
+  sellerId: string,
+  media: ProductMedia,
+): Promise<UploadedMedia> {
   const images = [media.hero, ...media.gallery].filter((i): i is ProductImage => i !== null)
   const pending = images.filter((image) => image.file !== null)
-  const userId = pending.length > 0 ? await currentUserId() : ''
 
   const results = await Promise.allSettled(
-    pending.map((image) => uploadImage(userId, image.file as File)),
+    pending.map((image) => uploadImage(sellerId, image.file as File)),
   )
   const uploaded = results.flatMap((r) => (r.status === 'fulfilled' ? [r.value] : []))
   const failed = results.find((r): r is PromiseRejectedResult => r.status === 'rejected')

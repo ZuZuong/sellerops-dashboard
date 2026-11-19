@@ -1,12 +1,15 @@
 import type { Database, Tables } from '@/shared/types/database.types'
 
+/**
+ * Sản phẩm như UI dùng: `category_id` + tên danh mục đã làm phẳng (`category`) từ quan hệ
+ * `categories`. Sản phẩm chưa có danh mục (`category_id = null`) không đăng bán được.
+ */
 export type Product = Pick<
   Tables<'products'>,
   | 'id'
   | 'sku'
   | 'name'
-  | 'category'
-  | 'category_missing'
+  | 'category_id'
   | 'price'
   | 'cost_price'
   | 'unit'
@@ -18,7 +21,7 @@ export type Product = Pick<
   | 'hero_image_path'
   | 'image_paths'
   | 'created_at'
->
+> & { category: string | null }
 
 export interface ProductPage {
   items: Product[]
@@ -46,8 +49,8 @@ export interface ProductImportPage {
 
 export type ImportedProductRow = Pick<
   Tables<'products'>,
-  'id' | 'sku' | 'name' | 'category' | 'unit' | 'cost_price' | 'price' | 'stock' | 'is_active'
->
+  'id' | 'sku' | 'name' | 'unit' | 'cost_price' | 'price' | 'stock' | 'is_active'
+> & { category: string | null }
 
 export type ProductInsight =
   Database['public']['Functions']['get_product_insight']['Returns'][number]
@@ -71,6 +74,3 @@ export interface TrashedProductPage {
   items: TrashedProduct[]
   total: number
 }
-
-export type ProductCategoryOverview =
-  Database['public']['Functions']['get_product_category_overview']['Returns'][number]

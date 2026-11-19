@@ -2,8 +2,8 @@ import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Notifications, notifications } from '@mantine/notifications'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { testCategoryOverview } from '../test/fixtures'
-import { renderWithProviders } from '@/test/render'
+import { categoryIdOf, testCategoryOverview } from '../test/fixtures'
+import { renderWithProviders, TEST_SELLER_ID } from '@/test/render'
 import {
   createProduct,
   fetchProducts,
@@ -26,8 +26,8 @@ vi.mock('../api/products.api', () => ({
   setProductActive: vi.fn(),
 }))
 
-vi.mock('../api/productCategories.api', () => ({
-  fetchProductCategories: vi.fn(() => Promise.resolve(testCategoryOverview())),
+vi.mock('@/features/categories/api/categories.api', () => ({
+  fetchCategories: vi.fn(() => Promise.resolve(testCategoryOverview())),
 }))
 
 vi.mock('../api/productTrash.api', () => ({
@@ -48,8 +48,8 @@ const makeProduct = (overrides: Partial<Product> = {}): Product => ({
   id: 'p1',
   sku: 'AT-001',
   name: 'Áo thun basic',
+  category_id: categoryIdOf('Áo thun'),
   category: 'Áo thun',
-  category_missing: false,
   unit: 'Cái',
   cost_price: 90_000,
   price: 150_000,
@@ -74,7 +74,7 @@ beforeEach(() => {
 describe('ProductsView', () => {
   it('hiện skeleton khi đang tải', () => {
     api.fetchProducts.mockReturnValue(new Promise(() => {}))
-    renderWithProviders(<ProductsView />, { route: '/products' })
+    renderWithProviders(<ProductsView />, { route: '/seller/products' })
     expect(screen.getAllByTestId('product-row-skeleton').length).toBeGreaterThan(0)
   })
 
@@ -95,7 +95,7 @@ describe('ProductsView', () => {
         23,
       ),
     )
-    renderWithProviders(<ProductsView />, { route: '/products' })
+    renderWithProviders(<ProductsView />, { route: '/seller/products' })
 
     const row = (await screen.findByText('Quần jean slim')).closest('tr')
     // Danh sách sản phẩm hiện giá vốn thay cho tồn kho (tồn kho xem ở trang Kho hàng).
@@ -110,11 +110,12 @@ describe('ProductsView', () => {
   it('đọc filter từ URL và gửi lên API', async () => {
     api.fetchProducts.mockResolvedValue(page([makeProduct()]))
     renderWithProviders(<ProductsView />, {
-      route: '/products?q=ao&status=active&sort=price&order=asc&page=2',
+      route: '/seller/products?q=ao&status=active&sort=price&order=asc&page=2',
     })
 
     await screen.findByText('Áo thun basic')
     expect(api.fetchProducts).toHaveBeenCalledWith(
+      TEST_SELLER_ID,
       expect.objectContaining({ q: 'ao', status: 'active', sort: 'price', order: 'asc', page: 2 }),
     )
     expect(screen.getByRole('textbox', { name: 'Tìm theo tên hoặc SKU' })).toHaveValue('ao')
@@ -126,32 +127,35 @@ describe('ProductsView', () => {
 
   it('tìm kiếm được debounce rồi mới gọi API', async () => {
     api.fetchProducts.mockResolvedValue(page([makeProduct()]))
-    renderWithProviders(<ProductsView />, { route: '/products' })
+    renderWithProviders(<ProductsView />, { route: '/seller/products' })
     await screen.findByText('Áo thun basic')
 
     await userEvent.type(screen.getByRole('textbox', { name: 'Tìm theo tên hoặc SKU' }), 'quần')
     // Gõ liên tục 4 ký tự nhưng chỉ phát sinh 1 request cho từ khóa cuối cùng.
     await waitFor(() =>
-      expect(api.fetchProducts).toHaveBeenLastCalledWith(expect.objectContaining({ q: 'quần' })),
+      expect(api.fetchProducts).toHaveBeenLastCalledWith(
+        TEST_SELLER_ID,
+        expect.objectContaining({ q: 'quần' }),
+      ),
     )
-    const queries = api.fetchProducts.mock.calls.map(([filters]) => filters.q)
+    const queries = api.fetchProducts.mock.calls.map(([, filters]) => filters.q)
     expect(queries).toEqual(['', 'quần'])
   })
 
   it('empty state khi chưa có sản phẩm và khi lọc không ra kết quả', async () => {
     api.fetchProducts.mockResolvedValue(page([]))
-    const first = renderWithProviders(<ProductsView />, { route: '/products' })
+    const first = renderWithProviders(<ProductsView />, { route: '/seller/products' })
     expect(await screen.findByText('Chưa có sản phẩm nào')).toBeInTheDocument()
     first.unmount()
 
-    renderWithProviders(<ProductsView />, { route: '/products?status=inactive' })
+    renderWithProviders(<ProductsView />, { route: '/seller/products?status=inactive' })
     expect(await screen.findByText('Không tìm thấy sản phẩm phù hợp')).toBeInTheDocument()
   })
 
   it('error state có nút thử lại', async () => {
     api.fetchProducts.mockRejectedValueOnce(new Error('boom'))
     api.fetchProducts.mockResolvedValueOnce(page([makeProduct()]))
-    renderWithProviders(<ProductsView />, { route: '/products' })
+    renderWithProviders(<ProductsView />, { route: '/seller/products' })
 
     await userEvent.click(await screen.findByRole('button', { name: 'Thử lại' }))
     expect(await screen.findByText('Áo thun basic')).toBeInTheDocument()
@@ -166,7 +170,7 @@ describe('ProductsView', () => {
         <Notifications />
         <ProductsView />
       </>,
-      { route: '/products' },
+      { route: '/seller/products' },
     )
 
     await userEvent.click(await screen.findByRole('button', { name: 'Thao tác cho Áo thun basic' }))
@@ -196,7 +200,7 @@ describe('ProductsView', () => {
         <Notifications />
         <ProductsView />
       </>,
-      { route: '/products' },
+      { route: '/seller/products' },
     )
 
     await userEvent.click(await screen.findByRole('checkbox', { name: 'Chọn Áo thun basic' }))
@@ -220,35 +224,36 @@ describe('ProductsView', () => {
     )
   })
 
-  it('danh mục đã bị xóa: icon đỏ, không cho đăng bán, bấm icon mở form sửa kèm cảnh báo', async () => {
+  it('chưa có danh mục: icon đỏ, không cho đăng bán, bấm icon mở form sửa kèm cảnh báo', async () => {
     api.fetchProducts.mockResolvedValue(
-      page([makeProduct({ category: 'Áo len', category_missing: true, is_active: false })]),
+      page([makeProduct({ category_id: null, category: null, is_active: false })]),
     )
-    renderWithProviders(<ProductsView />, { route: '/products' })
+    renderWithProviders(<ProductsView />, { route: '/seller/products' })
 
     const warning = await screen.findByRole('button', {
-      name: 'Danh mục của Áo thun basic đã bị xóa — cập nhật lại',
+      name: 'Áo thun basic chưa có danh mục — chọn danh mục',
     })
     await userEvent.click(screen.getByRole('button', { name: 'Thao tác cho Áo thun basic' }))
     expect(
-      await screen.findByRole('menuitem', { name: 'Đăng bán (cần chọn lại danh mục)' }),
+      await screen.findByRole('menuitem', { name: 'Đăng bán (cần chọn danh mục)' }),
     ).toBeDisabled()
     await userEvent.keyboard('{Escape}')
 
     await userEvent.click(warning)
     const dialog = await screen.findByRole('dialog', { name: 'Sửa sản phẩm' })
-    expect(dialog).toHaveTextContent('Danh mục của sản phẩm này đã bị xóa')
+    expect(dialog).toHaveTextContent('Sản phẩm chưa có danh mục')
     expect(within(dialog).getByRole('combobox', { name: /Danh mục/ })).toHaveValue('')
   })
 
-  it('lọc "Cần cập nhật danh mục"', async () => {
+  it('lọc "Chưa có danh mục"', async () => {
     api.fetchProducts.mockResolvedValue(page([makeProduct()]))
-    renderWithProviders(<ProductsView />, { route: '/products' })
+    renderWithProviders(<ProductsView />, { route: '/seller/products' })
 
     await userEvent.click(await screen.findByRole('combobox', { name: 'Trạng thái bán' }))
-    await userEvent.click(await screen.findByRole('option', { name: 'Cần cập nhật danh mục' }))
+    await userEvent.click(await screen.findByRole('option', { name: 'Chưa có danh mục' }))
     await waitFor(() =>
       expect(api.fetchProducts).toHaveBeenLastCalledWith(
+        TEST_SELLER_ID,
         expect.objectContaining({ status: 'needs_category' }),
       ),
     )
@@ -258,7 +263,7 @@ describe('ProductsView', () => {
     api.fetchProducts.mockResolvedValue(
       page([makeProduct(), makeProduct({ id: 'p2', name: 'Quần jean' })]),
     )
-    renderWithProviders(<ProductsView />, { route: '/products' })
+    renderWithProviders(<ProductsView />, { route: '/seller/products' })
 
     await userEvent.click(
       await screen.findByRole('checkbox', { name: 'Chọn tất cả sản phẩm trên trang' }),
@@ -269,13 +274,14 @@ describe('ProductsView', () => {
 
   it('ô Sắp xếp: chọn "Giá vốn thấp → cao" ghi sort lên URL và tải lại', async () => {
     api.fetchProducts.mockResolvedValue(page([makeProduct()]))
-    renderWithProviders(<ProductsView />, { route: '/products' })
+    renderWithProviders(<ProductsView />, { route: '/seller/products' })
 
     await userEvent.click(await screen.findByRole('combobox', { name: 'Sắp xếp' }))
     await userEvent.click(await screen.findByRole('option', { name: 'Giá vốn thấp → cao' }))
 
     await waitFor(() =>
       expect(api.fetchProducts).toHaveBeenLastCalledWith(
+        TEST_SELLER_ID,
         expect.objectContaining({ sort: 'cost_price', order: 'asc', page: 1 }),
       ),
     )
@@ -286,7 +292,7 @@ describe('ProductsView', () => {
       page([makeProduct(), makeProduct({ id: 'p2', name: 'Quần cũ', is_active: false })]),
     )
     api.setProductActive.mockResolvedValue()
-    renderWithProviders(<ProductsView />, { route: '/products' })
+    renderWithProviders(<ProductsView />, { route: '/seller/products' })
 
     await userEvent.click(await screen.findByRole('button', { name: 'Thao tác cho Quần cũ' }))
     await userEvent.click(await screen.findByRole('menuitem', { name: 'Đăng bán' }))
@@ -310,7 +316,7 @@ describe('ProductsView', () => {
         rejectUpdate = reject
       }),
     )
-    renderWithProviders(<ProductsView />, { route: '/products' })
+    renderWithProviders(<ProductsView />, { route: '/seller/products' })
 
     await userEvent.click(
       await screen.findByRole('button', { name: 'Sửa nhanh giá của Áo thun basic' }),
@@ -338,7 +344,7 @@ describe('ProductsView', () => {
         <Notifications />
         <ProductsView />
       </>,
-      { route: '/products' },
+      { route: '/seller/products' },
     )
 
     await userEvent.click(
@@ -358,7 +364,7 @@ describe('ProductsView', () => {
     api.fetchProducts.mockResolvedValue(page([makeProduct()]))
     // Giữ request chưa xong để kiểm tra bảng cập nhật ngay (optimistic).
     api.updateProductCost.mockReturnValue(new Promise(() => {}))
-    renderWithProviders(<ProductsView />, { route: '/products' })
+    renderWithProviders(<ProductsView />, { route: '/seller/products' })
 
     await screen.findByText('Áo thun basic')
     const headers = screen.getAllByRole('columnheader').map((th) => th.textContent ?? '')
@@ -431,9 +437,10 @@ describe('ProductForm', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Đăng sản phẩm' }))
 
     await waitFor(() => expect(api.createProduct).toHaveBeenCalledTimes(1))
-    expect(api.createProduct.mock.calls[0]?.[0]).toEqual({
+    expect(api.createProduct.mock.calls[0]?.[0]).toBe(TEST_SELLER_ID)
+    expect(api.createProduct.mock.calls[0]?.[1]).toEqual({
       name: 'Áo polo',
-      category: 'Áo polo',
+      category_id: categoryIdOf('Áo polo'),
       unit: 'Cái',
       cost_price: 160_000,
       price: 250_000,
@@ -443,7 +450,7 @@ describe('ProductForm', () => {
       is_active: true,
     })
     // Không có ảnh → media rỗng
-    expect(api.createProduct.mock.calls[0]?.[1]).toEqual({ hero: null, gallery: [] })
+    expect(api.createProduct.mock.calls[0]?.[2]).toEqual({ hero: null, gallery: [] })
     await waitFor(() => expect(onDone).toHaveBeenCalled())
   })
 
@@ -455,7 +462,7 @@ describe('ProductForm', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Thêm sản phẩm' }))
 
     await waitFor(() => expect(api.createProduct).toHaveBeenCalledTimes(1))
-    expect(api.createProduct.mock.calls[0]?.[0]).toMatchObject({ is_active: false })
+    expect(api.createProduct.mock.calls[0]?.[1]).toMatchObject({ is_active: false })
   })
 
   it('không cho số 0 đứng đầu ô giá', async () => {
@@ -479,8 +486,9 @@ describe('ProductForm', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Lưu thay đổi' }))
     await waitFor(() =>
       expect(api.updateProduct).toHaveBeenCalledWith(
+        TEST_SELLER_ID,
         product,
-        expect.objectContaining({ category: 'Áo thun', is_active: false }),
+        expect.objectContaining({ category_id: categoryIdOf('Áo thun'), is_active: false }),
         { hero: null, gallery: [] },
       ),
     )

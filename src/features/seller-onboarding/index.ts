@@ -1,0 +1,5 @@
+export { SellerGateModal } from './components/SellerGateModal'
+export { SellerStatusGuard } from './components/SellerStatusGuard'
+export { resolveSellerGate, type SellerGate } from './domain/sellerGate'
+export { useSellerGate } from './hooks/useSellerGate'
+export { TERMS_VERSION } from './terms'

@@ -196,13 +196,13 @@ function ProductRow({
         </Group>
       </Table.Td>
       <Table.Td>
-        {product.category_missing ? (
+        {product.category_id === null ? (
           <Group gap={6} wrap="nowrap">
-            <Text size="sm" c="dimmed" td="line-through">
-              {product.category ?? 'Chưa có'}
+            <Text size="sm" c="dimmed">
+              Chưa có
             </Text>
             <Tooltip
-              label="Danh mục của sản phẩm này đã bị xóa — cần cập nhật lại"
+              label="Sản phẩm chưa có danh mục — chọn danh mục để đăng bán"
               events={{ hover: true, focus: true, touch: true }}
               multiline
               w={220}
@@ -211,7 +211,7 @@ function ProductRow({
                 variant="subtle"
                 color="red"
                 size="sm"
-                aria-label={`Danh mục của ${product.name} đã bị xóa — cập nhật lại`}
+                aria-label={`${product.name} chưa có danh mục — chọn danh mục`}
                 onClick={() => onEdit(product)}
               >
                 <IconAlertCircleFilled size={18} />
@@ -288,13 +288,13 @@ function ProductRow({
                   product.is_active ? <IconPlayerPause size={16} /> : <IconPlayerPlay size={16} />
                 }
                 onClick={() => onToggleActive(product)}
-                // Danh mục đã bị xóa: phải chọn lại danh mục trước khi đăng bán.
-                disabled={product.category_missing}
+                // Chưa có danh mục: DB không cho đăng bán, phải chọn danh mục trước.
+                disabled={!product.is_active && product.category_id === null}
               >
                 {product.is_active
                   ? 'Ngừng bán'
-                  : product.category_missing
-                    ? 'Đăng bán (cần chọn lại danh mục)'
+                  : product.category_id === null
+                    ? 'Đăng bán (cần chọn danh mục)'
                     : 'Đăng bán'}
               </Menu.Item>
               <Menu.Divider />

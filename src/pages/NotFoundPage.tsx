@@ -8,8 +8,8 @@ export default function NotFoundPage() {
       <Stack align="center" gap="sm" ta="center">
         <Title order={1}>404</Title>
         <Text c="dimmed">Trang bạn tìm không tồn tại hoặc đã bị di chuyển.</Text>
-        <Button component={Link} to={ROUTES.dashboard}>
-          Về trang tổng quan
+        <Button component={Link} to={ROUTES.home}>
+          Về trang chủ
         </Button>
       </Stack>
     </Center>

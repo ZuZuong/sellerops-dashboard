@@ -46,6 +46,7 @@ const TRASH_COLUMNS =
 
 /** Thùng rác, mới xóa trước, phân trang phía server. Dọn mục quá hạn trước khi đọc. */
 export async function fetchProductTrash(
+  sellerId: string,
   page: number,
   pageSize: number,
 ): Promise<TrashedProductPage> {
@@ -54,6 +55,7 @@ export async function fetchProductTrash(
   const { data, error, count } = await supabase
     .from('product_trash')
     .select(TRASH_COLUMNS, { count: 'exact' })
+    .eq('seller_id', sellerId)
     .order('deleted_at', { ascending: false })
     .order('id', { ascending: true })
     .range(from, from + pageSize - 1)
@@ -62,11 +64,12 @@ export async function fetchProductTrash(
 }
 
 /** Số sản phẩm trong thùng rác (cho nút trên trang Sản phẩm). */
-export async function countProductTrash(): Promise<number> {
+export async function countProductTrash(sellerId: string): Promise<number> {
   await purgeExpiredTrash()
   const { count, error } = await supabase
     .from('product_trash')
     .select('id', { count: 'exact', head: true })
+    .eq('seller_id', sellerId)
   if (error) throw error
   return count ?? 0
 }

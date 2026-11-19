@@ -9,7 +9,7 @@ function setup(initialPath: string) {
   function Route() {
     return <>{hookChildren}</>
   }
-  const router = createMemoryRouter([{ path: '/products', Component: Route }], {
+  const router = createMemoryRouter([{ path: '/seller/products', Component: Route }], {
     initialEntries: [initialPath],
   })
   const wrapper = ({ children }: { children: ReactNode }) => {
@@ -22,7 +22,7 @@ function setup(initialPath: string) {
 
 describe('useProductFilters', () => {
   it('đổi filter thì quay về trang 1', () => {
-    const { result, search } = setup('/products?page=4')
+    const { result, search } = setup('/seller/products?page=4')
     expect(result.current.filters.page).toBe(4)
 
     act(() => result.current.setFilters({ status: 'active' }))
@@ -31,19 +31,19 @@ describe('useProductFilters', () => {
   })
 
   it('đổi kích thước trang cũng quay về trang 1', () => {
-    const { result } = setup('/products?page=3')
+    const { result } = setup('/seller/products?page=3')
     act(() => result.current.setFilters({ pageSize: 20 }))
     expect(result.current.filters).toMatchObject({ pageSize: 20, page: 1 })
   })
 
   it('setPage chỉ đổi trang, giữ filter', () => {
-    const { result } = setup('/products?q=ao')
+    const { result } = setup('/seller/products?q=ao')
     act(() => result.current.setPage(2))
     expect(result.current.filters).toMatchObject({ q: 'ao', page: 2 })
   })
 
   it('toggleSort: cột mới dùng chiều mặc định, bấm lại thì đảo chiều', () => {
-    const { result } = setup('/products?page=2')
+    const { result } = setup('/seller/products?page=2')
 
     act(() => result.current.toggleSort('name'))
     expect(result.current.filters).toMatchObject({ sort: 'name', order: 'asc', page: 1 })
@@ -56,7 +56,7 @@ describe('useProductFilters', () => {
   })
 
   it('hasActiveFilters chỉ tính điều kiện lọc, không tính sort / trang', () => {
-    const { result } = setup('/products?sort=name&order=asc&page=2')
+    const { result } = setup('/seller/products?sort=name&order=asc&page=2')
     expect(result.current.hasActiveFilters).toBe(false)
 
     act(() => result.current.setFilters({ status: 'active' }))
@@ -65,7 +65,7 @@ describe('useProductFilters', () => {
 
   it('resetFilters xóa điều kiện lọc nhưng giữ sort và kích thước trang', () => {
     const { result, search } = setup(
-      '/products?q=ao&category=%C3%81o&status=inactive&sort=price&order=asc&pageSize=20&page=3',
+      '/seller/products?q=ao&category=%C3%81o&status=inactive&sort=price&order=asc&pageSize=20&page=3',
     )
     act(() => result.current.resetFilters())
     expect(result.current.filters).toEqual({

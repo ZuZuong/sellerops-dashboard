@@ -50,6 +50,74 @@ export type Database = {
         }
         Relationships: []
       }
+      audit_logs: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          id: string
+          metadata: Json
+          target_id: string
+          target_type: string
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          target_id: string
+          target_type: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          target_id?: string
+          target_type?: string
+        }
+        Relationships: []
+      }
+      categories: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          seller_id: string
+          slug: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          seller_id: string
+          slug: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          seller_id?: string
+          slug?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "categories_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "sellers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           address: string | null
@@ -59,8 +127,8 @@ export type Database = {
           name: string
           payment_method: Database["public"]["Enums"]["payment_method"] | null
           phone: string
+          seller_id: string
           updated_at: string
-          user_id: string
         }
         Insert: {
           address?: string | null
@@ -70,8 +138,8 @@ export type Database = {
           name: string
           payment_method?: Database["public"]["Enums"]["payment_method"] | null
           phone: string
+          seller_id: string
           updated_at?: string
-          user_id?: string
         }
         Update: {
           address?: string | null
@@ -81,10 +149,18 @@ export type Database = {
           name?: string
           payment_method?: Database["public"]["Enums"]["payment_method"] | null
           phone?: string
+          seller_id?: string
           updated_at?: string
-          user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "customers_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "sellers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       inventory_movements: {
         Row: {
@@ -96,8 +172,8 @@ export type Database = {
           product_id: string
           reason: string
           receipt_id: string | null
+          seller_id: string
           unit_cost: number | null
-          user_id: string
         }
         Insert: {
           created_at?: string
@@ -108,8 +184,8 @@ export type Database = {
           product_id: string
           reason: string
           receipt_id?: string | null
+          seller_id: string
           unit_cost?: number | null
-          user_id: string
         }
         Update: {
           created_at?: string
@@ -120,8 +196,8 @@ export type Database = {
           product_id?: string
           reason?: string
           receipt_id?: string | null
+          seller_id?: string
           unit_cost?: number | null
-          user_id?: string
         }
         Relationships: [
           {
@@ -145,22 +221,37 @@ export type Database = {
             referencedRelation: "purchase_receipts"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "inventory_movements_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "sellers"
+            referencedColumns: ["id"]
+          },
         ]
       }
       order_code_counters: {
         Row: {
           last_value: number
-          user_id: string
+          seller_id: string
         }
         Insert: {
           last_value?: number
-          user_id: string
+          seller_id: string
         }
         Update: {
           last_value?: number
-          user_id?: string
+          seller_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "order_code_counters_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: true
+            referencedRelation: "sellers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       order_items: {
         Row: {
@@ -209,22 +300,22 @@ export type Database = {
           created_at: string
           id: string
           order_id: string
+          seller_id: string
           status: Database["public"]["Enums"]["order_status"]
-          user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
           order_id: string
+          seller_id: string
           status: Database["public"]["Enums"]["order_status"]
-          user_id: string
         }
         Update: {
           created_at?: string
           id?: string
           order_id?: string
+          seller_id?: string
           status?: Database["public"]["Enums"]["order_status"]
-          user_id?: string
         }
         Relationships: [
           {
@@ -232,6 +323,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_status_events_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "sellers"
             referencedColumns: ["id"]
           },
         ]
@@ -244,10 +342,10 @@ export type Database = {
           customer_phone: string | null
           id: string
           payment_method: Database["public"]["Enums"]["payment_method"] | null
+          seller_id: string
           shipping_address: string | null
           status: Database["public"]["Enums"]["order_status"]
           total: number
-          user_id: string
         }
         Insert: {
           code: string
@@ -256,10 +354,10 @@ export type Database = {
           customer_phone?: string | null
           id?: string
           payment_method?: Database["public"]["Enums"]["payment_method"] | null
+          seller_id: string
           shipping_address?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           total?: number
-          user_id?: string
         }
         Update: {
           code?: string
@@ -268,33 +366,20 @@ export type Database = {
           customer_phone?: string | null
           id?: string
           payment_method?: Database["public"]["Enums"]["payment_method"] | null
+          seller_id?: string
           shipping_address?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           total?: number
-          user_id?: string
         }
-        Relationships: []
-      }
-      product_categories: {
-        Row: {
-          created_at: string
-          id: string
-          name: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          name: string
-          user_id?: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          name?: string
-          user_id?: string
-        }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "orders_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "sellers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       product_imports: {
         Row: {
@@ -307,8 +392,8 @@ export type Database = {
           published: boolean
           published_count: number
           row_count: number
+          seller_id: string
           sheet_name: string | null
-          user_id: string
         }
         Insert: {
           created_at?: string
@@ -320,8 +405,8 @@ export type Database = {
           published: boolean
           published_count?: number
           row_count: number
+          seller_id: string
           sheet_name?: string | null
-          user_id?: string
         }
         Update: {
           created_at?: string
@@ -333,40 +418,64 @@ export type Database = {
           published?: boolean
           published_count?: number
           row_count?: number
+          seller_id?: string
           sheet_name?: string | null
-          user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "product_imports_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "sellers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       product_sku_counters: {
         Row: {
           last_value: number
-          user_id: string
+          seller_id: string
         }
         Insert: {
           last_value?: number
-          user_id: string
+          seller_id: string
         }
         Update: {
           last_value?: number
-          user_id?: string
+          seller_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "product_sku_counters_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: true
+            referencedRelation: "sellers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       product_sku_free_numbers: {
         Row: {
-          user_id: string
+          seller_id: string
           value: number
         }
         Insert: {
-          user_id: string
+          seller_id: string
           value: number
         }
         Update: {
-          user_id?: string
+          seller_id?: string
           value?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "product_sku_free_numbers_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "sellers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       product_trash: {
         Row: {
@@ -381,10 +490,10 @@ export type Database = {
           price: number
           product: Json
           purge_at: string
+          seller_id: string
           sku: string
           stock: number
           unit: string
-          user_id: string
         }
         Insert: {
           category?: string | null
@@ -398,10 +507,10 @@ export type Database = {
           price: number
           product: Json
           purge_at?: string
+          seller_id: string
           sku: string
           stock: number
           unit: string
-          user_id: string
         }
         Update: {
           category?: string | null
@@ -415,17 +524,24 @@ export type Database = {
           price?: number
           product?: Json
           purge_at?: string
+          seller_id?: string
           sku?: string
           stock?: number
           unit?: string
-          user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "product_trash_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "sellers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       products: {
         Row: {
-          category: string | null
-          category_missing: boolean
+          category_id: string | null
           cost_price: number
           created_at: string
           description: string | null
@@ -438,14 +554,13 @@ export type Database = {
           low_stock_threshold: number
           name: string
           price: number
+          seller_id: string
           sku: string
           stock: number
           unit: string
-          user_id: string
         }
         Insert: {
-          category?: string | null
-          category_missing?: boolean
+          category_id?: string | null
           cost_price?: number
           created_at?: string
           description?: string | null
@@ -458,14 +573,13 @@ export type Database = {
           low_stock_threshold?: number
           name: string
           price: number
+          seller_id?: string
           sku?: string
           stock?: number
           unit?: string
-          user_id?: string
         }
         Update: {
-          category?: string | null
-          category_missing?: boolean
+          category_id?: string | null
           cost_price?: number
           created_at?: string
           description?: string | null
@@ -478,12 +592,19 @@ export type Database = {
           low_stock_threshold?: number
           name?: string
           price?: number
+          seller_id?: string
           sku?: string
           stock?: number
           unit?: string
-          user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "products_category_same_seller_fkey"
+            columns: ["seller_id", "category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["seller_id", "id"]
+          },
           {
             foreignKeyName: "products_import_id_fkey"
             columns: ["import_id"]
@@ -491,22 +612,70 @@ export type Database = {
             referencedRelation: "product_imports"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "products_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "sellers"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          full_name: string | null
+          id: string
+          is_locked: boolean
+          locked_at: string | null
+          locked_reason: string | null
+          phone: string | null
+          role: Database["public"]["Enums"]["user_role"]
+        }
+        Insert: {
+          created_at?: string
+          full_name?: string | null
+          id: string
+          is_locked?: boolean
+          locked_at?: string | null
+          locked_reason?: string | null
+          phone?: string | null
+          role?: Database["public"]["Enums"]["user_role"]
+        }
+        Update: {
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          is_locked?: boolean
+          locked_at?: string | null
+          locked_reason?: string | null
+          phone?: string | null
+          role?: Database["public"]["Enums"]["user_role"]
+        }
+        Relationships: []
       }
       purchase_receipt_counters: {
         Row: {
           last_value: number
-          user_id: string
+          seller_id: string
         }
         Insert: {
           last_value?: number
-          user_id: string
+          seller_id: string
         }
         Update: {
           last_value?: number
-          user_id?: string
+          seller_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "purchase_receipt_counters_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: true
+            referencedRelation: "sellers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       purchase_receipt_items: {
         Row: {
@@ -569,12 +738,12 @@ export type Database = {
           note: string | null
           posted_at: string | null
           received_date: string
+          seller_id: string
           status: Database["public"]["Enums"]["receipt_status"]
           supplier_name: string
           supplier_phone: string | null
           total_amount: number
           updated_at: string
-          user_id: string
         }
         Insert: {
           code: string
@@ -585,12 +754,12 @@ export type Database = {
           note?: string | null
           posted_at?: string | null
           received_date: string
+          seller_id: string
           status?: Database["public"]["Enums"]["receipt_status"]
           supplier_name: string
           supplier_phone?: string | null
           total_amount?: number
           updated_at?: string
-          user_id?: string
         }
         Update: {
           code?: string
@@ -601,12 +770,142 @@ export type Database = {
           note?: string | null
           posted_at?: string | null
           received_date?: string
+          seller_id?: string
           status?: Database["public"]["Enums"]["receipt_status"]
           supplier_name?: string
           supplier_phone?: string | null
           total_amount?: number
           updated_at?: string
-          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_receipts_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "sellers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      seller_documents: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_size: number
+          id: string
+          kind: Database["public"]["Enums"]["seller_document_kind"]
+          mime_type: string
+          seller_id: string
+          storage_path: string
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_size: number
+          id?: string
+          kind: Database["public"]["Enums"]["seller_document_kind"]
+          mime_type: string
+          seller_id: string
+          storage_path: string
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_size?: number
+          id?: string
+          kind?: Database["public"]["Enums"]["seller_document_kind"]
+          mime_type?: string
+          seller_id?: string
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seller_documents_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "sellers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sellers: {
+        Row: {
+          address: string | null
+          business_name: string | null
+          business_type: Database["public"]["Enums"]["business_type"] | null
+          contact_email: string | null
+          created_at: string
+          current_step: number
+          id: string
+          license_number: string | null
+          main_category: string | null
+          owner_id: string
+          rejection_reason: string | null
+          representative_name: string | null
+          representative_phone: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          shop_name: string | null
+          slug: string | null
+          status: Database["public"]["Enums"]["seller_status"]
+          submitted_at: string | null
+          suspended_reason: string | null
+          tax_code: string | null
+          terms_accepted_at: string | null
+          terms_version: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          business_name?: string | null
+          business_type?: Database["public"]["Enums"]["business_type"] | null
+          contact_email?: string | null
+          created_at?: string
+          current_step?: number
+          id?: string
+          license_number?: string | null
+          main_category?: string | null
+          owner_id: string
+          rejection_reason?: string | null
+          representative_name?: string | null
+          representative_phone?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          shop_name?: string | null
+          slug?: string | null
+          status?: Database["public"]["Enums"]["seller_status"]
+          submitted_at?: string | null
+          suspended_reason?: string | null
+          tax_code?: string | null
+          terms_accepted_at?: string | null
+          terms_version?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          business_name?: string | null
+          business_type?: Database["public"]["Enums"]["business_type"] | null
+          contact_email?: string | null
+          created_at?: string
+          current_step?: number
+          id?: string
+          license_number?: string | null
+          main_category?: string | null
+          owner_id?: string
+          rejection_reason?: string | null
+          representative_name?: string | null
+          representative_phone?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          shop_name?: string | null
+          slug?: string | null
+          status?: Database["public"]["Enums"]["seller_status"]
+          submitted_at?: string | null
+          suspended_reason?: string | null
+          tax_code?: string | null
+          terms_accepted_at?: string | null
+          terms_version?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -619,8 +918,53 @@ export type Database = {
         Args: { p_delta: number; p_note?: string; p_product_id: string }
         Returns: number
       }
+      admin_list_accounts: {
+        Args: {
+          p_locked?: boolean
+          p_page?: number
+          p_page_size?: number
+          p_q?: string
+          p_role?: Database["public"]["Enums"]["user_role"]
+          p_seller_status?: Database["public"]["Enums"]["seller_status"]
+        }
+        Returns: {
+          created_at: string
+          email: string
+          email_confirmed: boolean
+          full_name: string
+          id: string
+          is_locked: boolean
+          last_sign_in_at: string
+          locked_reason: string
+          phone: string
+          role: Database["public"]["Enums"]["user_role"]
+          seller_id: string
+          seller_status: Database["public"]["Enums"]["seller_status"]
+          shop_name: string
+          total_count: number
+        }[]
+      }
+      admin_platform_stats: {
+        Args: { p_days?: number }
+        Returns: {
+          approved_count: number
+          draft_count: number
+          locked_accounts: number
+          new_accounts: number
+          pending_count: number
+          period_orders: number
+          period_revenue: number
+          rejected_count: number
+          suspended_count: number
+          total_accounts: number
+          total_orders: number
+          total_revenue: number
+        }[]
+      }
       cancel_order: { Args: { p_order_id: string }; Returns: undefined }
+      clean_category_name: { Args: { p_name: string }; Returns: string }
       confirm_order: { Args: { p_order_id: string }; Returns: undefined }
+      create_category: { Args: { p_name: string }; Returns: string }
       create_order: {
         Args: {
           p_customer_name: string
@@ -632,13 +976,20 @@ export type Database = {
         }
         Returns: string
       }
-      create_product_category: { Args: { p_name: string }; Returns: string }
+      current_approved_seller_id: { Args: never; Returns: string }
+      current_seller_id: { Args: never; Returns: string }
+      current_seller_status: {
+        Args: never
+        Returns: Database["public"]["Enums"]["seller_status"]
+      }
       dashboard_range_start: {
         Args: { p_days: number; p_tz: string }
         Returns: string
       }
-      delete_product: { Args: { p_product_id: string }; Returns: undefined }
-      delete_product_category: { Args: { p_id: string }; Returns: Json }
+      delete_category: {
+        Args: { p_id: string; p_move_to_id?: string }
+        Returns: Json
+      }
       delete_purchase_receipt: {
         Args: { p_receipt_id: string }
         Returns: undefined
@@ -648,8 +999,21 @@ export type Database = {
         Args: { p_names: string[] }
         Returns: string[]
       }
+      get_category_overview: {
+        Args: { p_seller_id?: string }
+        Returns: {
+          active_count: number
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          product_count: number
+          slug: string
+          sort_order: number
+        }[]
+      }
       get_dashboard_kpis: {
-        Args: { p_days: number; p_tz?: string }
+        Args: { p_days: number; p_seller_id?: string; p_tz?: string }
         Returns: {
           gross_profit: number
           low_stock_count: number
@@ -662,7 +1026,7 @@ export type Database = {
         }[]
       }
       get_inventory_summary: {
-        Args: never
+        Args: { p_seller_id?: string }
         Returns: {
           low_stock_count: number
           out_of_stock_count: number
@@ -670,16 +1034,6 @@ export type Database = {
           retail_value: number
           stock_value: number
           total_units: number
-        }[]
-      }
-      get_product_category_overview: {
-        Args: never
-        Returns: {
-          active_count: number
-          created_at: string
-          id: string
-          name: string
-          product_count: number
         }[]
       }
       get_product_insight: {
@@ -697,7 +1051,12 @@ export type Database = {
         }[]
       }
       get_revenue_by_category: {
-        Args: { p_from: string; p_to: string; p_tz?: string }
+        Args: {
+          p_from: string
+          p_seller_id?: string
+          p_to: string
+          p_tz?: string
+        }
         Returns: {
           category: string
           gross_profit: number
@@ -706,7 +1065,12 @@ export type Database = {
         }[]
       }
       get_revenue_by_day: {
-        Args: { p_from: string; p_to: string; p_tz?: string }
+        Args: {
+          p_from: string
+          p_seller_id?: string
+          p_to: string
+          p_tz?: string
+        }
         Returns: {
           cogs: number
           day: string
@@ -716,7 +1080,12 @@ export type Database = {
         }[]
       }
       get_revenue_report: {
-        Args: { p_from: string; p_to: string; p_tz?: string }
+        Args: {
+          p_from: string
+          p_seller_id?: string
+          p_to: string
+          p_tz?: string
+        }
         Returns: {
           code: string
           cogs: number
@@ -730,7 +1099,7 @@ export type Database = {
         }[]
       }
       get_revenue_series: {
-        Args: { p_days: number; p_tz?: string }
+        Args: { p_days: number; p_seller_id?: string; p_tz?: string }
         Returns: {
           day: string
           order_count: number
@@ -738,7 +1107,12 @@ export type Database = {
         }[]
       }
       get_sales_summary: {
-        Args: { p_from: string; p_to: string; p_tz?: string }
+        Args: {
+          p_from: string
+          p_seller_id?: string
+          p_to: string
+          p_tz?: string
+        }
         Returns: {
           cancelled_count: number
           cogs: number
@@ -755,7 +1129,12 @@ export type Database = {
         }[]
       }
       get_stock_ledger: {
-        Args: { p_from: string; p_to: string; p_tz?: string }
+        Args: {
+          p_from: string
+          p_seller_id?: string
+          p_to: string
+          p_tz?: string
+        }
         Returns: {
           closing_qty: number
           closing_value: number
@@ -772,7 +1151,12 @@ export type Database = {
         }[]
       }
       get_top_products: {
-        Args: { p_days: number; p_limit?: number; p_tz?: string }
+        Args: {
+          p_days: number
+          p_limit?: number
+          p_seller_id?: string
+          p_tz?: string
+        }
         Returns: {
           name: string
           product_id: string
@@ -782,7 +1166,13 @@ export type Database = {
         }[]
       }
       get_top_products_by_range: {
-        Args: { p_from: string; p_limit?: number; p_to: string; p_tz?: string }
+        Args: {
+          p_from: string
+          p_limit?: number
+          p_seller_id?: string
+          p_to: string
+          p_tz?: string
+        }
         Returns: {
           gross_profit: number
           name: string
@@ -796,12 +1186,24 @@ export type Database = {
         Args: { p_file: Json; p_products: Json; p_publish: boolean }
         Returns: string
       }
+      is_admin: { Args: never; Returns: boolean }
+      is_seller_approved: { Args: { p_seller_id: string }; Returns: boolean }
+      lock_editable_application: { Args: never; Returns: string }
       lock_own_order: {
         Args: { p_order_id: string }
         Returns: Database["public"]["Enums"]["order_status"]
       }
-      next_order_code: { Args: { p_user_id: string }; Returns: string }
-      next_receipt_code: { Args: { p_user_id: string }; Returns: string }
+      log_audit: {
+        Args: {
+          p_action: string
+          p_metadata?: Json
+          p_target_id: string
+          p_target_type: string
+        }
+        Returns: undefined
+      }
+      next_order_code: { Args: { p_seller_id: string }; Returns: string }
+      next_receipt_code: { Args: { p_seller_id: string }; Returns: string }
       normalize_product_name: { Args: { p_name: string }; Returns: string }
       order_cogs: { Args: { p_order_id: string }; Returns: number }
       paths_owned_by: {
@@ -814,10 +1216,8 @@ export type Database = {
       }
       purge_expired_trash: { Args: never; Returns: string[] }
       purge_trash: { Args: { p_ids: string[] }; Returns: string[] }
-      rename_product_category: {
-        Args: { p_id: string; p_name: string }
-        Returns: undefined
-      }
+      register_as_seller: { Args: never; Returns: string }
+      reorder_categories: { Args: { p_ids: string[] }; Returns: undefined }
       report_bounds: {
         Args: { p_from: string; p_to: string; p_tz: string }
         Returns: {
@@ -826,21 +1226,63 @@ export type Database = {
           range_start: string
         }[]
       }
+      require_admin: { Args: never; Returns: undefined }
+      require_approved_seller: { Args: never; Returns: string }
+      require_category_editor: { Args: never; Returns: string }
+      require_reason: { Args: { p_reason: string }; Returns: string }
+      resolve_report_seller: { Args: { p_seller_id: string }; Returns: string }
       restore_products: { Args: { p_ids: string[] }; Returns: Json }
+      review_seller: {
+        Args: { p_decision: string; p_reason?: string; p_seller_id: string }
+        Returns: undefined
+      }
       save_purchase_receipt: {
         Args: { p_header: Json; p_items: Json; p_receipt_id: string }
         Returns: string
       }
-      seed_default_product_categories: {
-        Args: { p_user_id: string }
+      save_seller_application: {
+        Args: { p_data: Json; p_step?: number }
+        Returns: undefined
+      }
+      seller_status_can_transition: {
+        Args: {
+          p_from: Database["public"]["Enums"]["seller_status"]
+          p_to: Database["public"]["Enums"]["seller_status"]
+        }
+        Returns: boolean
+      }
+      set_account_locked: {
+        Args: { p_locked: boolean; p_reason?: string; p_user_id: string }
+        Returns: undefined
+      }
+      set_seller_suspended: {
+        Args: { p_reason?: string; p_seller_id: string; p_suspended: boolean }
         Returns: undefined
       }
       ship_order: { Args: { p_order_id: string }; Returns: undefined }
       sku_name_part: { Args: { p_name: string }; Returns: string }
       sku_sequence: { Args: { p_sku: string }; Returns: number }
+      slugify: { Args: { p_text: string }; Returns: string }
+      submit_seller_application: {
+        Args: { p_terms_version: string }
+        Returns: undefined
+      }
       trash_products: { Args: { p_ids: string[] }; Returns: Json }
+      unique_category_slug: {
+        Args: { p_category_id: string; p_name: string; p_seller_id: string }
+        Returns: string
+      }
+      unique_seller_slug: {
+        Args: { p_seller_id: string; p_shop_name: string }
+        Returns: string
+      }
+      update_category: {
+        Args: { p_id: string; p_is_active?: boolean; p_name: string }
+        Returns: undefined
+      }
     }
     Enums: {
+      business_type: "household" | "company" | "individual"
       order_status:
         | "pending"
         | "confirmed"
@@ -849,6 +1291,9 @@ export type Database = {
         | "cancelled"
       payment_method: "cod" | "bank_transfer" | "cash" | "card" | "e_wallet"
       receipt_status: "draft" | "posted"
+      seller_document_kind: "business_license" | "representative_id"
+      seller_status: "draft" | "pending" | "approved" | "rejected" | "suspended"
+      user_role: "admin" | "seller" | "customer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -976,6 +1421,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      business_type: ["household", "company", "individual"],
       order_status: [
         "pending",
         "confirmed",
@@ -985,6 +1431,9 @@ export const Constants = {
       ],
       payment_method: ["cod", "bank_transfer", "cash", "card", "e_wallet"],
       receipt_status: ["draft", "posted"],
+      seller_document_kind: ["business_license", "representative_id"],
+      seller_status: ["draft", "pending", "approved", "rejected", "suspended"],
+      user_role: ["admin", "seller", "customer"],
     },
   },
 } as const

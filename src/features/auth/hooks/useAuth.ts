@@ -6,7 +6,10 @@ export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated'
 interface AuthState {
   status: AuthStatus
   session: Session | null
+  /** Phiên hiện tại đến từ link "đặt lại mật khẩu" trong thư. */
+  recovery: boolean
   setSession: (session: Session | null) => void
+  setRecovery: (recovery: boolean) => void
 }
 
 /**
@@ -16,9 +19,19 @@ interface AuthState {
 export const useAuthStore = create<AuthState>()((set) => ({
   status: 'loading',
   session: null,
-  setSession: (session) => set({ session, status: session ? 'authenticated' : 'unauthenticated' }),
+  recovery: false,
+  setSession: (session) =>
+    set((state) => ({
+      session,
+      status: session ? 'authenticated' : 'unauthenticated',
+      recovery: session ? state.recovery : false,
+    })),
+  setRecovery: (recovery) => set({ recovery }),
 }))
 
 export const useAuthStatus = (): AuthStatus => useAuthStore((s) => s.status)
 
 export const useCurrentUser = (): User | null => useAuthStore((s) => s.session?.user ?? null)
+
+export const useIsRecoverySession = (): boolean =>
+  useAuthStore((s) => s.status === 'authenticated' && s.recovery)

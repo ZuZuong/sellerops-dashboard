@@ -10,6 +10,8 @@ interface ConfirmDialogProps {
   /** Màu nút xác nhận; hành động phá hủy dùng 'red'. */
   color?: string
   loading?: boolean
+  /** Khóa nút xác nhận (vd. chưa chọn đủ thông tin bắt buộc trong hộp thoại). */
+  confirmDisabled?: boolean
   onConfirm: () => void
   onClose: () => void
 }
@@ -26,6 +28,7 @@ export function ConfirmDialog({
   cancelLabel = 'Hủy',
   color = 'red',
   loading = false,
+  confirmDisabled = false,
   onConfirm,
   onClose,
 }: ConfirmDialogProps) {
@@ -44,7 +47,7 @@ export function ConfirmDialog({
         <Button variant="default" onClick={onClose} disabled={loading} data-autofocus>
           {cancelLabel}
         </Button>
-        <Button color={color} onClick={onConfirm} loading={loading}>
+        <Button color={color} onClick={onConfirm} loading={loading} disabled={confirmDisabled}>
           {confirmLabel}
         </Button>
       </Group>

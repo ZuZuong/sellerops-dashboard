@@ -18,11 +18,8 @@ import { useMediaQuery } from '@mantine/hooks'
 import { IconAlertCircle } from '@tabler/icons-react'
 import type { ClipboardEvent } from 'react'
 import { Controller, useForm, useWatch, type Control } from 'react-hook-form'
-import {
-  useCreateProduct,
-  useProductCategoryNames,
-  useUpdateProduct,
-} from '../api/products.queries'
+import { useCategoryOptions } from '@/features/categories'
+import { useCreateProduct, useUpdateProduct } from '../api/products.queries'
 import { formatCurrency, formatPercent } from '@/shared/lib/formatters'
 import { calcMargin } from '@/shared/lib/metrics'
 import { DEFAULT_PRODUCT_UNIT, isProductUnit, PRODUCT_UNITS } from '../constants'
@@ -66,8 +63,7 @@ export function ProductFormModal({ opened, onClose, product }: ProductFormModalP
 function toFormInput(product: Product): Partial<ProductFormInput> {
   return {
     name: product.name,
-    // Danh mục đã bị xóa → buộc chọn lại.
-    category: product.category_missing ? undefined : (product.category ?? undefined),
+    category_id: product.category_id ?? undefined,
     unit: isProductUnit(product.unit) ? product.unit : DEFAULT_PRODUCT_UNIT,
     // Giá vốn bình quân có thể lẻ (vd. 93.333,33) → làm tròn để sửa trên ô số nguyên VND.
     cost_price: Math.round(product.cost_price),
@@ -90,7 +86,7 @@ export function ProductForm({ product, onDone }: ProductFormProps) {
   const updateProduct = useUpdateProduct()
   const isSubmitting = createProduct.isPending || updateProduct.isPending
   const mediaState = useProductMedia(product)
-  const categories = useProductCategoryNames()
+  const categories = useCategoryOptions()
 
   const {
     register,
@@ -147,22 +143,21 @@ export function ProductForm({ product, onDone }: ProductFormProps) {
           {...register('name')}
         />
 
-        {product?.category_missing && (
+        {product && product.category_id === null && (
           <Alert
             color="red"
             variant="light"
             icon={<IconAlertCircle size={18} aria-hidden />}
-            title="Danh mục của sản phẩm này đã bị xóa"
+            title="Sản phẩm chưa có danh mục"
           >
-            Danh mục "{product.category}" không còn tồn tại nên sản phẩm đã chuyển về lưu chưa đăng.
-            Chọn danh mục mới rồi lưu, sau đó có thể đăng bán lại.
+            Chọn danh mục rồi lưu, sau đó có thể đăng bán.
           </Alert>
         )}
 
         <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md" style={{ alignItems: 'start' }}>
           <Controller
             control={control}
-            name="category"
+            name="category_id"
             render={({ field }) => (
               <Select
                 label="Danh mục"
@@ -180,7 +175,7 @@ export function ProductForm({ product, onDone }: ProductFormProps) {
                     : 'Không có danh mục phù hợp'
                 }
                 withAsterisk
-                error={errors.category?.message}
+                error={errors.category_id?.message}
               />
             )}
           />

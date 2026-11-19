@@ -20,7 +20,7 @@ export default function ProductsPage() {
           <>
             <Button
               component={Link}
-              to={ROUTES.productCategories}
+              to={ROUTES.categories}
               variant="subtle"
               leftSection={<IconCategory size={16} aria-hidden />}
             >

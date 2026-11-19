@@ -255,7 +255,7 @@ export function parseProductImport(
         }
         input[spec.field] = parsed
       } else if (spec.field === 'category') {
-        if (isBlank(raw)) continue // Zod báo "Vui lòng chọn danh mục"
+        if (isBlank(raw)) continue // Zod báo "thiếu Danh mục"
         const category = matchCategory(raw, categoryByKey)
         if (!category) {
           rowErrors.push(`Danh mục "${String(raw).trim()}" không có trong danh sách`)
@@ -279,11 +279,16 @@ export function parseProductImport(
 
     const parsed = importProductSchema.safeParse(input)
     if (!parsed.success) {
-      for (const issue of parsed.error.issues) {
+      // Báo lỗi theo thứ tự cột trong file (không theo thứ tự khai báo trong schema).
+      const columnOrder = (field: string) => IMPORT_COLUMNS.findIndex((c) => c.field === field)
+      const issues = [...parsed.error.issues].sort(
+        (a, b) => columnOrder(String(a.path[0])) - columnOrder(String(b.path[0])),
+      )
+      for (const issue of issues) {
         const field = String(issue.path[0])
         if (reported.has(field)) continue
         reported.add(field)
-        // Ô bắt buộc để trống: "Vui lòng chọn danh mục" → "thiếu Danh mục" cho dễ đọc.
+        // Ô bắt buộc để trống: "Vui lòng nhập danh mục" → "thiếu Danh mục" cho dễ đọc.
         const spec = IMPORT_COLUMNS.find((c) => c.field === field)
         const missing = spec && input[field] === undefined
         rowErrors.push(missing ? `thiếu ${spec.label}` : issue.message)

@@ -3,19 +3,21 @@ import { getRedirectPath } from './redirect'
 
 describe('getRedirectPath', () => {
   it('quay lại trang trước đó, giữ cả query string', () => {
-    expect(getRedirectPath({ from: { pathname: '/orders', search: '?status=pending' } })).toBe(
-      '/orders?status=pending',
-    )
+    expect(
+      getRedirectPath({ from: { pathname: '/seller/orders', search: '?status=pending' } }),
+    ).toBe('/seller/orders?status=pending')
   })
 
   it('bỏ qua search nếu không phải chuỗi', () => {
-    expect(getRedirectPath({ from: { pathname: '/products', search: 42 } })).toBe('/products')
+    expect(getRedirectPath({ from: { pathname: '/seller/products', search: 42 } })).toBe(
+      '/seller/products',
+    )
   })
 
   it.each([
     ['state rỗng', null],
     ['không có from', { other: true }],
-    ['from không phải object', { from: '/orders' }],
+    ['from không phải object', { from: '/seller/orders' }],
     ['thiếu pathname', { from: { search: '?a=1' } }],
     ['pathname không phải chuỗi', { from: { pathname: 1 } }],
   ])('về dashboard khi %s', (_label, state) => {

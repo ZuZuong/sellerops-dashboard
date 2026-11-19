@@ -1,6 +1,7 @@
 import {
   IconBox,
   IconBuildingWarehouse,
+  IconCategory,
   IconChartBar,
   IconLayoutDashboard,
   IconShoppingCart,
@@ -18,6 +19,7 @@ export interface NavItem {
 export const NAV_ITEMS: readonly NavItem[] = [
   { label: 'Tổng quan', to: ROUTES.dashboard, icon: IconLayoutDashboard },
   { label: 'Sản phẩm', to: ROUTES.products, icon: IconBox },
+  { label: 'Danh mục', to: ROUTES.categories, icon: IconCategory },
   { label: 'Đơn hàng', to: ROUTES.orders, icon: IconShoppingCart },
   { label: 'Nhập hàng', to: ROUTES.purchases, icon: IconTruckLoading },
   { label: 'Kho hàng', to: ROUTES.inventory, icon: IconBuildingWarehouse },

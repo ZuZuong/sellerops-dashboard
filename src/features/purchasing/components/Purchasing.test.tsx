@@ -2,7 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Route, Routes } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderWithProviders } from '@/test/render'
+import { renderWithProviders, TEST_SELLER_ID } from '@/test/render'
 import {
   deleteReceipt,
   fetchReceipt,
@@ -77,10 +77,10 @@ const makeDetail = (overrides: Partial<ReceiptDetail> = {}): ReceiptDetail => ({
 const renderAt = (url: string) =>
   renderWithProviders(
     <Routes>
-      <Route path="/purchases" element={<PurchasesView />} />
-      <Route path="/purchases/new" element={<NewReceiptView />} />
+      <Route path="/seller/purchases" element={<PurchasesView />} />
+      <Route path="/seller/purchases/new" element={<NewReceiptView />} />
       <Route
-        path="/purchases/:id"
+        path="/seller/purchases/:id"
         element={<ReceiptDetailView receiptId={url.split('/').pop() ?? ''} />}
       />
     </Routes>,
@@ -101,7 +101,7 @@ describe('Tạo phiếu nhập kho', () => {
   const qty = (name: string) => screen.getByRole('textbox', { name: `${name} (dòng 1)` })
 
   it('chọn sản phẩm: điền sẵn giá vốn; thực nhận tự theo SL chứng từ − lỗi; xem trước giá vốn mới', async () => {
-    renderAt('/purchases/new')
+    renderAt('/seller/purchases/new')
     await fillHeaderAndProduct()
 
     expect(qty('Đơn giá nhập')).toHaveValue('90.000 ₫')
@@ -127,7 +127,7 @@ describe('Tạo phiếu nhập kho', () => {
   it('"Lưu nháp" chỉ lưu phiếu (không nhập kho), gửi payload chuẩn', async () => {
     api.saveReceipt.mockResolvedValue(RECEIPT_ID)
     api.fetchReceipt.mockResolvedValue(makeDetail({ status: 'draft', posted_at: null }))
-    renderAt('/purchases/new')
+    renderAt('/seller/purchases/new')
     await fillHeaderAndProduct()
     await userEvent.clear(qty('SL theo chứng từ'))
     await userEvent.type(qty('SL theo chứng từ'), '5')
@@ -155,7 +155,7 @@ describe('Tạo phiếu nhập kho', () => {
     api.saveReceipt.mockResolvedValue(RECEIPT_ID)
     api.postReceipt.mockResolvedValue()
     api.fetchReceipt.mockResolvedValue(makeDetail())
-    renderAt('/purchases/new')
+    renderAt('/seller/purchases/new')
     await fillHeaderAndProduct()
     await userEvent.clear(qty('SL theo chứng từ'))
     await userEvent.type(qty('SL theo chứng từ'), '20')
@@ -174,7 +174,7 @@ describe('Tạo phiếu nhập kho', () => {
   })
 
   it('validate: thiếu nhà cung cấp; thực nhận + lỗi vượt SL chứng từ', async () => {
-    renderAt('/purchases/new')
+    renderAt('/seller/purchases/new')
     await userEvent.click(screen.getByRole('combobox', { name: /Sản phẩm 1/ }))
     await userEvent.click(await screen.findByRole('option', { name: /Áo thun basic/ }))
     await userEvent.clear(qty('SL thực nhận'))
@@ -190,7 +190,7 @@ describe('Tạo phiếu nhập kho', () => {
 describe('Chi tiết phiếu nhập', () => {
   it('phiếu đã nhập kho: hiện chứng từ Mẫu 01-VT, tiền bằng chữ, không có nút sửa / xóa', async () => {
     api.fetchReceipt.mockResolvedValue(makeDetail())
-    renderAt(`/purchases/${RECEIPT_ID}`)
+    renderAt(`/seller/purchases/${RECEIPT_ID}`)
 
     expect(await screen.findByRole('heading', { name: 'PHIẾU NHẬP KHO' })).toBeInTheDocument()
     expect(screen.getByText('Mẫu số 01-VT')).toBeInTheDocument()
@@ -206,7 +206,7 @@ describe('Chi tiết phiếu nhập', () => {
     api.fetchReceipt.mockResolvedValue(makeDetail({ status: 'draft', posted_at: null }))
     api.deleteReceipt.mockResolvedValue()
     api.fetchReceipts.mockResolvedValue({ items: [], total: 0 })
-    renderAt(`/purchases/${RECEIPT_ID}`)
+    renderAt(`/seller/purchases/${RECEIPT_ID}`)
 
     expect(await screen.findByRole('textbox', { name: /Nhà cung cấp/ })).toHaveValue(
       'Công ty May A',
@@ -219,7 +219,7 @@ describe('Chi tiết phiếu nhập', () => {
 
   it('id sai định dạng hoặc không tồn tại → empty state', async () => {
     api.fetchReceipt.mockResolvedValue(null)
-    renderAt(`/purchases/${RECEIPT_ID}`)
+    renderAt(`/seller/purchases/${RECEIPT_ID}`)
     expect(await screen.findByText('Không tìm thấy phiếu nhập')).toBeInTheDocument()
   })
 })
@@ -249,7 +249,7 @@ describe('Danh sách phiếu nhập', () => {
       ],
       total: 2,
     })
-    renderAt('/purchases')
+    renderAt('/seller/purchases')
 
     const link = await screen.findByRole('link', { name: 'PN-000001' })
     expect(link.closest('tr')).toHaveTextContent('1 lỗi')
@@ -259,6 +259,7 @@ describe('Danh sách phiếu nhập', () => {
     await userEvent.click(screen.getByRole('radio', { name: 'Nháp' }))
     await waitFor(() =>
       expect(api.fetchReceipts).toHaveBeenLastCalledWith(
+        TEST_SELLER_ID,
         expect.objectContaining({ status: 'draft', page: 1 }),
       ),
     )
@@ -266,11 +267,11 @@ describe('Danh sách phiếu nhập', () => {
 
   it('chưa có phiếu → empty state có nút tạo phiếu', async () => {
     api.fetchReceipts.mockResolvedValue({ items: [], total: 0 })
-    renderAt('/purchases')
+    renderAt('/seller/purchases')
     expect(await screen.findByText('Chưa có phiếu nhập nào')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Tạo phiếu nhập' })).toHaveAttribute(
       'href',
-      '/purchases/new',
+      '/seller/purchases/new',
     )
   })
 })

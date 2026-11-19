@@ -102,7 +102,7 @@ describe('OrderDetailView', () => {
     expect(await screen.findByText('Không tìm thấy đơn hàng')).toBeInTheDocument()
     first.unmount()
 
-    renderWithProviders(<OrderDetailView orderId="abc" />, { route: '/orders/abc' })
+    renderWithProviders(<OrderDetailView orderId="abc" />, { route: '/seller/orders/abc' })
     expect(screen.getByText('Không tìm thấy đơn hàng')).toBeInTheDocument()
     expect(api.fetchOrderDetail).toHaveBeenCalledTimes(1)
   })

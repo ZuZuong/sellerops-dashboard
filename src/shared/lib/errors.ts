@@ -2,10 +2,24 @@ export const NETWORK_ERROR_MESSAGE = 'Không thể kết nối máy chủ. Vui l
 export const FALLBACK_ERROR_MESSAGE = 'Đã có lỗi xảy ra. Vui lòng thử lại.'
 
 /**
+ * Mã lỗi phân quyền dùng chung cho mọi RPC (`require_approved_seller`, `resolve_report_seller`…).
+ * Feature nào cũng có thể gặp nên map ở đây thay vì lặp lại trong từng feature.
+ */
+const ACCESS_ERROR_MESSAGES: Readonly<Record<string, string>> = {
+  NOT_AUTHENTICATED: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
+  ACCOUNT_LOCKED: 'Tài khoản của bạn đã bị khóa.',
+  SELLER_NOT_FOUND: 'Không tìm thấy shop của tài khoản này.',
+  SELLER_NOT_APPROVED: 'Shop chưa được duyệt hoặc đang bị tạm khóa nên chưa thao tác được.',
+  FORBIDDEN: 'Bạn không có quyền xem dữ liệu này.',
+}
+
+/**
  * Thông báo lỗi chung cho truy vấn dữ liệu. Không lộ chi tiết kỹ thuật (SQL, stack) ra UI;
  * lỗi nghiệp vụ cụ thể (mã RPC) được feature tự map trước khi rơi về đây.
  */
 export function getErrorMessage(error: unknown): string {
+  const access = ACCESS_ERROR_MESSAGES[getDbErrorInfo(error).message ?? '']
+  if (access) return access
   if (error instanceof TypeError) return NETWORK_ERROR_MESSAGE
   if (error instanceof Error && /failed to fetch|network ?error|load failed/i.test(error.message)) {
     return NETWORK_ERROR_MESSAGE

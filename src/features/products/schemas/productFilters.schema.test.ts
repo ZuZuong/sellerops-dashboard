@@ -22,7 +22,7 @@ describe('productFiltersSchema', () => {
     expect(
       productFiltersSchema.parse({
         q: '  áo  ',
-        category: 'Áo',
+        category: 'c0000000-0000-4000-8000-000000000001',
         status: 'inactive',
         sort: 'price',
         order: 'asc',
@@ -31,7 +31,7 @@ describe('productFiltersSchema', () => {
       }),
     ).toEqual({
       q: 'áo',
-      category: 'Áo',
+      category: 'c0000000-0000-4000-8000-000000000001',
       status: 'inactive',
       sort: 'price',
       order: 'asc',

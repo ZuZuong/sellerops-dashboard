@@ -13,7 +13,7 @@ const setup = (url: string) =>
 
 describe('useOrderFilters', () => {
   it('đọc filter từ URL; giá trị sai rơi về mặc định', () => {
-    const { result } = setup('/orders?status=shipping&q=DH-0001&page=3&pageSize=7')
+    const { result } = setup('/seller/orders?status=shipping&q=DH-0001&page=3&pageSize=7')
     expect(result.current.filters).toEqual({
       q: 'DH-0001',
       status: 'shipping',
@@ -24,19 +24,19 @@ describe('useOrderFilters', () => {
     })
     expect(result.current.hasActiveFilters).toBe(true)
 
-    const invalid = setup('/orders?status=lost')
+    const invalid = setup('/seller/orders?status=lost')
     expect(invalid.result.current.filters.status).toBe('all')
     expect(invalid.result.current.hasActiveFilters).toBe(false)
   })
 
   it('đổi trạng thái lọc quay về trang 1', () => {
-    const { result } = setup('/orders?page=4')
+    const { result } = setup('/seller/orders?page=4')
     act(() => result.current.setFilters({ status: 'pending' }))
     expect(result.current.filters).toMatchObject({ status: 'pending', page: 1 })
   })
 
   it('sắp xếp: cột mới giảm dần, bấm lại đảo chiều', () => {
-    const { result } = setup('/orders')
+    const { result } = setup('/seller/orders')
     act(() => result.current.toggleSort('total'))
     expect(result.current.filters).toMatchObject({ sort: 'total', order: 'desc' })
     act(() => result.current.toggleSort('total'))
@@ -44,7 +44,7 @@ describe('useOrderFilters', () => {
   })
 
   it('xóa bộ lọc giữ nguyên sắp xếp', () => {
-    const { result } = setup('/orders?q=lan&status=cancelled&sort=total')
+    const { result } = setup('/seller/orders?q=lan&status=cancelled&sort=total')
     act(() => result.current.resetFilters())
     expect(result.current.filters).toMatchObject({ q: '', status: 'all', sort: 'total' })
     expect(result.current.hasActiveFilters).toBe(false)
