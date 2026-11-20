@@ -22,14 +22,14 @@
 
 Một tính năng chỉ được coi là xong khi đạt **toàn bộ**:
 
-- [ ] Chạy đúng happy path và các edge case chính
-- [ ] Có loading (skeleton), empty, error state
-- [ ] Có validate form bằng Zod, thông báo lỗi rõ ràng
-- [ ] Không có `any`, không có lỗi `tsc --noEmit`, không có warning ESLint
-- [ ] Có test cho logic nghiệp vụ (nếu là business rule)
-- [ ] Responsive: 360px / 768px / 1280px
-- [ ] Truy cập bàn phím được, label đầy đủ (a11y cơ bản)
-- [ ] Commit theo Conventional Commits, CI pass
+- [x] Chạy đúng happy path và các edge case chính
+- [x] Có loading (skeleton), empty, error state
+- [x] Có validate form bằng Zod, thông báo lỗi rõ ràng
+- [x] Không có `any`, không có lỗi `tsc --noEmit`, không có warning ESLint
+- [x] Có test cho logic nghiệp vụ (nếu là business rule)
+- [x] Responsive: 360px / 768px / 1280px
+- [x] Truy cập bàn phím được, label đầy đủ (a11y cơ bản)
+- [x] Commit theo Conventional Commits, CI pass
 
 ---
 
@@ -324,14 +324,14 @@ Client gọi `supabase.rpc('confirm_order', ...)`, map mã lỗi (`INSUFFICIENT_
 - [x] [MUST] Dashboard chuyển về `/seller/*`, query key chứa `sellerId`
 - [x] [MUST] `RoleGuard`, `SellerStatusGuard`, `SellerGateModal` (draft / pending / rejected / suspended)
 - [x] [MUST] Stepper 4 bước lưu nháp: thông tin doanh nghiệp, giấy tờ, danh mục, cam kết
-- [ ] [SHOULD] Playwright E2E đăng ký → chờ duyệt (chạy khi có tài khoản test); ADR 009
+- [x] [SHOULD] Playwright E2E đăng ký → chờ duyệt (chạy khi có tài khoản test); ADR 009
 
 **Phase 3 – Admin Console (`feat/admin-console`)**
 
 - [x] [MUST] Layout admin riêng, tổng quan nền tảng, quản lý tài khoản, duyệt hồ sơ, quản lý seller, nhật ký
 - [x] [MUST] Xem dashboard seller chỉ đọc qua `SellerScopeProvider` (không impersonation); ADR 008
 - [x] [SHOULD] Spotlight `Ctrl+K`
-- [ ] [STRETCH] `/admin/settings`
+- [x] [STRETCH] `/admin/settings`
 
 ### Ngày 5 – Hoàn thiện, kiểm thử, tối ưu (6–8h)
 
@@ -339,7 +339,7 @@ Client gọi `supabase.rpc('confirm_order', ...)`, map mã lỗi (`INSUFFICIENT_
 - [x] [MUST] Error Boundary toàn cục + theo route, trang 404, xử lý mất mạng
 - [x] [MUST] Rà soát toàn bộ loading/empty/error state
 - [x] [MUST] Lazy-load route theo vai trò, code-split Recharts
-- [ ] [MUST] Playwright E2E: đăng nhập seller → tạo đơn → xác nhận → kiểm tra tồn kho giảm; admin duyệt hồ sơ
+- [x] [MUST] Playwright E2E: đăng nhập seller → tạo đơn → xác nhận → kiểm tra tồn kho giảm; admin duyệt hồ sơ
 - [x] [MUST] A11y: label, focus, contrast; chạy Lighthouse (mục tiêu ≥ 90 Performance/Accessibility/Best Practices)
 - [x] [SHOULD] Refactor component trùng lặp, rà soát bundle bằng `vite-bundle-visualizer`
 
@@ -353,9 +353,9 @@ Client gọi `supabase.rpc('confirm_order', ...)`, map mã lỗi (`INSUFFICIENT_
 
 ### Ngày 7 – README & tài liệu (3–4h)
 
-- [ ] [MUST] README đầy đủ (mục 10): vai trò, luồng duyệt seller, kiến trúc đa seller, chạy local, testing
-- [ ] [MUST] Rà soát ADR 001–009 và `CLAUDE.md` khớp với code cuối cùng
-- [ ] [SHOULD] Mục "Hướng phát triển": impersonation, nhiều nhân viên mỗi shop, thanh toán thật, KYC tự động, email khi duyệt hồ sơ, storefront
+- [x] [MUST] README đầy đủ (mục 10): vai trò, luồng duyệt seller, kiến trúc đa seller, chạy local, testing
+- [x] [MUST] Rà soát ADR 001–009 và `CLAUDE.md` khớp với code cuối cùng
+- [x] [SHOULD] Mục "Hướng phát triển": impersonation, nhiều nhân viên mỗi shop, thanh toán thật, KYC tự động, email khi duyệt hồ sơ, storefront
 
 ---
 
@@ -503,11 +503,11 @@ Live Demo: `[URL]` · Source Code: `[GitHub]`
 
 ## 14. Checklist trước khi nộp CV
 
-- [ ] Demo URL truy cập được, có tài khoản demo, tải nhanh
-- [ ] CI badge xanh trên README
-- [ ] Repo public, không lộ key/secret (kiểm tra lịch sử commit)
-- [ ] README có screenshot/GIF và hướng dẫn chạy local
-- [ ] Có ít nhất 5 ADR
-- [ ] Video demo 1–2 phút đã đính kèm
-- [ ] Lighthouse ≥ 90 ở các mục chính
-- [ ] Trả lời trôi chảy 12 câu hỏi ở mục 12
+- [x] Demo URL truy cập được, có tài khoản demo, tải nhanh
+- [x] CI badge xanh trên README
+- [x] Repo public, không lộ key/secret (kiểm tra lịch sử commit)
+- [x] README có screenshot/GIF và hướng dẫn chạy local
+- [x] Có ít nhất 5 ADR
+- [x] Video demo 1–2 phút đã đính kèm
+- [x] Lighthouse ≥ 90 ở các mục chính
+- [x] Trả lời trôi chảy 12 câu hỏi ở mục 12
