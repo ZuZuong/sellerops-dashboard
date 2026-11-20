@@ -17,7 +17,7 @@
     "jsx": "react-jsx",
 
     /* Paths */
-    "paths": { "@/*": ["./src/*"] },
+    "paths": { "@/*": ["./src/*"], "@test/*": ["./testcase/support/*"] },
 
     /* Linting */
     "strict": true,
@@ -28,5 +28,5 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src"]
+  "include": ["src", "testcase"]
 }

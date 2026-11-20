@@ -316,7 +316,7 @@ Client gọi `supabase.rpc('confirm_order', ...)`, map mã lỗi (`INSUFFICIENT_
 - [ ] [MUST] RLS: seller chỉ đọc / ghi shop mình khi `approved`; admin chỉ đọc; khóa tài khoản có hiệu lực ngay
 - [ ] [MUST] RPC onboarding / admin / danh mục; báo cáo nhận `p_seller_id`; mọi hành động admin ghi `audit_logs`
 - [ ] [MUST] State machine `seller_status` ở SQL + TypeScript, test đối chiếu hai nơi
-- [ ] [MUST] Bucket riêng tư `seller-documents`; `supabase/tests/rls_checks.sql`; `docs/admin-setup.md`; ADR 006, 007
+- [ ] [MUST] Bucket riêng tư `seller-documents`; `testcase/db/rls_checks.sql`; `docs/admin-setup.md`; ADR 006, 007
 
 **Phase 2 – Auth & Onboarding (`feat/seller-auth-onboarding`)**
 
