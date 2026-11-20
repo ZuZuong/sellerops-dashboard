@@ -38,7 +38,7 @@ React 19, TypeScript (strict), Vite, Mantine UI, TanStack Query, Zustand, React 
 - Xóa tài khoản: bước 1 đưa vào thùng rác (`profiles.account_status = pending_deletion`, khóa ngay, giữ vô thời hạn, khôi phục được); bước 2 admin "xóa vĩnh viễn" = xóa tài khoản đăng nhập (giải phóng email), **giữ shop + mọi dữ liệu kinh doanh** (`sellers.owner_id = null`, lưu `former_owner_*` dạng chữ). Bằng chứng ở bucket riêng tư `violation-evidence`. Realtime chỉ dùng cho trạng thái tài khoản / shop của chính người dùng (đá ra khi bị khóa / xóa). Email thông báo chỉ qua Edge Function tự dựng nội dung (client không gửi HTML / người nhận). Xem ADR 009, 010.
 - Bảng `customers` = **khách do seller lưu** khi tạo đơn (danh bạ của shop), KHÁC role `customer` (tài khoản người mua).
 - State machine `seller_status` (`draft → pending → approved ⇄ suspended`, `pending → rejected → pending`): SQL `seller_status_can_transition` + `features/sellers/domain/sellerStatus.ts`, test đối chiếu hai nơi.
-- Migration mới: chạy `supabase/tests/rls_checks.sql` trong SQL Editor; Claude Code **không** chạy `db:push`.
+- Migration mới: chạy `testcase/db/rls_checks.sql` trong SQL Editor; Claude Code **không** chạy `db:push`.
 
 ## Business rules
 

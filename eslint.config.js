@@ -36,9 +36,13 @@ export default defineConfig([
     },
   },
   {
-    // Test và tiện ích test không tham gia HMR.
-    files: ['src/test/**/*.{ts,tsx}', '**/*.test.{ts,tsx}'],
-    rules: { 'react-refresh/only-export-components': 'off' },
+    // Test và tiện ích test không tham gia HMR; test được import thẳng vào bên trong feature
+    // (domain / lib / api) vì đó chính là đơn vị cần kiểm thử.
+    files: ['testcase/**/*.{ts,tsx}'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+      'no-restricted-imports': 'off',
+    },
   },
   prettier,
 ])

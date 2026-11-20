@@ -430,7 +430,7 @@ Thông báo tiếng Việt được map trong `features/products/lib/productErro
 - Dùng `getBy` cho phần tử xuất hiện bất đồng bộ → đổi sang `findBy` / `waitFor`.
 - Test phụ thuộc thứ tự / dữ liệu dùng chung giữa test → `mockReset` trong `beforeEach`.
 - Hiệu ứng Mantine (transition) → render với `env="test"` (đã cấu hình trong `renderWithProviders`).
-- API trình duyệt jsdom không có (`matchMedia`, `ResizeObserver`, `URL.createObjectURL`) → stub trong `src/test/setup.ts`.
+- API trình duyệt jsdom không có (`matchMedia`, `ResizeObserver`, `URL.createObjectURL`) → stub trong `testcase/support/setup.ts`.
 - Chạy lặp để xác nhận đã hết chập chờn: `npx vitest run <file> --repeat 5` (hoặc chạy nhiều lần).
 
 ### 13.6 Commit bị từ chối bởi commitlint

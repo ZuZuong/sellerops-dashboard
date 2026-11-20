@@ -49,7 +49,7 @@ where id = (select id from auth.users where email = '<email-admin>');
 ### 1. Chạy migration và kiểm tra quyền
 
 1. Đọc `supabase/migrations/20261126000000_admin_console.sql`, rồi `npm run db:push` và `npm run db:types`.
-2. Chạy `supabase/tests/rls_checks.sql` trong SQL Editor: dòng cuối phải là `ALL RLS CHECKS PASSED` (gồm kiểm tra [12] RPC admin và [13] xóa mềm tài khoản).
+2. Chạy `testcase/db/rls_checks.sql` trong SQL Editor: dòng cuối phải là `ALL RLS CHECKS PASSED` (gồm kiểm tra [12] RPC admin và [13] xóa mềm tài khoản).
 
 ### 2. Realtime
 

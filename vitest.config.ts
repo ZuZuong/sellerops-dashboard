@@ -1,13 +1,19 @@
+import { fileURLToPath } from 'node:url'
 import { defineConfig, mergeConfig } from 'vitest/config'
 import viteConfig from './vite.config.ts'
 
 export default mergeConfig(
   viteConfig,
   defineConfig({
+    resolve: {
+      // Tiện ích test (render, fixtures) nằm ngoài src: testcase/support.
+      alias: { '@test': fileURLToPath(new URL('./testcase/support', import.meta.url)) },
+    },
     test: {
       environment: 'jsdom',
-      include: ['src/**/*.test.{ts,tsx}'],
-      setupFiles: ['./src/test/setup.ts'],
+      // Toàn bộ test nằm trong testcase/ (xem testcase/FLOW-TEST.md).
+      include: ['testcase/**/*.test.{ts,tsx}'],
+      setupFiles: ['./testcase/support/setup.ts'],
       restoreMocks: true,
       // Test tương tác (userEvent.type gõ từng ký tự vào form dài) chạy song song trên CI / máy
       // đang tải nặng có thể vượt 5s mặc định dù chạy riêng chỉ ~2s.
@@ -20,7 +26,7 @@ export default mergeConfig(
       coverage: {
         provider: 'v8',
         include: ['src/**/*.{ts,tsx}'],
-        exclude: ['src/**/*.test.{ts,tsx}', 'src/test/**', 'src/shared/types/**', 'src/main.tsx'],
+        exclude: ['src/shared/types/**', 'src/main.tsx'],
       },
     },
   }),

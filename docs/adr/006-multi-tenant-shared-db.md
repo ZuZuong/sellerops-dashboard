@@ -32,5 +32,5 @@ SellerOps chuyển từ "mỗi tài khoản tự quản lý kho của mình" san
 ## Đánh đổi
 
 - Mỗi truy vấn chịu thêm điều kiện RLS. Đã thêm index `(seller_id, …)` cho mọi bảng và index cho khóa ngoại dùng trong policy qua bảng cha.
-- Sai sót trong một policy hoặc một hàm `security definer` có thể làm lộ dữ liệu giữa các shop. Giảm rủi ro bằng `supabase/tests/rls_checks.sql`, chạy sau mỗi migration.
+- Sai sót trong một policy hoặc một hàm `security definer` có thể làm lộ dữ liệu giữa các shop. Giảm rủi ro bằng `testcase/db/rls_checks.sql`, chạy sau mỗi migration.
 - Không cô lập được tài nguyên giữa các shop (một shop lớn ảnh hưởng hiệu năng chung). Chấp nhận được ở quy mô dự án. Phương án schema hoặc database riêng mỗi shop đắt hơn nhiều về vận hành.
