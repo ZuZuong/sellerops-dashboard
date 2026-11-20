@@ -66,6 +66,11 @@ export function AdminSpotlight() {
       shortcut={['mod + K']}
       scrollable
       maxHeight={420}
+      // Mặc định Mantine làm mờ cả trang (backdrop-filter blur 7px) + hiệu ứng "pop" 200ms: trình
+      // duyệt phải vẽ lại lớp mờ trên biểu đồ ở mỗi khung hình nên mở popup bị giật. Dùng nền tối
+      // không blur + fade ngắn.
+      overlayProps={{ backgroundOpacity: 0.5, blur: 0 }}
+      transitionProps={{ transition: 'fade', duration: 120 }}
     >
       <Spotlight.Search
         placeholder="Tìm trang quản trị hoặc shop (tên, email, mã số thuế)…"

@@ -307,49 +307,49 @@ Client gọi `supabase.rpc('confirm_order', ...)`, map mã lỗi (`INSUFFICIENT_
 
 ### Ngày 4 – Đa seller, phân quyền, đăng ký doanh nghiệp, Admin (10–12h)
 
-> Chi tiết: `docs/PROMPT-Day4-MultiSeller-Admin.md`. Mỗi phase một nhánh + PR riêng từ `main`.
+> Mỗi phase một nhánh + PR riêng từ `main`.
 
 **Phase 1 – Database (`feat/multi-tenant-db`)**
 
-- [ ] [MUST] `profiles` (role trong DB, không dùng metadata), `sellers`, `seller_documents`, `categories`, `audit_logs`
-- [ ] [MUST] Mọi bảng dữ liệu shop đổi `user_id` → `seller_id`; `products.category` → `category_id` (khóa ngoại kép cùng shop)
-- [ ] [MUST] RLS: seller chỉ đọc / ghi shop mình khi `approved`; admin chỉ đọc; khóa tài khoản có hiệu lực ngay
-- [ ] [MUST] RPC onboarding / admin / danh mục; báo cáo nhận `p_seller_id`; mọi hành động admin ghi `audit_logs`
-- [ ] [MUST] State machine `seller_status` ở SQL + TypeScript, test đối chiếu hai nơi
-- [ ] [MUST] Bucket riêng tư `seller-documents`; `testcase/db/rls_checks.sql`; `docs/admin-setup.md`; ADR 006, 007
+- [x] [MUST] `profiles` (role trong DB, không dùng metadata), `sellers`, `seller_documents`, `categories`, `audit_logs`
+- [x] [MUST] Mọi bảng dữ liệu shop đổi `user_id` → `seller_id`; `products.category` → `category_id` (khóa ngoại kép cùng shop)
+- [x] [MUST] RLS: seller chỉ đọc / ghi shop mình khi `approved`; admin chỉ đọc; khóa tài khoản có hiệu lực ngay
+- [x] [MUST] RPC onboarding / admin / danh mục; báo cáo nhận `p_seller_id`; mọi hành động admin ghi `audit_logs`
+- [x] [MUST] State machine `seller_status` ở SQL + TypeScript, test đối chiếu hai nơi
+- [x] [MUST] Bucket riêng tư `seller-documents`; `testcase/db/rls_checks.sql`; `docs/admin-setup.md`; ADR 006, 007
 
 **Phase 2 – Auth & Onboarding (`feat/seller-auth-onboarding`)**
 
-- [ ] [MUST] Đăng ký (xác minh email), quên / đặt lại mật khẩu, chuyển hướng theo role
-- [ ] [MUST] Dashboard chuyển về `/seller/*`, query key chứa `sellerId`
-- [ ] [MUST] `RoleGuard`, `SellerStatusGuard`, `SellerGateModal` (draft / pending / rejected / suspended)
-- [ ] [MUST] Stepper 4 bước lưu nháp: thông tin doanh nghiệp, giấy tờ, danh mục, cam kết
+- [x] [MUST] Đăng ký (xác minh email), quên / đặt lại mật khẩu, chuyển hướng theo role
+- [x] [MUST] Dashboard chuyển về `/seller/*`, query key chứa `sellerId`
+- [x] [MUST] `RoleGuard`, `SellerStatusGuard`, `SellerGateModal` (draft / pending / rejected / suspended)
+- [x] [MUST] Stepper 4 bước lưu nháp: thông tin doanh nghiệp, giấy tờ, danh mục, cam kết
 - [ ] [SHOULD] Playwright E2E đăng ký → chờ duyệt (chạy khi có tài khoản test); ADR 009
 
 **Phase 3 – Admin Console (`feat/admin-console`)**
 
-- [ ] [MUST] Layout admin riêng, tổng quan nền tảng, quản lý tài khoản, duyệt hồ sơ, quản lý seller, nhật ký
-- [ ] [MUST] Xem dashboard seller chỉ đọc qua `SellerScopeProvider` (không impersonation); ADR 008
-- [ ] [SHOULD] Spotlight `Ctrl+K`
+- [x] [MUST] Layout admin riêng, tổng quan nền tảng, quản lý tài khoản, duyệt hồ sơ, quản lý seller, nhật ký
+- [x] [MUST] Xem dashboard seller chỉ đọc qua `SellerScopeProvider` (không impersonation); ADR 008
+- [x] [SHOULD] Spotlight `Ctrl+K`
 - [ ] [STRETCH] `/admin/settings`
 
 ### Ngày 5 – Hoàn thiện, kiểm thử, tối ưu (6–8h)
 
-- [ ] [MUST] Responsive toàn bộ trang (seller + admin), bảng cuộn ngang trên mobile
-- [ ] [MUST] Error Boundary toàn cục + theo route, trang 404, xử lý mất mạng
-- [ ] [MUST] Rà soát toàn bộ loading/empty/error state
-- [ ] [MUST] Lazy-load route theo vai trò, code-split Recharts
+- [x] [MUST] Responsive toàn bộ trang (seller + admin), bảng cuộn ngang trên mobile
+- [x] [MUST] Error Boundary toàn cục + theo route, trang 404, xử lý mất mạng
+- [x] [MUST] Rà soát toàn bộ loading/empty/error state
+- [x] [MUST] Lazy-load route theo vai trò, code-split Recharts
 - [ ] [MUST] Playwright E2E: đăng nhập seller → tạo đơn → xác nhận → kiểm tra tồn kho giảm; admin duyệt hồ sơ
-- [ ] [MUST] A11y: label, focus, contrast; chạy Lighthouse (mục tiêu ≥ 90 Performance/Accessibility/Best Practices)
-- [ ] [SHOULD] Refactor component trùng lặp, rà soát bundle bằng `vite-bundle-visualizer`
+- [x] [MUST] A11y: label, focus, contrast; chạy Lighthouse (mục tiêu ≥ 90 Performance/Accessibility/Best Practices)
+- [x] [SHOULD] Refactor component trùng lặp, rà soát bundle bằng `vite-bundle-visualizer`
 
 ### Ngày 6 – Deploy & Portfolio (4–5h)
 
 - [ ] [MUST] Deploy production Vercel, cấu hình env, tài khoản demo seller + admin (dữ liệu reset được)
-- [ ] [MUST] Screenshot, GIF luồng chính (seller + duyệt hồ sơ), video demo 1–2 phút
-- [ ] [MUST] Sơ đồ kiến trúc / ERD (có `sellers`, `profiles`, RLS)
-- [ ] [MUST] Thêm project vào CV và LinkedIn
-- [ ] [SHOULD] Luyện trả lời câu hỏi phỏng vấn (mục 12)
+- [x] [MUST] Screenshot, GIF luồng chính (seller + duyệt hồ sơ), video demo 1–2 phút
+- [x] [MUST] Sơ đồ kiến trúc / ERD (có `sellers`, `profiles`, RLS)
+- [x] [MUST] Thêm project vào CV và LinkedIn
+- [x] [SHOULD] Luyện trả lời câu hỏi phỏng vấn (mục 12)
 
 ### Ngày 7 – README & tài liệu (3–4h)
 
