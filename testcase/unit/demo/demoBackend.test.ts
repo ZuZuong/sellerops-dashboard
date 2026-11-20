@@ -1,6 +1,12 @@
 import { isAuthError } from '@supabase/supabase-js'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { fetchPlatformStats, fetchSellers, reviewSeller } from '@/features/admin/api/admin.api'
+import {
+  fetchAccounts,
+  fetchDeletions,
+  fetchPlatformStats,
+  fetchSellers,
+  setSellerSuspended,
+} from '@/features/admin/api/admin.api'
 import { fetchSalesSummary } from '@/features/analytics/api/analytics.api'
 import { fetchAccount, signIn, signOut } from '@/features/auth/api/auth.api'
 import { fetchOrderDetail, createOrder, transitionOrder } from '@/features/orders/api/orders.api'
@@ -197,30 +203,71 @@ describe('phân quyền như RLS / RPC', () => {
     await loginAs(SELLER)
     await expect(fetchPlatformStats(30)).rejects.toMatchObject({ message: 'NOT_ADMIN' })
 
-    const db = await readDemoDb()
-    const otherShop = db.sellers.find(
-      (s) => s.owner_id !== SELLER.userId && s.status === 'approved',
-    )
     const range = { from: addDays(todayKey(), -29), to: todayKey() }
-    await expect(fetchSalesSummary(otherShop?.id ?? '', range)).rejects.toMatchObject({
-      message: 'FORBIDDEN',
-    })
+    await expect(
+      fetchSalesSummary('00000000-0000-4000-8000-0000000000ff', range),
+    ).rejects.toMatchObject({ message: 'FORBIDDEN' })
   })
 
-  it('admin duyệt hồ sơ đang chờ → shop approved + ghi audit_logs; duyệt lại → SELLER_NOT_PENDING', async () => {
-    await loginAs(ADMIN)
-    const pending = await fetchSellers({ q: '', status: 'pending', page: 1, pageSize: 20 })
-    const shop = pending.items[0]
-    expect(shop).toBeDefined()
+  it('admin tạm khóa shop → seller không ghi được (SELLER_NOT_APPROVED); mở khóa → ghi lại được, có audit_logs', async () => {
+    const { sellerId, product } = await sellerContext()
+    const order = {
+      customer_name: 'Khách test',
+      customer_phone: null,
+      shipping_address: null,
+      payment_method: 'cod' as const,
+      save_customer: false,
+      items: [{ product_id: product.id, quantity: 1 }],
+    }
 
-    await reviewSeller(shop?.id ?? '', 'approved', '')
-    const db = await readDemoDb()
-    expect(db.sellers.find((s) => s.id === shop?.id)?.status).toBe('approved')
-    expect(
-      db.audit_logs.some((a) => a.action === 'seller.approved' && a.target_id === shop?.id),
-    ).toBe(true)
-    await expect(reviewSeller(shop?.id ?? '', 'approved', '')).rejects.toMatchObject({
-      message: 'SELLER_NOT_PENDING',
+    await loginAs(ADMIN)
+    await setSellerSuspended(sellerId, true, 'Kiểm tra vi phạm')
+    await loginAs(SELLER)
+    await expect(createOrder(order)).rejects.toMatchObject({ message: 'SELLER_NOT_APPROVED' })
+
+    await loginAs(ADMIN)
+    await setSellerSuspended(sellerId, false, '')
+    await loginAs(SELLER)
+    await expect(createOrder(order)).resolves.toEqual(expect.any(String))
+
+    const actions = (await readDemoDb()).audit_logs
+      .filter((a) => a.target_id === sellerId)
+      .map((a) => a.action)
+    expect(actions).toEqual(expect.arrayContaining(['seller.suspended', 'seller.unsuspended']))
+  })
+})
+
+describe('cô lập: tài khoản dùng thử chỉ thấy nhau', () => {
+  it('admintest chỉ thấy đúng tài khoản admintest + sellertest và đúng một shop của sellertest', async () => {
+    await loginAs(ADMIN)
+    const sellers = await fetchSellers({ q: '', status: 'all', page: 1, pageSize: 100 })
+    expect(sellers.items.map((s) => s.owner_email)).toEqual([SELLER.email])
+
+    const accounts = await fetchAccounts({
+      q: '',
+      role: 'all',
+      state: 'all',
+      page: 1,
+      pageSize: 100,
     })
+    expect(accounts.items.map((a) => a.email).sort()).toEqual([ADMIN.email, SELLER.email].sort())
+    expect((await fetchDeletions({ q: '', status: 'all', page: 1, pageSize: 100 })).total).toBe(0)
+  })
+
+  it('mọi dữ liệu kinh doanh trong bộ mẫu đều thuộc shop của sellertest', async () => {
+    const { sellerId } = await sellerContext()
+    const db = await readDemoDb()
+    expect(db.sellers.map((s) => s.id)).toEqual([sellerId])
+    for (const table of [
+      db.products,
+      db.categories,
+      db.orders,
+      db.customers,
+      db.inventory_movements,
+      db.purchase_receipts,
+      db.product_trash,
+    ]) {
+      expect(table.every((row) => row.seller_id === sellerId)).toBe(true)
+    }
   })
 })

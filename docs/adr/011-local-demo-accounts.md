@@ -26,13 +26,20 @@ if (isDemoMode()) return (await demo()).fetchOrders(sellerId, filters)
 **Dữ liệu** (`shared/lib/demo/`):
 
 - `demoDb.ts`: các bảng giống schema (type sinh từ Supabase), lưu một khối JSON trong `sessionStorage`. Mỗi lần ghi chạy trên bản sao và chỉ thay thế khi thành công, giống transaction rollback khi RPC `raise exception`.
-- `demoSeed.ts`: dữ liệu mẫu sinh bằng PRNG có seed cố định, mốc thời gian dịch theo ngày hiện tại. Số liệu nhất quán: tồn kho = tổng `inventory_movements`, đơn đã xác nhận có giá vốn chốt, phiếu nhập cập nhật giá vốn bình quân gia quyền. Có sẵn shop chờ duyệt, shop bị tạm khóa, tài khoản trong thùng rác để thử Admin Console.
+- `demoSeed.ts`: dữ liệu mẫu sinh bằng PRNG có seed cố định, mốc thời gian dịch theo ngày hiện tại. Số liệu nhất quán: tồn kho = tổng `inventory_movements`, đơn đã xác nhận có giá vốn chốt, phiếu nhập cập nhật giá vốn bình quân gia quyền. Bộ mẫu **chỉ có hai tài khoản admintest và sellertest và đúng một shop (của sellertest)**: admintest chỉ thấy dữ liệu của sellertest và ngược lại; không có shop / người dùng nào khác, kể cả giả. Email dùng tên miền `@sellerops.demo`.
 - `demoSession.ts`: phiên demo (cờ trong `sessionStorage`), phát sự kiện `SIGNED_IN` / `SIGNED_OUT` giống `onAuthStateChange`.
 - `demoFiles.ts`: ảnh / giấy tờ tải lên lưu dạng data URL (≤ 400 KB) hoặc chỉ trong bộ nhớ.
 
 **Quy tắc nghiệp vụ và phân quyền giữ như RPC thật:** `require_admin`, `require_approved_seller`, `resolve_report_seller`; mã lỗi giống hệt (`INSUFFICIENT_STOCK`, `ORDER_NOT_PENDING`, `NOT_ADMIN`, `FORBIDDEN`…), nên thông báo tiếng Việt không phải viết lại. Hành động admin vẫn ghi `audit_logs`.
 
 **Bật / tắt:** mặc định bật; `VITE_DEMO_ACCOUNTS=false` để tắt hẳn (form đăng nhập không còn khối "Tài khoản dùng thử", tên `admintest` / `sellertest` không còn được chấp nhận).
+
+**Cô lập với dữ liệu thật — hai lớp:**
+
+1. Nhánh `isDemoMode()` ở mọi hàm `api/`. `testcase/unit/demo/demoIsolation.test.ts` quét mọi file `*.api.ts`: hàm nào gọi backend mà thiếu nhánh demo (ngoài danh sách miễn trừ có ghi lý do) thì test đỏ.
+2. Hàng rào mạng: Supabase client dùng `guardedFetch` — khi tab đang ở chế độ dùng thử, MỌI request (REST, RPC, Storage, Auth, Edge Function) bị từ chối với `DEMO_NETWORK_BLOCKED` trước khi rời trình duyệt. Upload bằng XHR (giấy tờ seller) tự chặn riêng. Realtime không được đăng ký ở chế độ demo.
+
+Thêm vào đó, phiên demo không phải phiên Supabase: không có JWT, nên kể cả request lọt ra ngoài cũng chỉ mang quyền `anon` và bị RLS từ chối.
 
 ## Lý do
 

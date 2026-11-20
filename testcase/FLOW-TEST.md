@@ -53,7 +53,7 @@ testcase/
 | `SELLER_P` | `seller`   | Shop `pending` (đã gửi hồ sơ, chờ duyệt)           |
 | `CUSTOMER` | `customer` | Tài khoản người mua                                |
 
-**Cách nhanh nhất:** dùng tài khoản dùng thử `admintest / admintest001` và `sellertest / sellertest01` (nút "Dùng thử" trên trang đăng nhập). Dữ liệu mẫu chạy trong trình duyệt, không ghi DB; đóng tab hoặc bấm "Đặt lại dữ liệu mẫu" là về trạng thái ban đầu (ADR 011). Dữ liệu mẫu có sẵn: shop `sellertest` (~17 sản phẩm, ~120 đơn, phiếu nhập nháp, 1 sản phẩm trong thùng rác), 2 shop chờ duyệt, 1 shop tạm khóa, 1 shop bị từ chối, 1 hồ sơ nháp, 1 tài khoản trong thùng rác. Các luồng RLS / email / Realtime vẫn phải kiểm tra bằng tài khoản thật.
+**Cách nhanh nhất:** dùng tài khoản dùng thử `admintest / admintest001` và `sellertest / sellertest01` (nút "Dùng thử" trên trang đăng nhập). Dữ liệu mẫu chạy trong trình duyệt, không ghi DB; đóng tab hoặc bấm "Đặt lại dữ liệu mẫu" là về trạng thái ban đầu (ADR 011). Dữ liệu mẫu chỉ gồm 2 tài khoản này và đúng một shop của `sellertest` (~17 sản phẩm, ~120 đơn, phiếu nhập nháp, 1 sản phẩm trong thùng rác): admintest chỉ thấy dữ liệu của sellertest và ngược lại; mọi request tới Supabase bị chặn. Các luồng RLS / email / Realtime vẫn phải kiểm tra bằng tài khoản thật.
 
 Muốn chạy lại luồng đăng ký / xóa tài khoản với cùng email: xem `supabase/scripts/inspect_account.sql` và `supabase/scripts/purge_account_for_retest.sql`.
 
@@ -189,17 +189,18 @@ Ký hiệu cột **Mức**: `P0` chặn release · `P1` quan trọng · `P2` b�
 
 ### 4.11 Tài khoản dùng thử (DEMO) – xem ADR 011
 
-| ID      | Mức | Luồng                                                      | Kết quả mong đợi                                                                           |
-| ------- | --- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| DEMO-01 | P0  | Bấm "Dùng thử" Người bán / nhập `sellertest`               | Vào `/seller`, có thanh "Chế độ dùng thử"; không có request nào tới Supabase (tab Network) |
-| DEMO-02 | P0  | Sai mật khẩu demo                                          | Báo "Email hoặc mật khẩu không đúng."                                                      |
-| DEMO-03 | P0  | Seller demo: tạo đơn → xác nhận → hủy                      | Kho trừ khi xác nhận, hoàn khi hủy; thiếu hàng báo lỗi tiếng Việt như bản thật             |
-| DEMO-04 | P1  | Admin demo: duyệt shop chờ duyệt, khóa tài khoản           | Trạng thái đổi ngay, có dòng trong Nhật ký                                                 |
-| DEMO-05 | P1  | Tải lại trang / đăng xuất rồi đăng nhập lại trong cùng tab | Dữ liệu đã sửa vẫn còn                                                                     |
-| DEMO-06 | P1  | Đóng tab mở lại, hoặc bấm "Đặt lại dữ liệu mẫu"            | Về bộ dữ liệu mẫu ban đầu                                                                  |
-| DEMO-07 | P2  | Build với `VITE_DEMO_ACCOUNTS=false`                       | Không còn khối "Tài khoản dùng thử", `admintest` bị báo "Email không hợp lệ"               |
+| ID      | Mức | Luồng                                                           | Kết quả mong đợi                                                                           |
+| ------- | --- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| DEMO-01 | P0  | Bấm "Dùng thử" Người bán / nhập `sellertest`                    | Vào `/seller`, có thanh "Chế độ dùng thử"; không có request nào tới Supabase (tab Network) |
+| DEMO-02 | P0  | Sai mật khẩu demo                                               | Báo "Email hoặc mật khẩu không đúng."                                                      |
+| DEMO-03 | P0  | Seller demo: tạo đơn → xác nhận → hủy                           | Kho trừ khi xác nhận, hoàn khi hủy; thiếu hàng báo lỗi tiếng Việt như bản thật             |
+| DEMO-04 | P1  | Admin demo: tạm khóa shop sellertest, khóa tài khoản sellertest | Trạng thái đổi ngay, có dòng trong Nhật ký; đăng nhập lại sellertest thấy bị chặn          |
+| DEMO-08 | P0  | Admin demo mở Tài khoản / Seller / Chờ xóa                      | Chỉ thấy admintest + sellertest và đúng một shop; không thấy shop / seller thật nào        |
+| DEMO-05 | P1  | Tải lại trang / đăng xuất rồi đăng nhập lại trong cùng tab      | Dữ liệu đã sửa vẫn còn                                                                     |
+| DEMO-06 | P1  | Đóng tab mở lại, hoặc bấm "Đặt lại dữ liệu mẫu"                 | Về bộ dữ liệu mẫu ban đầu                                                                  |
+| DEMO-07 | P2  | Build với `VITE_DEMO_ACCOUNTS=false`                            | Không còn khối "Tài khoản dùng thử", `admintest` bị báo "Email không hợp lệ"               |
 
-**Test tự động:** `unit/demo/demoBackend`, `component/auth/LoginForm` (nút "Dùng thử"), `unit/auth/login.schema` (tên tài khoản demo).
+**Test tự động:** `unit/demo/demoBackend`, `unit/demo/demoIsolation` (hàng rào mạng + mọi hàm API có nhánh demo), `component/auth/LoginForm` (nút "Dùng thử"), `unit/auth/login.schema` (tên tài khoản demo).
 
 ## 5. Bản đồ file test
 
@@ -214,7 +215,7 @@ Ký hiệu cột **Mức**: `P0` chặn release · `P1` quan trọng · `P2` b�
 | `unit/admin`, `component/admin`                                                    | 2 + 1         | ADMIN, DELETE               |
 | `unit/activity`, `component/activity`                                              | 1 + 2         | UI                          |
 | `unit/shared`, `component/shared`, `component/layouts`                             | 10 + 3 + 1    | UI, dùng chung              |
-| `unit/demo`                                                                        | 1             | DEMO                        |
+| `unit/demo`                                                                        | 2             | DEMO                        |
 | `db/rls_checks.sql`                                                                | 1             | RLS, ONBOARD, ADMIN, DELETE |
 
 ## 6. Còn thiếu

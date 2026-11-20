@@ -73,6 +73,8 @@ async function uploadWithProgress(
   contentType: string,
   onProgress: (percent: number) => void,
 ): Promise<void> {
+  // XHR không đi qua fetch của Supabase client nên tự chặn ở đây (ADR 011).
+  if (isDemoMode()) throw new Error(DOCUMENT_UPLOAD_FAILED)
   const { data } = await supabase.auth.getSession()
   const token = data.session?.access_token
   if (!token) throw new Error('NOT_AUTHENTICATED')
