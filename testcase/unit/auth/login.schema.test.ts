@@ -38,4 +38,16 @@ describe('loginSchema', () => {
   it('không cắt khoảng trắng của mật khẩu', () => {
     expect(loginSchema.parse({ email: 'a@b.co', password: ' pass ' }).password).toBe(' pass ')
   })
+
+  it('chấp nhận tên tài khoản demo (không phân biệt hoa thường)', () => {
+    expect(loginSchema.parse({ email: ' AdminTest ', password: 'x' }).email).toBe('admintest')
+    expect(loginSchema.parse({ email: 'sellertest', password: 'x' }).email).toBe('sellertest')
+  })
+
+  it('tên đăng nhập khác không phải email vẫn báo sai định dạng', () => {
+    expect(firstIssue({ email: 'admin', password: 'x' })).toMatchObject({
+      path: ['email'],
+      message: 'Email không hợp lệ',
+    })
+  })
 })

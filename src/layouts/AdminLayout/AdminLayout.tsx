@@ -20,6 +20,7 @@ import { ROUTES } from '@/shared/constants/routes'
 import { formatNumber } from '@/shared/lib/formatters'
 import { ColorSchemeToggle } from '../DashboardLayout/ColorSchemeToggle'
 import classes from './AdminLayout.module.css'
+import { DemoModeBanner } from '@/shared/components/DemoModeBanner'
 
 /**
  * Khung Admin Console — khác hẳn dashboard seller nhưng dùng chung Mantine + token màu: thanh bên
@@ -128,6 +129,7 @@ export function AdminLayout() {
           aria-busy={isNavigating}
           style={{ opacity: isNavigating ? 0.6 : 1, transition: 'opacity 150ms ease' }}
         >
+          <DemoModeBanner />
           <Outlet />
         </Box>
       </AppShell.Main>

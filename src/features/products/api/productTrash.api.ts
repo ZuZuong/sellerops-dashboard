@@ -1,7 +1,10 @@
+import { isDemoMode } from '@/shared/lib/demo/demoSession'
 import { z } from 'zod'
 import { supabase } from '@/shared/lib/supabase'
 import type { TrashedProduct, TrashedProductPage } from '../types'
 import { removeProductImages } from './productImages.api'
+
+const demo = () => import('./products.demo')
 
 const trashResultSchema = z.object({ trashed: z.number(), deactivated: z.number() })
 const restoreResultSchema = z.object({ restored: z.number(), skipped: z.array(z.string()) })
@@ -14,6 +17,7 @@ export type RestoreResult = z.infer<typeof restoreResultSchema>
  * Sản phẩm đã có trong đơn hàng / phiếu nhập không xóa được, DB chỉ chuyển sang ngừng bán.
  */
 export async function trashProducts(ids: readonly string[]): Promise<TrashResult> {
+  if (isDemoMode()) return (await demo()).trashProducts(ids)
   const { data, error } = await supabase.rpc('trash_products', { p_ids: [...ids] })
   if (error) throw error
   return trashResultSchema.parse(data)
@@ -21,6 +25,7 @@ export async function trashProducts(ids: readonly string[]): Promise<TrashResult
 
 /** Khôi phục; sản phẩm trùng tên với sản phẩm đang có thì bị bỏ qua (`skipped`). */
 export async function restoreProducts(ids: readonly string[]): Promise<RestoreResult> {
+  if (isDemoMode()) return (await demo()).restoreProducts(ids)
   const { data, error } = await supabase.rpc('restore_products', { p_ids: [...ids] })
   if (error) throw error
   return restoreResultSchema.parse(data)
@@ -28,6 +33,7 @@ export async function restoreProducts(ids: readonly string[]): Promise<RestoreRe
 
 /** Xóa vĩnh viễn ngay (không chờ 30 ngày), dọn luôn ảnh trong Storage. */
 export async function purgeTrash(ids: readonly string[]): Promise<number> {
+  if (isDemoMode()) return (await demo()).purgeTrash(ids)
   const { data, error } = await supabase.rpc('purge_trash', { p_ids: [...ids] })
   if (error) throw error
   await removeProductImages(data)
@@ -62,6 +68,7 @@ export async function fetchProductTrash(
   page: number,
   pageSize: number,
 ): Promise<TrashedProductPage> {
+  if (isDemoMode()) return (await demo()).fetchProductTrash(sellerId, page, pageSize)
   await purgeExpiredTrash()
   const from = (page - 1) * pageSize
   const { data, error, count } = await supabase
@@ -77,6 +84,7 @@ export async function fetchProductTrash(
 
 /** Số sản phẩm trong thùng rác (cho nút trên trang Sản phẩm). */
 export async function countProductTrash(sellerId: string): Promise<number> {
+  if (isDemoMode()) return (await demo()).countProductTrash(sellerId)
   await purgeExpiredTrash()
   const { count, error } = await supabase
     .from('product_trash')
@@ -88,6 +96,7 @@ export async function countProductTrash(sellerId: string): Promise<number> {
 
 /** Tên nào trong danh sách đã có sản phẩm (không phân biệt hoa thường / khoảng trắng thừa). */
 export async function findExistingProductNames(names: readonly string[]): Promise<Set<string>> {
+  if (isDemoMode()) return (await demo()).findExistingProductNames(names)
   if (names.length === 0) return new Set()
   const { data, error } = await supabase.rpc('find_existing_product_names', {
     p_names: [...names],

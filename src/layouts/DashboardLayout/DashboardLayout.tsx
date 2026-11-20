@@ -5,6 +5,7 @@ import { useActivityCapture } from '@/features/activity'
 import { useUiStore } from '@/shared/stores/useUiStore'
 import { Header } from './Header'
 import { NAVBAR_COLLAPSED_WIDTH, NAVBAR_WIDTH, Sidebar } from './Sidebar'
+import { DemoModeBanner } from '@/shared/components/DemoModeBanner'
 
 interface DashboardLayoutProps {
   /** Nội dung thay cho route con (vd. khung trống phía sau modal khi shop bị khóa). */
@@ -46,6 +47,7 @@ export function DashboardLayout({ children, brand }: DashboardLayoutProps) {
           aria-busy={isNavigating}
           style={{ opacity: isNavigating ? 0.6 : 1, transition: 'opacity 150ms ease' }}
         >
+          <DemoModeBanner />
           {children ?? <Outlet />}
         </Box>
       </AppShell.Main>

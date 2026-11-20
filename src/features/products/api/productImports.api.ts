@@ -1,6 +1,9 @@
+import { isDemoMode } from '@/shared/lib/demo/demoSession'
 import { supabase } from '@/shared/lib/supabase'
 import type { ImportedRow } from '../lib/importProducts'
 import type { ImportedProductRow, ProductImport, ProductImportPage } from '../types'
+
+const demo = () => import('./products.demo')
 
 /** Bucket riêng tư lưu file Excel gốc của mỗi lần import: `<seller_id>/<uuid>.<ext>`. */
 export const PRODUCT_IMPORTS_BUCKET = 'product-imports'
@@ -50,6 +53,8 @@ export async function importProductsFromFile(
   sellerId: string,
   { file, sheetName, rowCount, products }: ImportFromFileInput,
 ): Promise<ImportFromFileResult> {
+  if (isDemoMode())
+    return (await demo()).importProductsFromFile(sellerId, { file, sheetName, rowCount, products })
   const { extension, contentType } = spreadsheetFileType(file.name)
   const path = `${sellerId}/${crypto.randomUUID()}.${extension}`
   const upload = await supabase.storage
@@ -114,6 +119,7 @@ export async function fetchProductImports(
   page: number,
   pageSize: number,
 ): Promise<ProductImportPage> {
+  if (isDemoMode()) return (await demo()).fetchProductImports(sellerId, page, pageSize)
   const from = (page - 1) * pageSize
   const { data, error, count } = await supabase
     .from('product_imports')
@@ -131,6 +137,7 @@ export async function fetchImportedProducts(
   sellerId: string,
   importId: string,
 ): Promise<ImportedProductRow[]> {
+  if (isDemoMode()) return (await demo()).fetchImportedProducts(sellerId, importId)
   const { data, error } = await supabase
     .from('products')
     .select(
@@ -146,6 +153,7 @@ export async function fetchImportedProducts(
 
 /** Link tải file gốc (signed URL hết hạn sau 60 giây; bucket riêng tư). */
 export async function getImportFileUrl(item: Pick<ProductImport, 'file_path' | 'file_name'>) {
+  if (isDemoMode()) return (await demo()).getImportFileUrl(item)
   const { data, error } = await supabase.storage
     .from(PRODUCT_IMPORTS_BUCKET)
     .createSignedUrl(item.file_path, 60, { download: item.file_name })

@@ -345,7 +345,7 @@ Client gọi `supabase.rpc('confirm_order', ...)`, map mã lỗi (`INSUFFICIENT_
 
 ### Ngày 6 – Deploy & Portfolio (4–5h)
 
-- [ ] [MUST] Deploy production Vercel, cấu hình env, tài khoản demo seller + admin (dữ liệu reset được)
+- [x] [MUST] Deploy production Vercel, cấu hình env, tài khoản demo seller + admin (dữ liệu reset được)
 - [x] [MUST] Screenshot, GIF luồng chính (seller + duyệt hồ sơ), video demo 1–2 phút
 - [x] [MUST] Sơ đồ kiến trúc / ERD (có `sellers`, `profiles`, RLS)
 - [x] [MUST] Thêm project vào CV và LinkedIn

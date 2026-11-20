@@ -1,3 +1,4 @@
+import { isDemoMode } from '@/shared/lib/demo/demoSession'
 import { FunctionsFetchError, FunctionsHttpError, FunctionsRelayError } from '@supabase/supabase-js'
 import { sanitizeFileName } from '@/shared/lib/fileName'
 import { supabase } from '@/shared/lib/supabase'
@@ -19,6 +20,8 @@ import type {
   PlatformStats,
   SellerDocument,
 } from '../types'
+
+const demo = () => import('./admin.demo')
 
 /*
  * Mọi hàm đọc / ghi của admin đi qua RPC SECURITY DEFINER có `require_admin()` bên trong:
@@ -46,18 +49,21 @@ const orNull = <T extends string>(value: T | 'all' | ''): T | undefined =>
 // -----------------------------------------------------------------------------
 
 export async function fetchPlatformStats(days: number): Promise<PlatformStats> {
+  if (isDemoMode()) return (await demo()).fetchPlatformStats(days)
   const { data, error } = await supabase.rpc('admin_platform_stats', { p_days: days }).single()
   if (error) throw error
   return data
 }
 
 export async function fetchPlatformRevenue(days: number): Promise<PlatformRevenuePoint[]> {
+  if (isDemoMode()) return (await demo()).fetchPlatformRevenue(days)
   const { data, error } = await supabase.rpc('admin_revenue_series', { p_days: days })
   if (error) throw error
   return data
 }
 
 export async function fetchAccounts(filters: AccountFilters): Promise<Paged<AdminAccount>> {
+  if (isDemoMode()) return (await demo()).fetchAccounts(filters)
   const state = filters.state
   // "Hoạt động" = chưa xóa và không khóa; "Bị khóa" = chưa xóa nhưng đang khóa.
   const notDeleted = state === 'active' || state === 'locked'
@@ -74,6 +80,7 @@ export async function fetchAccounts(filters: AccountFilters): Promise<Paged<Admi
 }
 
 export async function fetchSellers(filters: SellerFilters): Promise<Paged<AdminSeller>> {
+  if (isDemoMode()) return (await demo()).fetchSellers(filters)
   const { data, error } = await supabase.rpc('admin_list_sellers', {
     p_q: filters.q || undefined,
     p_status: orNull(filters.status),
@@ -85,6 +92,7 @@ export async function fetchSellers(filters: SellerFilters): Promise<Paged<AdminS
 }
 
 export async function fetchSellerDetail(sellerId: string): Promise<AdminSellerDetail | null> {
+  if (isDemoMode()) return (await demo()).fetchSellerDetail(sellerId)
   const { data, error } = await supabase
     .rpc('admin_get_seller', { p_seller_id: sellerId })
     .maybeSingle()
@@ -97,6 +105,7 @@ export async function fetchSellerDetail(sellerId: string): Promise<AdminSellerDe
 
 /** Giấy tờ đăng ký kinh doanh của shop (RLS: admin đọc mọi shop). */
 export async function fetchSellerDocuments(sellerId: string): Promise<SellerDocument[]> {
+  if (isDemoMode()) return (await demo()).fetchSellerDocuments(sellerId)
   const { data, error } = await supabase
     .from('seller_documents')
     .select('id, kind, storage_path, file_name, mime_type, file_size, created_at')
@@ -109,6 +118,7 @@ export async function fetchSellerDocuments(sellerId: string): Promise<SellerDocu
 export async function fetchAuditLogs(
   filters: AuditFilters & { targetIds?: readonly string[] },
 ): Promise<Paged<AuditLogEntry>> {
+  if (isDemoMode()) return (await demo()).fetchAuditLogs(filters)
   const { data, error } = await supabase.rpc('admin_list_audit_logs', {
     p_actor_id: filters.actor || undefined,
     p_action: filters.action || undefined,
@@ -123,6 +133,7 @@ export async function fetchAuditLogs(
 }
 
 export async function fetchDeletions(filters: DeletionFilters): Promise<Paged<AccountDeletion>> {
+  if (isDemoMode()) return (await demo()).fetchDeletions(filters)
   const { data, error } = await supabase.rpc('admin_list_account_deletions', {
     p_status: orNull(filters.status),
     p_q: filters.q || undefined,
@@ -134,6 +145,7 @@ export async function fetchDeletions(filters: DeletionFilters): Promise<Paged<Ac
 }
 
 export async function fetchDeletionEvidence(deletionId: string): Promise<DeletionEvidence[]> {
+  if (isDemoMode()) return (await demo()).fetchDeletionEvidence(deletionId)
   const { data, error } = await supabase
     .from('account_deletion_evidence')
     .select('id, storage_path, file_name, mime_type, file_size, created_at')
@@ -148,6 +160,7 @@ export async function createSignedFileUrl(
   bucket: typeof SELLER_DOCUMENTS_BUCKET | typeof EVIDENCE_BUCKET,
   path: string,
 ): Promise<string> {
+  if (isDemoMode()) return (await demo()).createSignedFileUrl(bucket, path)
   const { data, error } = await supabase.storage
     .from(bucket)
     .createSignedUrl(path, SIGNED_URL_TTL_SECONDS)
@@ -164,6 +177,7 @@ export async function reviewSeller(
   decision: 'approved' | 'rejected',
   reason: string,
 ): Promise<void> {
+  if (isDemoMode()) return (await demo()).reviewSeller(sellerId, decision, reason)
   const { error } = await supabase.rpc('review_seller', {
     p_seller_id: sellerId,
     p_decision: decision,
@@ -177,6 +191,7 @@ export async function setSellerSuspended(
   suspended: boolean,
   reason: string,
 ): Promise<void> {
+  if (isDemoMode()) return (await demo()).setSellerSuspended(sellerId, suspended, reason)
   const { error } = await supabase.rpc('set_seller_suspended', {
     p_seller_id: sellerId,
     p_suspended: suspended,
@@ -190,6 +205,7 @@ export async function setAccountLocked(
   locked: boolean,
   reason: string,
 ): Promise<void> {
+  if (isDemoMode()) return (await demo()).setAccountLocked(userId, locked, reason)
   const { error } = await supabase.rpc('set_account_locked', {
     p_user_id: userId,
     p_locked: locked,
@@ -245,6 +261,7 @@ export async function requestAccountDeletion(
   reason: string,
   evidence: readonly File[],
 ): Promise<string> {
+  if (isDemoMode()) return (await demo()).requestAccountDeletion(userId, reason, evidence)
   const uploaded = await uploadEvidence(userId, evidence)
   const { data, error } = await supabase.rpc('request_account_deletion', {
     p_user_id: userId,
@@ -263,6 +280,7 @@ export async function requestAccountDeletion(
  * người nhận + nội dung từ database (chỉ admin gọi được); client chỉ gửi id hồ sơ.
  */
 export async function notifyAccountDeletion(deletionId: string): Promise<void> {
+  if (isDemoMode()) return (await demo()).notifyAccountDeletion(deletionId)
   const { error } = await supabase.functions.invoke('notify-account-deletion', {
     body: { deletion_id: deletionId },
   })
@@ -291,11 +309,13 @@ export async function notifyAccountDeletion(deletionId: string): Promise<void> {
 }
 
 export async function confirmAccountDeletion(deletionId: string): Promise<void> {
+  if (isDemoMode()) return (await demo()).confirmAccountDeletion(deletionId)
   const { error } = await supabase.rpc('confirm_account_deletion', { p_deletion_id: deletionId })
   if (error) throw error
 }
 
 export async function restoreAccount(deletionId: string, note: string): Promise<void> {
+  if (isDemoMode()) return (await demo()).restoreAccount(deletionId, note)
   const { error } = await supabase.rpc('restore_account', {
     p_deletion_id: deletionId,
     p_note: note || undefined,

@@ -1,3 +1,4 @@
+import { isDemoMode } from '@/shared/lib/demo/demoSession'
 import { supabase } from '@/shared/lib/supabase'
 import type {
   CategoryRevenue,
@@ -8,6 +9,8 @@ import type {
   StockLedgerRow,
   TopProductRow,
 } from '../types'
+
+const demo = () => import('./analytics.demo')
 
 /*
  * Báo cáo tổng hợp ở Postgres (migration `inventory_analytics`); client chỉ nhận kết quả đã gộp.
@@ -25,6 +28,7 @@ export async function fetchSalesSummary(
   sellerId: string,
   range: ReportRange,
 ): Promise<SalesSummary> {
+  if (isDemoMode()) return (await demo()).fetchSalesSummary(sellerId, range)
   const { data, error } = await supabase.rpc('get_sales_summary', params(sellerId, range)).single()
   if (error) throw error
   return data
@@ -34,6 +38,7 @@ export async function fetchRevenueByDay(
   sellerId: string,
   range: ReportRange,
 ): Promise<DailyRevenue[]> {
+  if (isDemoMode()) return (await demo()).fetchRevenueByDay(sellerId, range)
   const { data, error } = await supabase.rpc('get_revenue_by_day', params(sellerId, range))
   if (error) throw error
   return data
@@ -43,6 +48,7 @@ export async function fetchRevenueByCategory(
   sellerId: string,
   range: ReportRange,
 ): Promise<CategoryRevenue[]> {
+  if (isDemoMode()) return (await demo()).fetchRevenueByCategory(sellerId, range)
   const { data, error } = await supabase.rpc('get_revenue_by_category', params(sellerId, range))
   if (error) throw error
   return data
@@ -53,6 +59,7 @@ export async function fetchTopProductsByRange(
   range: ReportRange,
   limit: number,
 ): Promise<TopProductRow[]> {
+  if (isDemoMode()) return (await demo()).fetchTopProductsByRange(sellerId, range, limit)
   const { data, error } = await supabase.rpc('get_top_products_by_range', {
     ...params(sellerId, range),
     p_limit: limit,
@@ -66,6 +73,7 @@ export async function fetchStockLedger(
   sellerId: string,
   range: ReportRange,
 ): Promise<StockLedgerRow[]> {
+  if (isDemoMode()) return (await demo()).fetchStockLedger(sellerId, range)
   const { data, error } = await supabase.rpc('get_stock_ledger', params(sellerId, range))
   if (error) throw error
   return data
@@ -76,6 +84,7 @@ export async function fetchRevenueReport(
   sellerId: string,
   range: ReportRange,
 ): Promise<RevenueReportRow[]> {
+  if (isDemoMode()) return (await demo()).fetchRevenueReport(sellerId, range)
   const { data, error } = await supabase.rpc('get_revenue_report', params(sellerId, range))
   if (error) throw error
   return data

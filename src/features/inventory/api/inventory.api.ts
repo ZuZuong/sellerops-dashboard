@@ -1,9 +1,12 @@
+import { isDemoMode } from '@/shared/lib/demo/demoSession'
 import { getDbErrorInfo } from '@/shared/lib/errors'
 import { toSearchTerm } from '@/shared/lib/search'
 import { supabase } from '@/shared/lib/supabase'
 import type { InventoryFilters } from '../schemas/inventoryFilters.schema'
 import type { StocktakeScope } from '../schemas/stocktakeScope.schema'
 import type { InventoryItem, InventoryPage, InventorySummary, MovementPage } from '../types'
+
+const demo = () => import('./inventory.demo')
 
 const INVENTORY_COLUMNS =
   'id, sku, name, category:categories!products_category_same_seller_fkey(name), unit, price, cost_price, stock, low_stock_threshold, is_low_stock, is_active'
@@ -52,6 +55,7 @@ export async function fetchInventory(
   sellerId: string,
   filters: InventoryFilters,
 ): Promise<InventoryPage> {
+  if (isDemoMode()) return (await demo()).fetchInventory(sellerId, filters)
   const from = (filters.page - 1) * filters.pageSize
   const { data, error, count } = await ordered(sellerId, filters).range(
     from,
@@ -73,6 +77,7 @@ export async function fetchInventoryForExport(
   sellerId: string,
   filters: InventoryFilters,
 ): Promise<InventoryItem[]> {
+  if (isDemoMode()) return (await demo()).fetchInventoryForExport(sellerId, filters)
   const { data, error } = await ordered(sellerId, filters).range(0, EXPORT_LIMIT - 1)
   if (error) throw error
   return data.map(toItem)
@@ -86,6 +91,7 @@ export async function fetchStocktakeItems(
   sellerId: string,
   scope: StocktakeScope,
 ): Promise<{ items: InventoryItem[]; truncated: boolean }> {
+  if (isDemoMode()) return (await demo()).fetchStocktakeItems(sellerId, scope)
   let query = supabase
     .from('products')
     .select(INVENTORY_COLUMNS, { count: 'exact' })
@@ -102,6 +108,7 @@ export async function fetchStocktakeItems(
 
 /** Số liệu tổng quan kho (sản phẩm đang bán), tính ở Postgres. */
 export async function fetchInventorySummary(sellerId: string): Promise<InventorySummary> {
+  if (isDemoMode()) return (await demo()).fetchInventorySummary(sellerId)
   const { data, error } = await supabase
     .rpc('get_inventory_summary', { p_seller_id: sellerId })
     .single()
@@ -116,6 +123,7 @@ export async function fetchStockMovements(
   page: number,
   pageSize: number,
 ): Promise<MovementPage> {
+  if (isDemoMode()) return (await demo()).fetchStockMovements(sellerId, productId, page, pageSize)
   const from = (page - 1) * pageSize
   const { data, error, count } = await supabase
     .from('inventory_movements')
@@ -137,6 +145,7 @@ export async function fetchStockMovements(
  * transaction, DB chặn tồn kho âm. Trả về tồn kho mới.
  */
 export async function adjustStock(productId: string, delta: number, note: string): Promise<number> {
+  if (isDemoMode()) return (await demo()).adjustStock(productId, delta, note)
   const { data, error } = await supabase.rpc('adjust_stock', {
     p_product_id: productId,
     p_delta: delta,
