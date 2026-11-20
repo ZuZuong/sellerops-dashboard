@@ -13,6 +13,11 @@ const envSchema = z.object({
     .enum(['true', 'false'])
     .optional()
     .transform((value) => value === 'true'),
+  /** Tài khoản demo chạy cục bộ (admintest / sellertest). Mặc định bật; `false` để tắt. */
+  VITE_DEMO_ACCOUNTS: z
+    .enum(['true', 'false'])
+    .optional()
+    .transform((value) => value !== 'false'),
 })
 
 const parsed = envSchema.safeParse(import.meta.env)

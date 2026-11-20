@@ -1,3 +1,4 @@
+import { isDemoMode } from '@/shared/lib/demo/demoSession'
 import { getDbErrorInfo } from '@/shared/lib/errors'
 import { toSearchTerm } from '@/shared/lib/search'
 import { supabase } from '@/shared/lib/supabase'
@@ -5,6 +6,8 @@ import { assertTransition, type OrderStatus } from '../domain/orderStatus'
 import type { CreateOrderPayload } from '../schemas/order.schema'
 import type { OrderFilters } from '../schemas/orderFilters.schema'
 import type { OrderableProduct, OrderDetail, OrderPage, SavedCustomer } from '../types'
+
+const demo = () => import('./orders.demo')
 
 const ORDER_COLUMNS =
   'id, code, customer_name, customer_phone, shipping_address, payment_method, status, total, created_at'
@@ -36,6 +39,7 @@ function buildListQuery(sellerId: string, filters: OrderFilters, head = false) {
 
 /** Danh sách đơn có phân trang, lọc theo trạng thái, tìm theo mã / tên / SĐT khách phía server. */
 export async function fetchOrders(sellerId: string, filters: OrderFilters): Promise<OrderPage> {
+  if (isDemoMode()) return (await demo()).fetchOrders(sellerId, filters)
   const from = (filters.page - 1) * filters.pageSize
   const { data, error, count } = await buildListQuery(sellerId, filters)
     .order(filters.sort, { ascending: filters.order === 'asc' })
@@ -59,6 +63,7 @@ export async function fetchOrderDetail(
   sellerId: string,
   orderId: string,
 ): Promise<OrderDetail | null> {
+  if (isDemoMode()) return (await demo()).fetchOrderDetail(sellerId, orderId)
   const { data, error } = await supabase
     .from('orders')
     .select(ORDER_DETAIL_COLUMNS)
@@ -79,6 +84,7 @@ export async function searchOrderableProducts(
   q: string,
   limit = 20,
 ): Promise<OrderableProduct[]> {
+  if (isDemoMode()) return (await demo()).searchOrderableProducts(sellerId, q, limit)
   let query = supabase
     .from('products')
     .select('id, name, sku, price, stock')
@@ -100,6 +106,7 @@ export async function searchSavedCustomers(
   q: string,
   limit = 20,
 ): Promise<SavedCustomer[]> {
+  if (isDemoMode()) return (await demo()).searchSavedCustomers(sellerId, q, limit)
   let query = supabase
     .from('customers')
     .select('id, name, phone, address, payment_method')
@@ -119,6 +126,7 @@ export async function searchSavedCustomers(
  * tính. Không trừ kho (kho chỉ trừ khi xác nhận). Trả về id đơn mới.
  */
 export async function createOrder(payload: CreateOrderPayload): Promise<string> {
+  if (isDemoMode()) return (await demo()).createOrder(payload)
   const { data, error } = await supabase.rpc('create_order', {
     p_customer_name: payload.customer_name,
     // RPC nhận chuỗi rỗng = không có số điện thoại.
@@ -149,6 +157,7 @@ export async function transitionOrder(
   from: OrderStatus,
   to: OrderStatus,
 ): Promise<void> {
+  if (isDemoMode()) return (await demo()).transitionOrder(orderId, from, to)
   assertTransition(from, to)
   const { error } = await supabase.rpc(TRANSITION_RPC[to], { p_order_id: orderId })
   if (error) throw error

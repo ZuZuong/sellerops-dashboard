@@ -1,3 +1,5 @@
+import { getDemoFileUrl, putDemoFile, removeDemoFiles } from '@/shared/lib/demo/demoFiles'
+import { isDemoMode } from '@/shared/lib/demo/demoSession'
 import { supabase } from '@/shared/lib/supabase'
 import { imageExtension, type ProductImage, type ProductMedia } from '../lib/productImages'
 
@@ -8,6 +10,7 @@ export const IMAGE_UPLOAD_FAILED = 'IMAGE_UPLOAD_FAILED'
 
 /** URL public của ảnh (bucket public, không gọi mạng — chỉ ghép URL). */
 export function getProductImageUrl(path: string): string {
+  if (isDemoMode()) return getDemoFileUrl(path)
   return supabase.storage.from(PRODUCT_IMAGES_BUCKET).getPublicUrl(path).data.publicUrl
 }
 
@@ -17,6 +20,12 @@ export function getProductImageUrl(path: string): string {
  */
 async function uploadImage(sellerId: string, file: File): Promise<string> {
   const path = `${sellerId}/${crypto.randomUUID()}.${imageExtension(file)}`
+  if (isDemoMode()) {
+    await putDemoFile(path, file).catch((cause: unknown) => {
+      throw new Error(IMAGE_UPLOAD_FAILED, { cause })
+    })
+    return path
+  }
   const { error } = await supabase.storage
     .from(PRODUCT_IMAGES_BUCKET)
     .upload(path, file, { contentType: file.type, cacheControl: '31536000', upsert: false })
@@ -27,6 +36,7 @@ async function uploadImage(sellerId: string, file: File): Promise<string> {
 /** Xóa file ảnh. Dùng để dọn dẹp nên không ném lỗi — file mồ côi không ảnh hưởng nghiệp vụ. */
 export async function removeProductImages(paths: readonly string[]): Promise<void> {
   if (paths.length === 0) return
+  if (isDemoMode()) return removeDemoFiles(paths)
   await supabase.storage.from(PRODUCT_IMAGES_BUCKET).remove([...paths])
 }
 

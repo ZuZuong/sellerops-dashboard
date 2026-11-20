@@ -1,3 +1,4 @@
+import { isDemoMode } from '@/shared/lib/demo/demoSession'
 import { env } from '@/shared/lib/env'
 import { supabase } from '@/shared/lib/supabase'
 import type { Tables } from '@/shared/types/database.types'
@@ -9,6 +10,8 @@ import {
 } from '../lib/documentFile'
 import type { BusinessInfoValues } from '../schemas/application.schema'
 import { TERMS_VERSION } from '../terms'
+
+const demo = () => import('./onboarding.demo')
 
 export const SELLER_DOCUMENTS_BUCKET = 'seller-documents'
 
@@ -32,6 +35,7 @@ export async function saveApplication(
   data: Partial<BusinessInfoValues>,
   step: ApplicationStep,
 ): Promise<void> {
+  if (isDemoMode()) return (await demo()).saveApplication(data, step)
   const { error } = await supabase.rpc('save_seller_application', { p_data: data, p_step: step })
   if (error) throw error
 }
@@ -41,6 +45,7 @@ export async function saveApplication(
  * bản cam kết seller đã chấp nhận.
  */
 export async function submitApplication(): Promise<void> {
+  if (isDemoMode()) return (await demo()).submitApplication()
   const { error } = await supabase.rpc('submit_seller_application', {
     p_terms_version: TERMS_VERSION,
   })
@@ -48,6 +53,7 @@ export async function submitApplication(): Promise<void> {
 }
 
 export async function fetchDocuments(sellerId: string): Promise<SellerDocument[]> {
+  if (isDemoMode()) return (await demo()).fetchDocuments(sellerId)
   const { data, error } = await supabase
     .from('seller_documents')
     .select('id, kind, storage_path, file_name, mime_type, file_size, created_at')
@@ -67,6 +73,8 @@ async function uploadWithProgress(
   contentType: string,
   onProgress: (percent: number) => void,
 ): Promise<void> {
+  // XHR không đi qua fetch của Supabase client nên tự chặn ở đây (ADR 011).
+  if (isDemoMode()) throw new Error(DOCUMENT_UPLOAD_FAILED)
   const { data } = await supabase.auth.getSession()
   const token = data.session?.access_token
   if (!token) throw new Error('NOT_AUTHENTICATED')
@@ -116,6 +124,8 @@ export async function uploadDocument({
   replace,
   onProgress,
 }: UploadDocumentInput): Promise<void> {
+  if (isDemoMode())
+    return (await demo()).uploadDocument({ ownerId, sellerId, kind, file, replace, onProgress })
   const contentType = documentMimeType(file)
   if (!contentType || validateDocumentFile(file)) throw new Error(DOCUMENT_INVALID)
 
@@ -140,6 +150,7 @@ export async function uploadDocument({
 
 /** Xóa giấy tờ (chỉ khi hồ sơ còn sửa được — RLS bảng và Storage cùng chặn). */
 export async function deleteDocument(document: SellerDocument): Promise<void> {
+  if (isDemoMode()) return (await demo()).deleteDocument(document)
   const { error } = await supabase.from('seller_documents').delete().eq('id', document.id)
   if (error) throw error
   await removeFile(document.storage_path)
@@ -147,6 +158,7 @@ export async function deleteDocument(document: SellerDocument): Promise<void> {
 
 /** Link xem giấy tờ (bucket riêng tư → signed URL hết hạn sau 60 giây). */
 export async function getDocumentUrl(document: SellerDocument): Promise<string> {
+  if (isDemoMode()) return (await demo()).getDocumentUrl(document)
   const { data, error } = await supabase.storage
     .from(SELLER_DOCUMENTS_BUCKET)
     .createSignedUrl(document.storage_path, 60)

@@ -59,4 +59,15 @@ describe('LoginForm', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Email hoặc mật khẩu không đúng.')
   })
+
+  it('nút "Dùng thử" đăng nhập ngay bằng tài khoản demo tương ứng', async () => {
+    signInMock.mockResolvedValue({} as Awaited<ReturnType<typeof signIn>>)
+    renderWithProviders(<LoginForm />, { route: '/login' })
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: 'Đăng nhập tài khoản dùng thử Người bán' }))
+
+    await vi.waitFor(() => expect(signInMock).toHaveBeenCalledTimes(1))
+    expect(signInMock.mock.calls[0]?.[0]).toEqual({ email: 'sellertest', password: 'sellertest01' })
+  })
 })

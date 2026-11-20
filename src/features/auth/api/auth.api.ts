@@ -1,4 +1,11 @@
-import type { AuthChangeEvent, Session, User } from '@supabase/supabase-js'
+import { AuthApiError, type AuthChangeEvent, type Session, type User } from '@supabase/supabase-js'
+import {
+  endDemoSession,
+  findDemoAccount,
+  getDemoSession,
+  isDemoMode,
+  onDemoAuthChange,
+} from '@/shared/lib/demo/demoSession'
 import { supabase } from '@/shared/lib/supabase'
 import { ROUTES } from '@/shared/constants/routes'
 import { SELLER_SIGNUP_INTENT, SIGNUP_INTENT_KEY, type Account } from '../domain/account'
@@ -8,13 +15,25 @@ import type { RegisterInput } from '../schemas/register.schema'
 /** Link trong thư quay về đúng domain đang chạy (localhost / Vercel) — phải nằm trong Redirect URLs. */
 const appUrl = (path: string) => `${window.location.origin}${path}`
 
+const demo = () => import('./auth.demo')
+
 export async function signIn({ email, password }: LoginInput): Promise<Session> {
+  const demoAccount = findDemoAccount(email)
+  if (demoAccount) {
+    const session = await (await demo()).signInDemo(demoAccount, password)
+    if (!session) throw new AuthApiError('Invalid login credentials', 400, 'invalid_credentials')
+    return session
+  }
   const { data, error } = await supabase.auth.signInWithPassword({ email, password })
   if (error) throw error
   return data.session
 }
 
 export async function signOut(): Promise<void> {
+  if (isDemoMode()) {
+    endDemoSession()
+    return
+  }
   const { error } = await supabase.auth.signOut()
   if (error) throw error
 }
@@ -64,16 +83,27 @@ export async function updatePassword(password: string): Promise<void> {
 
 /** User của phiên hiện tại (đọc từ storage, không gọi mạng) — dùng cho prefetch trong loader. */
 export async function getSessionUser(): Promise<User | null> {
+  if (isDemoMode()) return getDemoSession()?.user ?? null
   const { data } = await supabase.auth.getSession()
   return data.session?.user ?? null
 }
 
-/** Đăng ký lắng nghe thay đổi phiên; trả về hàm hủy đăng ký. */
+/**
+ * Đăng ký lắng nghe thay đổi phiên; trả về hàm hủy đăng ký. Nghe cả phiên demo: khi tab đang chạy
+ * demo, sự kiện của Supabase (không có phiên thật) bị bỏ qua để không ghi đè phiên demo.
+ */
 export function subscribeToAuthChanges(
   callback: (event: AuthChangeEvent, session: Session | null) => void,
 ): () => void {
-  const { data } = supabase.auth.onAuthStateChange(callback)
-  return () => data.subscription.unsubscribe()
+  const { data } = supabase.auth.onAuthStateChange((event, session) => {
+    if (!isDemoMode()) callback(event, session)
+  })
+  const unsubscribeDemo = onDemoAuthChange(callback)
+  if (isDemoMode()) callback('INITIAL_SESSION', getDemoSession())
+  return () => {
+    data.subscription.unsubscribe()
+    unsubscribeDemo()
+  }
 }
 
 async function fetchProfile(userId: string) {
@@ -121,6 +151,7 @@ function ensureSellerRegistration(userId: string): Promise<void> {
  * được gọi `register_as_seller()` (idempotent ở DB: gọi lại trả về đúng shop đã có) rồi đọc lại.
  */
 export async function fetchAccount(user: User): Promise<Account> {
+  if (isDemoMode()) return (await demo()).fetchAccount(user)
   let profile = await fetchProfile(user.id)
 
   if (needsSellerRegistration(user, profile?.role ?? null) && !profile?.is_locked) {
@@ -146,6 +177,8 @@ export async function fetchAccount(user: User): Promise<Account> {
  * Trả về hàm hủy đăng ký.
  */
 export function subscribeToOwnProfile(userId: string, onChange: () => void): () => void {
+  // Demo: dữ liệu chỉ đổi trong chính tab này, không có thay đổi từ nơi khác để nghe.
+  if (isDemoMode()) return () => undefined
   const channel = supabase
     .channel(`profile:${userId}`)
     .on(

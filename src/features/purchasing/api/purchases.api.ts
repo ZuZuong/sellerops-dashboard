@@ -1,9 +1,12 @@
+import { isDemoMode } from '@/shared/lib/demo/demoSession'
 import { getDbErrorInfo } from '@/shared/lib/errors'
 import { toSearchTerm } from '@/shared/lib/search'
 import { supabase } from '@/shared/lib/supabase'
 import type { ReceiptPayload } from '../schemas/receipt.schema'
 import type { ReceiptFilters } from '../schemas/receiptFilters.schema'
 import type { PurchaseReceiptPage, ReceiptDetail, ReceiptProduct } from '../types'
+
+const demo = () => import('./purchases.demo')
 
 const LIST_COLUMNS = `id, code, status, supplier_name, supplier_phone, invoice_number, received_date,
   total_amount, created_at, posted_at, items:purchase_receipt_items(received_qty, defective_qty)`
@@ -36,6 +39,7 @@ export async function fetchReceipts(
   sellerId: string,
   filters: ReceiptFilters,
 ): Promise<PurchaseReceiptPage> {
+  if (isDemoMode()) return (await demo()).fetchReceipts(sellerId, filters)
   const from = (filters.page - 1) * filters.pageSize
   const { data, error, count } = await buildListQuery(sellerId, filters)
     .order('created_at', { ascending: false })
@@ -61,6 +65,7 @@ export async function fetchReceipts(
 
 /** Chi tiết phiếu kèm dòng hàng (đúng thứ tự nhập). `null` nếu không có / không thuộc shop. */
 export async function fetchReceipt(sellerId: string, id: string): Promise<ReceiptDetail | null> {
+  if (isDemoMode()) return (await demo()).fetchReceipt(sellerId, id)
   const { data, error } = await supabase
     .from('purchase_receipts')
     .select(DETAIL_COLUMNS)
@@ -78,6 +83,7 @@ export async function searchReceiptProducts(
   q: string,
   limit = 20,
 ): Promise<ReceiptProduct[]> {
+  if (isDemoMode()) return (await demo()).searchReceiptProducts(sellerId, q, limit)
   let query = supabase
     .from('products')
     .select('id, name, sku, unit, stock, cost_price')
@@ -91,6 +97,7 @@ export async function searchReceiptProducts(
 
 /** Lưu phiếu NHÁP (tạo mới khi `id` null); chưa ảnh hưởng tồn kho. Trả về id phiếu. */
 export async function saveReceipt(id: string | null, payload: ReceiptPayload): Promise<string> {
+  if (isDemoMode()) return (await demo()).saveReceipt(id, payload)
   const { data, error } = await supabase.rpc('save_purchase_receipt', {
     // RPC nhận null để tạo phiếu mới (kiểu sinh tự động khai báo string).
     p_receipt_id: id as string,
@@ -106,12 +113,14 @@ export async function saveReceipt(id: string | null, payload: ReceiptPayload): P
  * một transaction. Sau bước này phiếu không sửa / xóa được.
  */
 export async function postReceipt(id: string): Promise<void> {
+  if (isDemoMode()) return (await demo()).postReceipt(id)
   const { error } = await supabase.rpc('post_purchase_receipt', { p_receipt_id: id })
   if (error) throw error
 }
 
 /** Xóa phiếu nháp (DB từ chối phiếu đã nhập kho). */
 export async function deleteReceipt(id: string): Promise<void> {
+  if (isDemoMode()) return (await demo()).deleteReceipt(id)
   const { error } = await supabase.rpc('delete_purchase_receipt', { p_receipt_id: id })
   if (error) throw error
 }

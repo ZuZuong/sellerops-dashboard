@@ -5,9 +5,11 @@ import { IconAlertCircle } from '@tabler/icons-react'
 import { useForm } from 'react-hook-form'
 import { Link } from 'react-router'
 import { ROUTES } from '@/shared/constants/routes'
+import { isDemoEnabled } from '@/shared/lib/demo/demoSession'
 import { useSignIn } from '../api/auth.queries'
 import { getAuthErrorMessage } from '../lib/authErrors'
 import { loginSchema, type LoginInput } from '../schemas/login.schema'
+import { DemoAccountsPanel } from './DemoAccountsPanel'
 import type { VerifyEmailState } from './VerifyEmailNotice'
 
 export function LoginForm() {
@@ -45,8 +47,10 @@ export function LoginForm() {
         )}
         <TextInput
           label="Email"
-          type="email"
-          autoComplete="email"
+          description={isDemoEnabled() ? 'Hoặc tên tài khoản demo bên dưới' : undefined}
+          type="text"
+          inputMode="email"
+          autoComplete="username"
           placeholder="ban@cuahang.vn"
           withAsterisk
           error={errors.email?.message}
@@ -67,6 +71,12 @@ export function LoginForm() {
         <Button type="submit" fullWidth loading={signIn.isPending}>
           Đăng nhập
         </Button>
+        {isDemoEnabled() && (
+          <DemoAccountsPanel
+            disabled={signIn.isPending}
+            onSignIn={(email, password) => signIn.mutate({ email, password })}
+          />
+        )}
       </Stack>
     </form>
   )

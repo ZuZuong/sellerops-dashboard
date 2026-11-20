@@ -1,5 +1,8 @@
+import { isDemoMode } from '@/shared/lib/demo/demoSession'
 import { supabase } from '@/shared/lib/supabase'
 import type { DashboardKpis, RecentOrder, RevenuePoint, TopProduct } from '../types'
+
+const demo = () => import('./dashboard.demo')
 
 /*
  * Số liệu tổng hợp được tính bằng Postgres function, client chỉ nhận kết quả đã gộp.
@@ -8,6 +11,7 @@ import type { DashboardKpis, RecentOrder, RevenuePoint, TopProduct } from '../ty
  */
 
 export async function fetchDashboardKpis(sellerId: string, days: number): Promise<DashboardKpis> {
+  if (isDemoMode()) return (await demo()).fetchDashboardKpis(sellerId, days)
   const { data, error } = await supabase
     .rpc('get_dashboard_kpis', { p_days: days, p_seller_id: sellerId })
     .single()
@@ -16,6 +20,7 @@ export async function fetchDashboardKpis(sellerId: string, days: number): Promis
 }
 
 export async function fetchRevenueSeries(sellerId: string, days: number): Promise<RevenuePoint[]> {
+  if (isDemoMode()) return (await demo()).fetchRevenueSeries(sellerId, days)
   const { data, error } = await supabase.rpc('get_revenue_series', {
     p_days: days,
     p_seller_id: sellerId,
@@ -29,6 +34,7 @@ export async function fetchTopProducts(
   days: number,
   limit: number,
 ): Promise<TopProduct[]> {
+  if (isDemoMode()) return (await demo()).fetchTopProducts(sellerId, days, limit)
   const { data, error } = await supabase.rpc('get_top_products', {
     p_days: days,
     p_limit: limit,
@@ -39,6 +45,7 @@ export async function fetchTopProducts(
 }
 
 export async function fetchRecentOrders(sellerId: string, limit: number): Promise<RecentOrder[]> {
+  if (isDemoMode()) return (await demo()).fetchRecentOrders(sellerId, limit)
   const { data, error } = await supabase
     .from('orders')
     .select('id, code, customer_name, status, total, created_at')

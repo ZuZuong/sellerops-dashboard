@@ -1,3 +1,4 @@
+import { isDemoMode } from '@/shared/lib/demo/demoSession'
 import { getDbErrorInfo } from '@/shared/lib/errors'
 import { supabase } from '@/shared/lib/supabase'
 import { mediaPaths, type ProductMedia } from '../lib/productImages'
@@ -6,6 +7,8 @@ import type { ProductFormValues } from '../schemas/product.schema'
 import type { ProductFilters } from '../schemas/productFilters.schema'
 import type { Product, ProductInsight, ProductPage } from '../types'
 import { removeProductImages, uploadProductMedia } from './productImages.api'
+
+const demo = () => import('./products.demo')
 
 /**
  * Tên danh mục lấy qua khóa ngoại kép (seller_id, category_id) → categories. Ghi rõ tên khóa
@@ -50,6 +53,7 @@ export async function fetchProducts(
   sellerId: string,
   filters: ProductFilters,
 ): Promise<ProductPage> {
+  if (isDemoMode()) return (await demo()).fetchProducts(sellerId, filters)
   const from = (filters.page - 1) * filters.pageSize
   const { data, error, count } = await buildListQuery(sellerId, filters)
     .order(filters.sort, { ascending: filters.order === 'asc' })
@@ -77,6 +81,7 @@ export async function createProduct(
   values: ProductFormValues,
   media: ProductMedia,
 ): Promise<Product> {
+  if (isDemoMode()) return (await demo()).createProduct(sellerId, values, media)
   const { uploaded, ...paths } = await uploadProductMedia(sellerId, media)
   const { data, error } = await supabase
     .from('products')
@@ -100,6 +105,7 @@ export async function updateProduct(
   values: ProductFormValues,
   media: ProductMedia,
 ): Promise<Product> {
+  if (isDemoMode()) return (await demo()).updateProduct(sellerId, product, values, media)
   const { uploaded, ...paths } = await uploadProductMedia(sellerId, media)
   // Liệt kê tường minh đúng các cột được GRANT UPDATE; SKU cố định sau khi tạo.
   const {
@@ -146,23 +152,27 @@ export function productImagePaths(product: Pick<Product, 'hero_image_path' | 'im
 }
 
 export async function updateProductPrice(id: string, price: number): Promise<void> {
+  if (isDemoMode()) return (await demo()).updateProductPrice(id, price)
   const { error } = await supabase.from('products').update({ price }).eq('id', id)
   if (error) throw error
 }
 
 /** Sửa giá vốn hiện hành. Đơn đã xác nhận giữ giá vốn đã chốt (order_items.unit_cost). */
 export async function updateProductCost(id: string, costPrice: number): Promise<void> {
+  if (isDemoMode()) return (await demo()).updateProductCost(id, costPrice)
   const { error } = await supabase.from('products').update({ cost_price: costPrice }).eq('id', id)
   if (error) throw error
 }
 
 export async function setProductActive(id: string, isActive: boolean): Promise<void> {
+  if (isDemoMode()) return (await demo()).setProductActive(id, isActive)
   const { error } = await supabase.from('products').update({ is_active: isActive }).eq('id', id)
   if (error) throw error
 }
 
 /** Hiệu quả sản phẩm (toàn thời gian): bán ra, giá vốn, lợi nhuận gộp, nhập hàng. */
 export async function fetchProductInsight(id: string): Promise<ProductInsight> {
+  if (isDemoMode()) return (await demo()).fetchProductInsight(id)
   const { data, error } = await supabase.rpc('get_product_insight', { p_product_id: id }).single()
   if (error) throw error
   return data

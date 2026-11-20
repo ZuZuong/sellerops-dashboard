@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClientOptions } from '@supabase/supabase-js'
 import type { Database } from '@/shared/types/database.types'
 import { rotateAuthStorageKey } from './authStorage'
+import { isDemoMode } from './demo/demoSession'
 import { env } from './env'
 
 /**
@@ -24,6 +25,17 @@ function authOptions(): SupabaseClientOptions<'public'>['auth'] {
   }
 }
 
+/** Mã lỗi khi có request tới Supabase trong lúc tab đang chạy tài khoản dùng thử. */
+export const DEMO_NETWORK_BLOCKED = 'DEMO_NETWORK_BLOCKED'
+
+/**
+ * Hàng rào cuối (ADR 011): tab đang chạy tài khoản dùng thử thì MỌI request của client (REST, RPC,
+ * Storage, Auth, Edge Function) bị chặn trước khi rời trình duyệt. Dù một hàm `api/` lỡ thiếu nhánh
+ * demo, tài khoản dùng thử cũng không thể đọc / ghi dữ liệu thật.
+ */
+export const guardedFetch: typeof fetch = (input, init) =>
+  isDemoMode() ? Promise.reject(new Error(DEMO_NETWORK_BLOCKED)) : fetch(input, init)
+
 /**
  * Supabase client dùng chung cho toàn app.
  * Chỉ được import trong `features/<name>/api/` — component không gọi Supabase trực tiếp.
@@ -31,5 +43,5 @@ function authOptions(): SupabaseClientOptions<'public'>['auth'] {
 export const supabase = createClient<Database>(
   env.VITE_SUPABASE_URL,
   env.VITE_SUPABASE_PUBLISHABLE_KEY,
-  { auth: authOptions() },
+  { auth: authOptions(), global: { fetch: guardedFetch } },
 )
